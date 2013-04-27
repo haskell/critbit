@@ -7,6 +7,10 @@ import qualified Data.List as List
 import Data.Bits
 import Data.CritBit.Types.Internal
 import Data.Word
+import System.Timeout
+import System.IO.Unsafe
+import Control.Exception
+import Data.Maybe
 
 empty :: CritBit k v
 empty = CritBit { cbRoot = Empty }
@@ -20,6 +24,8 @@ lookup k = go . cbRoot
     go (Leaf lk v) | k == lk = Just v
     go _                     = Nothing
 
+timeo = unsafePerformIO . fmap (fromMaybe False) . timeout 1000000 . evaluate
+
 direction :: (CritBitKey k) => k -> Node k v -> Int
 direction k (Internal _ _ byte otherBits) =
     calcDirection otherBits (getByte k byte)
@@ -30,20 +36,19 @@ calcDirection otherBits c = (1 + fromIntegral (otherBits .|. c)) `shiftR` 8
 followPrefixes :: (CritBitKey k) => k -> k -> (Int, Word8, Word8)
 followPrefixes k l = go 0
   where
-    go n | n == done = (n, c, c)
+    go n | n == byteCount k && n == byteCount l = (n, 0, 0)
          | b /= c = (n, b `xor` c, c)
          | otherwise    = go (n+1)
       where b = getByte k n
             c = getByte l n
-            done = (byteCount k `min` byteCount l) + 1
 
 insert :: (CritBitKey k) => k -> v -> CritBit k v -> CritBit k v
 insert k v (CritBit root) = CritBit . go $ root
   where
     go Empty = Leaf k v
     go i@(Internal left right _ _)
-      | direction k i == 0 = go left
-      | otherwise          = go right
+      | direction k i == 0 = i { ileft = go left }
+      | otherwise          = i { iright = go right }
     go (Leaf lk _)
       | n == byteCount lk && n == byteCount k = Leaf lk v
       | otherwise                             = rewalk root

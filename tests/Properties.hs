@@ -30,6 +30,8 @@ clist = C.fromList . flip zip [0..]
 mlist :: [ByteString] -> Map.Map ByteString Word8
 mlist = Map.fromList . flip zip [0..]
 
+qc n = quickCheckWith stdArgs { maxSuccess = n }
+
 t_fromList_eq :: KV -> Bool
 t_fromList_eq (KV kvs) =
     all (\(k,_) -> Map.lookup k m == C.lookup k c) kvs
