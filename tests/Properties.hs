@@ -7,14 +7,16 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import qualified Data.Map as Map
 import qualified Data.CritBit as C
 import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString as BB
 import Data.ByteString (ByteString)
 import Data.Word
 
+-- We can't yet handle null bytes, so ensure that they can neither be
+-- generated nor produced in a shrink.
 instance Arbitrary ByteString where
-    arbitrary = do
-      NonEmpty s <- arbitrary
-      return (B.pack s)
-    shrink = map (B.pack . fne) . shrink . NonEmpty . B.unpack
+    arbitrary = BB.pack <$> listOf1 (choose (1, 255))
+    shrink    = map (B.map succ . B.pack . fne) .
+                shrink . NonEmpty . B.unpack . B.map pred
         where fne (NonEmpty x) = x
 
 newtype KV = KV { fromKV :: [(ByteString, Word8)] }

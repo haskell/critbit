@@ -36,9 +36,10 @@ calcDirection otherBits c = (1 + fromIntegral (otherBits .|. c)) `shiftR` 8
 followPrefixes :: (CritBitKey k) => k -> k -> (Int, Word8, Word8)
 followPrefixes k l = go 0
   where
-    go n | n == byteCount k && n == byteCount l = (n, 0, 0)
-         | b /= c = (n, b `xor` c, c)
-         | otherwise    = go (n+1)
+    go n | n == byteCount k = (n, c, c)
+         | n == byteCount l = (n, b, 0)
+         | b /= c           = (n, b `xor` c, c)
+         | otherwise        = go (n+1)
       where b = getByte k n
             c = getByte l n
 
