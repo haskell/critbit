@@ -7,10 +7,6 @@ import qualified Data.List as List
 import Data.Bits
 import Data.CritBit.Types.Internal
 import Data.Word
-import System.Timeout
-import System.IO.Unsafe
-import Control.Exception
-import Data.Maybe
 
 empty :: CritBit k v
 empty = CritBit { cbRoot = Empty }
@@ -23,8 +19,6 @@ lookup k = go . cbRoot
        | otherwise           = go right
     go (Leaf lk v) | k == lk = Just v
     go _                     = Nothing
-
-timeo = unsafePerformIO . fmap (fromMaybe False) . timeout 1000000 . evaluate
 
 direction :: (CritBitKey k) => k -> Node k v -> Int
 direction k (Internal _ _ byte otherBits) =
