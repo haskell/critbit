@@ -42,12 +42,11 @@ insert k v (CritBit root) = CritBit . go $ root
   where
     go Empty = Leaf k v
     go i@(Internal left right _ _)
-      | direction k i == 0 = i { ileft = go left }
-      | otherwise          = i { iright = go right }
-    go (Leaf lk _)
-      | n == byteCount lk && n == byteCount k = Leaf lk v
-      | otherwise                             = rewalk root
+      | direction k i == 0 = go left
+      | otherwise          = go right
+    go (Leaf lk _)         = rewalk root
       where
+        finish (Leaf _ _) | k == lk = Leaf lk v
         finish node
           | nd == 0 = Internal { ileft = node, iright = Leaf k v,
                                  ibyte = n, iotherBits = nob }
@@ -68,3 +67,10 @@ insert k v (CritBit root) = CritBit . go $ root
 
 fromList :: (CritBitKey k) => [(k, v)] -> CritBit k v
 fromList = List.foldl' (flip (uncurry insert)) empty
+
+toList :: CritBit k v -> [(k, v)]
+toList (CritBit root) = go root []
+  where
+    go Empty next              = next
+    go (Internal l r _ _) next = go l (go r next)
+    go (Leaf k v) next         = (k,v) : next

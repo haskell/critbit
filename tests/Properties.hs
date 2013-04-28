@@ -34,11 +34,17 @@ mlist = Map.fromList . flip zip [0..]
 
 qc n = quickCheckWith stdArgs { maxSuccess = n }
 
-t_fromList_eq :: KV -> Bool
-t_fromList_eq (KV kvs) =
+t_fromList_lookups :: KV -> Bool
+t_fromList_lookups (KV kvs) =
     all (\(k,_) -> Map.lookup k m == C.lookup k c) kvs
   where m = Map.fromList kvs
         c = C.fromList kvs
 
+t_fromList_toList :: KV -> Bool
+t_fromList_toList (KV kvs) =
+    Map.toList (Map.fromList kvs) == C.toList (C.fromList kvs)
+
 properties = [
+    testProperty "t_fromList_toList" t_fromList_toList
+  , testProperty "t_fromList_lookups" t_fromList_lookups
   ]
