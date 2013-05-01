@@ -1,12 +1,20 @@
 {-# LANGUAGE RecordWildCards, ScopedTypeVariables #-}
 
 module Data.CritBit.Tree
-    where
+    (
+      empty
+    , fromList
+    , toList
+    , insert
+    , delete
+    , lookup
+    ) where
 
 import qualified Data.List as List
 import Data.Bits
 import Data.CritBit.Types.Internal
 import Data.Word
+import Prelude hiding (lookup)
 
 empty :: CritBit k v
 empty = CritBit { cbRoot = Empty }
@@ -19,13 +27,16 @@ lookup k = go . cbRoot
        | otherwise           = go right
     go (Leaf lk v) | k == lk = Just v
     go _                     = Nothing
+{-# INLINABLE lookup #-}
 
 direction :: (CritBitKey k) => k -> Node k v -> Int
 direction k (Internal _ _ byte otherBits) =
     calcDirection otherBits (getByte k byte)
+{-# INLINE direction #-}
 
 calcDirection :: Word16 -> Word16 -> Int
 calcDirection otherBits c = (1 + fromIntegral (otherBits .|. c)) `shiftR` 9
+{-# INLINE calcDirection #-}
 
 followPrefixes :: (CritBitKey k) => k -> k -> (Int, Word16, Word16)
 followPrefixes k l = go 0
@@ -36,6 +47,7 @@ followPrefixes k l = go 0
          | otherwise        = go (n+1)
       where b = getByte k n
             c = getByte l n
+{-# INLINE followPrefixes #-}
 
 insert :: (CritBitKey k) => k -> v -> CritBit k v -> CritBit k v
 insert k v (CritBit root) = CritBit . go $ root
@@ -65,6 +77,7 @@ insert k v (CritBit root) = CritBit . go $ root
                   n3 = n2 .|. (n2 `shiftR` 8)
               in (n3 .&. (complement (n3 `shiftR` 1))) `xor` 511
         nd = calcDirection nob c
+{-# INLINABLE insert #-}
 
 delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
 delete k t@(CritBit root) = case go root of
@@ -84,9 +97,11 @@ delete k t@(CritBit root) = case go root of
         | k == lk   = (Empty, True)
         | otherwise = (l, False)
     go e@Empty      = (e, False)
+{-# INLINABLE delete #-}
 
 fromList :: (CritBitKey k) => [(k, v)] -> CritBit k v
 fromList = List.foldl' (flip (uncurry insert)) empty
+{-# INLINABLE fromList #-}
 
 toList :: CritBit k v -> [(k, v)]
 toList (CritBit root) = go root []
