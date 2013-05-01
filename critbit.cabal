@@ -57,6 +57,22 @@ test-suite tests
     test-framework-quickcheck2 >= 0.2,
     text
 
+benchmark benchmarks
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: benchmarks
+  main-is:        Benchmarks.hs
+  ghc-options:    -O2 -rtsopts
+
+  build-depends:
+    base >= 4 && < 5,
+    bytestring,
+    containers,
+    critbit,
+    criterion,
+    deepseq,
+    mtl,
+    text
+
 source-repository head
   type:     git
   location: https://github.com/bos/critbit
