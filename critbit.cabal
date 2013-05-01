@@ -72,8 +72,10 @@ benchmark benchmarks
     deepseq,
     hashable < 1.2,
     mtl,
+    mwc-random,
     text,
-    unordered-containers
+    unordered-containers,
+    vector
 
 source-repository head
   type:     git
