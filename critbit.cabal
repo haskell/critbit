@@ -22,7 +22,7 @@ flag developer
 
 library
   exposed-modules:
-    Data.CritBit
+    Data.CritBit.Map.Lazy
   other-modules:
     Data.CritBit.Types.Internal
     Data.CritBit.Tree

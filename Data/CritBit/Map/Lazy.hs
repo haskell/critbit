@@ -1,4 +1,4 @@
-module Data.CritBit
+module Data.CritBit.Map.Lazy
     (
       module Data.CritBit.Tree
     , module Data.CritBit.Types.Internal

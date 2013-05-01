@@ -5,7 +5,7 @@ import Control.Applicative
 import Test.QuickCheck
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import qualified Data.Map as Map
-import qualified Data.CritBit as C
+import qualified Data.CritBit.Map.Lazy as C
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString as BB
 import Data.ByteString (ByteString)

@@ -5,7 +5,7 @@ import Control.DeepSeq
 import Control.Monad.Trans
 import qualified Data.ByteString.Char8 as B
 import Control.Applicative
-import qualified Data.CritBit as C
+import qualified Data.CritBit.Map.Lazy as C
 import qualified Data.Map as Map
 import qualified Data.HashMap.Lazy as H
 
