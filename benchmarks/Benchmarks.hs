@@ -7,6 +7,7 @@ import qualified Data.ByteString.Char8 as B
 import Control.Applicative
 import qualified Data.CritBit as C
 import qualified Data.Map as Map
+import qualified Data.HashMap.Lazy as H
 
 main = do
   keys <- B.lines <$> B.readFile "/usr/share/dict/words"
@@ -19,5 +20,8 @@ main = do
       ]
     , bgroup "map" [
         bench "fromList" $ whnf Map.fromList kvs
+      ]
+    , bgroup "hashmap" [
+        bench "fromList" $ whnf H.fromList kvs
       ]
     ]

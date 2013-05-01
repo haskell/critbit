@@ -68,10 +68,12 @@ benchmark benchmarks
     bytestring,
     containers,
     critbit,
-    criterion,
+    criterion >= 0.8,
     deepseq,
+    hashable < 1.2,
     mtl,
-    text
+    text,
+    unordered-containers
 
 source-repository head
   type:     git
