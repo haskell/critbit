@@ -11,13 +11,9 @@ import qualified Data.ByteString as BB
 import Data.ByteString (ByteString)
 import Data.Word
 
--- We can't yet handle null bytes, so ensure that they can neither be
--- generated nor produced in a shrink.
 instance Arbitrary ByteString where
-    arbitrary = BB.pack <$> listOf1 (choose (1, 255))
-    shrink    = map (B.map succ . B.pack . fne) .
-                shrink . NonEmpty . B.unpack . B.map pred
-        where fne (NonEmpty x) = x
+    arbitrary = BB.pack <$> arbitrary
+    shrink    = map B.pack . shrink . B.unpack
 
 newtype KV = KV { fromKV :: [(ByteString, Word8)] }
         deriving (Show, Eq, Ord)
