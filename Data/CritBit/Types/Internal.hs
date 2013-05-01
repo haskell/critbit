@@ -5,10 +5,10 @@ module Data.CritBit.Types.Internal
     , Node(..)
     ) where
 
-import Data.Bits
-import Data.Word
-import qualified Data.ByteString as B
+import Data.Bits ((.|.))
 import Data.ByteString (ByteString)
+import Data.Word (Word16)
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 
 data Node k v = Empty

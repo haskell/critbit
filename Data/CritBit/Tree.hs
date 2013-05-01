@@ -10,11 +10,11 @@ module Data.CritBit.Tree
     , lookup
     ) where
 
-import qualified Data.List as List
-import Data.Bits
-import Data.CritBit.Types.Internal
-import Data.Word
+import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
+import Data.CritBit.Types.Internal (CritBitKey(..), CritBit(..), Node(..))
+import Data.Word (Word16)
 import Prelude hiding (lookup)
+import qualified Data.List as List
 
 empty :: CritBit k v
 empty = CritBit { cbRoot = Empty }
@@ -32,6 +32,7 @@ lookup k = go . cbRoot
 direction :: (CritBitKey k) => k -> Node k v -> Int
 direction k (Internal _ _ byte otherBits) =
     calcDirection otherBits (getByte k byte)
+direction _ _ = error "Data.CritBit.Tree.direction: unpossible!"
 {-# INLINE direction #-}
 
 calcDirection :: Word16 -> Word16 -> Int
