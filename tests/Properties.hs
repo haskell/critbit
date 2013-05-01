@@ -40,7 +40,14 @@ t_fromList_toList :: KV -> Bool
 t_fromList_toList (KV kvs) =
     Map.toList (Map.fromList kvs) == C.toList (C.fromList kvs)
 
+t_delete_present (KV kvs) k v =
+    C.toList (C.delete k c) == Map.toList (Map.delete k m)
+  where
+    c = C.insert k v $ C.fromList kvs
+    m = Map.insert k v $ Map.fromList kvs
+
 properties = [
     testProperty "t_fromList_toList" t_fromList_toList
   , testProperty "t_fromList_lookups" t_fromList_lookups
+  , testProperty "t_delete_present" t_delete_present
   ]

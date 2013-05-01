@@ -66,6 +66,25 @@ insert k v (CritBit root) = CritBit . go $ root
               in (n3 .&. (complement (n3 `shiftR` 1))) `xor` 511
         nd = calcDirection nob c
 
+delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
+delete k t@(CritBit root) = case go root of
+                              (t', True) -> CritBit t'
+                              _          -> t
+  where
+    go i@(Internal left right _ _)
+       | direction k i == 0 = case go left of
+                                (Empty, b@True) -> (right, b)
+                                (l, b@True)     -> (i { ileft = l }, b)
+                                unchanged       -> unchanged
+       | otherwise          = case go right of
+                                (Empty, b@True) -> (left, b)
+                                (r, b@True)     -> (i { iright = r }, b)
+                                unchanged       -> unchanged
+    go l@(Leaf lk _)
+        | k == lk   = (Empty, True)
+        | otherwise = (l, False)
+    go e@Empty      = (e, False)
+
 fromList :: (CritBitKey k) => [(k, v)] -> CritBit k v
 fromList = List.foldl' (flip (uncurry insert)) empty
 
