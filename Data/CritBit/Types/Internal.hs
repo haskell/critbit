@@ -1,3 +1,10 @@
+-- |
+-- Module      :  Data.CritBit.Types.Internal
+-- Copyright   :  (c) Bryan O'Sullivan 2013
+-- License     :  BSD-style
+-- Maintainer  :  bos@serpentine.com
+-- Stability   :  experimental
+-- Portability :  GHC
 module Data.CritBit.Types.Internal
     (
       CritBitKey(..)
@@ -33,7 +40,18 @@ newtype CritBit k v = CritBit {
     } deriving (Show, Eq)
 
 class (Eq k) => CritBitKey k where
+    -- | Return the number of bytes used by this key.
+    --
+    -- For reasonable performance, implementations must be inlined and
+    -- /O(1)/.
     byteCount :: k -> Int
+
+    -- | Return the byte at the given offset (counted in bytes) of
+    -- this key, bitwise-ORed with 256. If the offset is past the end
+    -- of the key, return zero.
+    --
+    -- For reasonable performance, implementations must be inlined and
+    -- /O(1)/.
     getByte :: k -> Int -> Word16
 
 instance CritBitKey ByteString where

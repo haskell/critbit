@@ -1,8 +1,16 @@
 {-# LANGUAGE RecordWildCards, ScopedTypeVariables #-}
 
+-- |
+-- Module      :  Data.CritBit.Tree
+-- Copyright   :  (c) Bryan O'Sullivan 2013
+-- License     :  BSD-style
+-- Maintainer  :  bos@serpentine.com
+-- Stability   :  experimental
+-- Portability :  GHC
 module Data.CritBit.Tree
     (
-      empty
+      null
+    , empty
     , fromList
     , toList
     , insert
@@ -13,12 +21,55 @@ module Data.CritBit.Tree
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
 import Data.CritBit.Types.Internal (CritBitKey(..), CritBit(..), Node(..))
 import Data.Word (Word16)
-import Prelude hiding (lookup)
+import Prelude hiding (lookup, null)
 import qualified Data.List as List
 
+-- | /O(1)/. Is the map empty?
+--
+-- > null (empty)           == True
+-- > null (singleton 1 'a') == False
+null :: CritBit k v -> Bool
+null (CritBit Empty) = True
+null _               = False
+
+-- | /O(1)/. The empty map.
+--
+-- > empty      == fromList []
+-- > size empty == 0
 empty :: CritBit k v
 empty = CritBit { cbRoot = Empty }
 
+-- | /O(log n)/. Lookup the value at a key in the map.
+--
+-- The function will return the corresponding value as @('Just' value)@,
+-- or 'Nothing' if the key isn't in the map.
+--
+-- An example of using @lookup@:
+--
+-- > {-# LANGUAGE OverloadedStrings #-}
+-- > import Data.Text
+-- > import Prelude hiding (lookup)
+-- > import Data.CritBit.Map.Lazy
+-- >
+-- > employeeDept, deptCountry, countryCurrency :: CritBit Text Text
+-- > employeeDept = fromList [("John","Sales"), ("Bob","IT")]
+-- > deptCountry = fromList [("IT","USA"), ("Sales","France")]
+-- > countryCurrency = fromList [("USA", "Dollar"), ("France", "Euro")]
+-- >
+-- > employeeCurrency :: Text -> Maybe Text
+-- > employeeCurrency name = do
+-- >   dept <- lookup name employeeDept
+-- >   country <- lookup dept deptCountry
+-- >   lookup country countryCurrency
+-- >
+-- > main = do
+-- >   putStrLn $ "John's currency: " ++ (show (employeeCurrency "John"))
+-- >   putStrLn $ "Pete's currency: " ++ (show (employeeCurrency "Pete"))
+--
+-- The output of this program:
+--
+-- >   John's currency: Just "Euro"
+-- >   Pete's currency: Nothing
 lookup :: (CritBitKey k) => k -> CritBit k v -> Maybe v
 lookup k = go . cbRoot
   where
@@ -50,6 +101,14 @@ followPrefixes k l = go 0
             c = getByte l n
 {-# INLINE followPrefixes #-}
 
+-- | /O(log n)/. Insert a new key and value in the map.  If the key is
+-- already present in the map, the associated value is replaced with
+-- the supplied value. 'insert' is equivalent to @'insertWith'
+-- 'const'@.
+--
+-- > insert 5 'x' (fromList [(5,'a'), (3,'b')]) == fromList [(3, 'b'), (5, 'x')]
+-- > insert 7 'x' (fromList [(5,'a'), (3,'b')]) == fromList [(3, 'b'), (5, 'a'), (7, 'x')]
+-- > insert 5 'x' empty                         == singleton 5 'x'
 insert :: (CritBitKey k) => k -> v -> CritBit k v -> CritBit k v
 insert k v (CritBit root) = CritBit . go $ root
   where
@@ -100,10 +159,21 @@ delete k t@(CritBit root) = case go root of
     go e@Empty      = (e, False)
 {-# INLINABLE delete #-}
 
+-- | /O(n*log n)/. Build a map from a list of key\/value pairs.  If
+-- the list contains more than one value for the same key, the last
+-- value for the key is retained.
+--
+-- > fromList [] == empty
+-- > fromList [("a",5), ("b",3), ("a",2)] == fromList [("a",2), ("b",3)]
 fromList :: (CritBitKey k) => [(k, v)] -> CritBit k v
 fromList = List.foldl' (flip (uncurry insert)) empty
 {-# INLINABLE fromList #-}
 
+-- | /O(n)/. Convert the map to a list of key\/value pairs. The list
+-- returned will be sorted in lexicographically ascending order.
+--
+-- > toList (fromList [("a",5), ("b",3)]) == [("a",5),("b",3)]
+-- > toList empty == []
 toList :: CritBit k v -> [(k, v)]
 toList (CritBit root) = go root []
   where

@@ -2,7 +2,7 @@ name:           critbit
 version:        0.0.0.0
 homepage:       https://github.com/bos/critbit
 bug-reports:    https://github.com/bos/critbit/issues
-synopsis:       Crit-bit trees in Haskell.
+synopsis:       Crit-bit maps and sets
 description:
     Whee.
 license:        BSD3
