@@ -24,10 +24,10 @@ direction :: (CritBitKey k) => k -> Node k v -> Int
 direction k (Internal _ _ byte otherBits) =
     calcDirection otherBits (getByte k byte)
 
-calcDirection :: Word8 -> Word8 -> Int
-calcDirection otherBits c = (1 + fromIntegral (otherBits .|. c)) `shiftR` 8
+calcDirection :: Word16 -> Word16 -> Int
+calcDirection otherBits c = (1 + fromIntegral (otherBits .|. c)) `shiftR` 9
 
-followPrefixes :: (CritBitKey k) => k -> k -> (Int, Word8, Word8)
+followPrefixes :: (CritBitKey k) => k -> k -> (Int, Word16, Word16)
 followPrefixes k l = go 0
   where
     go n | n == byteCount k = (n, c, c)
@@ -62,7 +62,8 @@ insert k v (CritBit root) = CritBit . go $ root
         nob = let n0 = bc .|. (bc `shiftR` 1)
                   n1 = n0 .|. (n0 `shiftR` 2)
                   n2 = n1 .|. (n1 `shiftR` 4)
-              in complement (n2 .&. (complement (n2 `shiftR` 1)))
+                  n3 = n2 .|. (n2 `shiftR` 8)
+              in (n3 .&. (complement (n3 `shiftR` 1))) `xor` 511
         nd = calcDirection nob c
 
 fromList :: (CritBitKey k) => [(k, v)] -> CritBit k v
