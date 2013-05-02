@@ -12,11 +12,14 @@ module Data.CritBit.Types.Internal
     , Node(..)
     ) where
 
-import Data.Bits ((.|.))
+import Data.Bits ((.|.), (.&.), shiftL, shiftR)
 import Data.ByteString (ByteString)
+import Data.Text ()
+import Data.Text.Internal (Text(..))
 import Data.Word (Word16)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
+import qualified Data.Text.Array as T
 
 data Node k v = Internal {
                   ileft, iright :: !(Node k v)
@@ -60,5 +63,17 @@ instance CritBitKey ByteString where
 
     getByte bs n
         | n < B.length bs = fromIntegral (B.unsafeIndex bs n) .|. 256
+        | otherwise       = 0
+    {-# INLINE getByte #-}
+
+instance CritBitKey Text where
+    byteCount (Text _ _ len) = len `shiftL` 1
+    {-# INLINE byteCount #-}
+
+    getByte (Text arr off len) n
+        | n < len `shiftL` 1 =
+            let word       = T.unsafeIndex arr (off + (n `shiftR` 1))
+                byteInWord = (word `shiftR` ((n .&. 1) `shiftL` 3)) .&. 0xff
+            in byteInWord .|. 256
         | otherwise       = 0
     {-# INLINE getByte #-}
