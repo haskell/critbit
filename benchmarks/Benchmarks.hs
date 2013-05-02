@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Main (main) where
 
 import Control.Applicative ((<$>))
@@ -19,10 +20,13 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Unboxed as U
+import qualified Data.Trie as Trie
 
+#if 0
 instance Hashable Text where
     hash (Text arr off len) = hashByteArray (aBA arr) (off * 2) (len * 2)
     {-# INLINE hash #-}
+#endif
 
 every k = go 0
   where
@@ -51,9 +55,12 @@ main = do
   defaultMain
     [ bgroup "bytestring" [
         bgroup "fromList" [
-          bgroup "ordered" $ fromList b_ordKVs
-        , bgroup "random" $ fromList b_randKVs
-        , bgroup "reversed" $ fromList b_revKVs
+          bgroup "ordered" $ fromList b_ordKVs ++
+                             [ bench "trie" $ whnf Trie.fromList b_ordKVs ]
+        , bgroup "random" $ fromList b_randKVs ++
+                            [ bench "trie" $ whnf Trie.fromList b_randKVs ]
+        , bgroup "reversed" $ fromList b_revKVs ++
+                              [ bench "trie" $ whnf Trie.fromList b_revKVs ]
         ]
       ]
     , bgroup "text" [
