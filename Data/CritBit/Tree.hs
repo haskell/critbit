@@ -112,7 +112,6 @@ followPrefixes k l = go 0
 insert :: (CritBitKey k) => k -> v -> CritBit k v -> CritBit k v
 insert k v (CritBit root) = CritBit . go $ root
   where
-    go Empty = Leaf k v
     go i@(Internal left right _ _)
       | direction k i == 0 = go left
       | otherwise          = go right
@@ -137,6 +136,7 @@ insert k v (CritBit root) = CritBit . go $ root
                   n3 = n2 .|. (n2 `shiftR` 8)
               in (n3 .&. (complement (n3 `shiftR` 1))) `xor` 511
         nd = calcDirection nob c
+    go Empty = Leaf k v
 {-# INLINABLE insert #-}
 
 delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
@@ -177,6 +177,6 @@ fromList = List.foldl' (flip (uncurry insert)) empty
 toList :: CritBit k v -> [(k, v)]
 toList (CritBit root) = go root []
   where
-    go Empty next              = next
     go (Internal l r _ _) next = go l (go r next)
     go (Leaf k v) next         = (k,v) : next
+    go Empty next              = next

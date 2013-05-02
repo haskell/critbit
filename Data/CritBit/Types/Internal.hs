@@ -18,21 +18,21 @@ import Data.Word (Word16)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 
-data Node k v = Empty
-              | Leaf k v
-              | Internal {
+data Node k v = Internal {
                   ileft, iright :: !(Node k v)
                 , ibyte         :: !Int
                 , iotherBits    :: !Word16
                 }
+              | Leaf k v
+              | Empty
                 deriving (Show)
 
 instance (Eq k, Eq v) => Eq (Node k v) where
-    Empty        == Empty       = True
-    Leaf k0 v0   == Leaf k1 v1  = k0 == k1 && v0 == v1
     i0@(Internal _ _ _ _)  == i1@(Internal _ _ _ _) =
         ibyte i0 == ibyte i1 && iotherBits i0 == iotherBits i1 &&
         ileft i0 == ileft i1 && iright i0 == iright i1
+    Leaf k0 v0   == Leaf k1 v1  = k0 == k1 && v0 == v1
+    Empty        == Empty       = True
     _            == _           = False
 
 newtype CritBit k v = CritBit {
