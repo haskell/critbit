@@ -10,6 +10,7 @@
 module Data.CritBit.Tree
     (
       null
+    , singleton
     , empty
     , size
     , fromList
@@ -166,6 +167,13 @@ delete k t@(CritBit root) = go root CritBit
 fromList :: (CritBitKey k) => [(k, v)] -> CritBit k v
 fromList = List.foldl' (flip (uncurry insert)) empty
 {-# INLINABLE fromList #-}
+
+-- | /O(1)/. A map with a single element.
+--
+-- > singleton "a" 1        == fromList [("a", 1)]
+singleton :: k -> v -> CritBit k v
+singleton k v = CritBit (Leaf k v)
+{-# INLINE singleton #-}
 
 -- | /O(n)/. Convert the map to a list of key\/value pairs. The list
 -- returned will be sorted in lexicographically ascending order.
