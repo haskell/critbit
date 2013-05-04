@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns, RecordWildCards, ScopedTypeVariables #-}
 
 -- |
 -- Module      :  Data.CritBit.Tree
@@ -11,6 +11,7 @@ module Data.CritBit.Tree
     (
       null
     , empty
+    , size
     , fromList
     , toList
     , insert
@@ -177,3 +178,15 @@ toList (CritBit root) = go root []
     go (Internal l r _ _) next = go l (go r next)
     go (Leaf k v) next         = (k,v) : next
     go Empty next              = next
+
+-- | /O(n)/. The number of elements in the map.
+--
+-- > size empty                                  == 0
+-- > size (singleton "a" 1)                      == 1
+-- > size (fromList [("a",1), ("c",2), ("b",3)]) == 3
+size :: CritBit k v -> Int
+size (CritBit root) = go root
+  where
+    go (Internal l r _ _) = go l + go r
+    go (Leaf _ _) = 1
+    go Empty      = 0

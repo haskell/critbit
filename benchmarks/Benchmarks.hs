@@ -110,6 +110,12 @@ main = do
             , bench "trie" $ whnf (Trie.delete k) (Trie.delete k b_trie)
           ]
         ]
+      , bgroup "size" [
+            bench "critbit" $ whnf C.size b_critbit
+          , bench "map" $ whnf Map.size b_map
+          , bench "hashmap" $ whnf H.size b_hashmap
+          , bench "trie" $ whnf Trie.size b_trie
+        ]
       ]
     , bgroup "text" [
         bgroup "fromList" [

@@ -54,6 +54,10 @@ t_fromList_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromList_toList _ (KV kvs) =
     Map.toList (Map.fromList kvs) == C.toList (C.fromList kvs)
 
+t_fromList_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromList_size _ (KV kvs) =
+    Map.size (Map.fromList kvs) == C.size (C.fromList kvs)
+
 t_delete_present :: (CritBitKey k, Ord k) => k -> KV k -> k -> V -> Bool
 t_delete_present _ (KV kvs) k v =
     C.toList (C.delete k c) == Map.toList (Map.delete k m)
@@ -64,6 +68,7 @@ t_delete_present _ (KV kvs) k v =
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
+  , testProperty "t_fromList_size" $ t_fromList_size t
   , testProperty "t_fromList_lookups" $ t_fromList_lookups t
   , testProperty "t_delete_present" $ t_delete_present t
   ]
