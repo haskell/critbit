@@ -6,12 +6,13 @@ import Control.Arrow (first)
 import Control.DeepSeq (rnf)
 import Control.Exception (evaluate)
 import Control.Monad.Trans (liftIO)
+import Control.Monad (when)
 import Criterion.Main (bench, bgroup, defaultMain, whnf)
 import Data.Hashable (Hashable(..), hashByteArray)
 import Data.Text.Array (aBA)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Internal (Text(..))
-import System.Random.MWC (asGenST, uniformR, withSystemRandom)
+import System.Random.MWC -- (GenST, asGenST, uniform, uniformR, withSystemRandom)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.CritBit.Map.Lazy as C
 import qualified Data.HashMap.Lazy as H
@@ -21,6 +22,8 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Trie as Trie
+import qualified Data.Vector.Generic.Mutable as M
+import Control.Monad.ST
 
 #if 0
 instance Hashable Text where
@@ -35,6 +38,31 @@ every k = go 0
         | otherwise = go (i+1) xs
     go _ _ = []
 
+shuffle :: GenIO -> Double -> [Int] -> IO [Int]
+shuffle gen prob xs = do
+  let vec = V.fromList xs
+      len = G.length vec
+  v <- G.unsafeThaw vec
+  let go i | i == 1 = return ()
+           | otherwise = do
+                   p <- uniform gen
+                   when (p <= prob) $
+                     M.unsafeSwap v i =<< uniformR (0, i) gen
+                   go (i-1)
+  go (len - 1)
+  V.toList <$> G.unsafeFreeze v
+
+chartres = do
+  let xs = [0..2999]
+      nxs = fromIntegral (length xs) :: Double
+      go pct = withSystemRandom $ \gen -> do
+                 let prob = fromIntegral pct / 100
+                 ys <- shuffle gen prob xs
+                 let mismatches = length . filter id . zipWith (/=) xs $ ys
+                 putStrLn $ show prob ++ " " ++ show (fromIntegral mismatches / nxs)
+  mapM_ go [0..100]
+
+
 main = do
   ordKeys <- (every 5 . B.lines) <$> B.readFile "/usr/share/dict/words"
   let b_ordKVs = zip ordKeys [(0::Int)..]
@@ -47,7 +75,11 @@ main = do
   let t_ordKVs  = map (first decodeUtf8) b_ordKVs
       t_randKVs = map (first decodeUtf8) b_randKVs
       t_revKVs = map (first decodeUtf8) b_revKVs
-  let fromList kvs = [
+      b_critbit = C.fromList b_ordKVs
+      b_map = Map.fromList b_ordKVs
+      b_hashmap = H.fromList b_ordKVs
+      b_trie = Trie.fromList b_ordKVs
+      fromList kvs = [
           bench "critbit" $ whnf C.fromList kvs
         , bench "map" $ whnf Map.fromList kvs
         , bench "hashmap" $ whnf H.fromList kvs
@@ -61,6 +93,22 @@ main = do
                             [ bench "trie" $ whnf Trie.fromList b_randKVs ]
         , bgroup "reversed" $ fromList b_revKVs ++
                               [ bench "trie" $ whnf Trie.fromList b_revKVs ]
+        ]
+      , bgroup "delete" $
+        let k = fst . head $ b_randKVs in
+        [
+          bgroup "present" [
+              bench "critbit" $ whnf (C.delete k) b_critbit
+            , bench "map" $ whnf (Map.delete k) b_map
+            , bench "hashmap" $ whnf (H.delete k) b_hashmap
+            , bench "trie" $ whnf (Trie.delete k) b_trie
+          ]
+        , bgroup "missing" [
+              bench "critbit" $ whnf (C.delete k) (C.delete k b_critbit)
+            , bench "map" $ whnf (Map.delete k) (Map.delete k b_map)
+            , bench "hashmap" $ whnf (H.delete k) (H.delete k b_hashmap)
+            , bench "trie" $ whnf (Trie.delete k) (Trie.delete k b_trie)
+          ]
         ]
       ]
     , bgroup "text" [
