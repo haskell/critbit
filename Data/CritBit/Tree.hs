@@ -140,23 +140,20 @@ insert k v (CritBit root) = CritBit . go $ root
 {-# INLINABLE insert #-}
 
 delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
-delete k t@(CritBit root) = case go root of
-                              (t', True) -> CritBit t'
-                              _          -> t
+delete k t@(CritBit root) = go root CritBit
   where
-    go i@(Internal left right _ _)
-       | direction k i == 0 = case go left of
-                                (Empty, b@True) -> (right, b)
-                                (l, b@True)     -> (i { ileft = l }, b)
-                                unchanged       -> unchanged
-       | otherwise          = case go right of
-                                (Empty, b@True) -> (left, b)
-                                (r, b@True)     -> (i { iright = r }, b)
-                                unchanged       -> unchanged
-    go l@(Leaf lk _)
-        | k == lk   = (Empty, True)
-        | otherwise = (l, False)
-    go e@Empty      = (e, False)
+    go i@(Internal left right _ _) cont
+      | direction k i == 0 = go left $ \new ->
+                             case new of
+                               Empty -> cont right
+                               l     -> cont $! i { ileft = l }
+      | otherwise          = go right $ \new ->
+                             case new of
+                               Empty -> cont left
+                               r     -> cont $! i { iright = r }
+    go (Leaf lk _) cont
+       | k == lk = cont Empty
+    go _ _       = t
 {-# INLINABLE delete #-}
 
 -- | /O(n*log n)/. Build a map from a list of key\/value pairs.  If
