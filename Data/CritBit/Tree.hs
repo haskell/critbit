@@ -9,18 +9,23 @@
 -- Portability :  GHC
 module Data.CritBit.Tree
     (
+    -- * Query
       null
-    , singleton
-    , empty
     , size
-    , fromList
-    , toList
-    , insert
-    , delete
-    , lookup
-    , findWithDefault
     , member
     , notMember
+    , lookup
+    , findWithDefault
+
+    -- * Construction
+    , empty
+    , singleton
+    , fromList
+    , toList
+
+    -- * Modification
+    , insert
+    , delete
     ) where
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
