@@ -55,11 +55,12 @@ shuffle gen prob xs = do
 chartres = do
   let xs = [0..2999]
       nxs = fromIntegral (length xs) :: Double
-      go pct = withSystemRandom $ \gen -> do
-                 let prob = fromIntegral pct / 100
-                 ys <- shuffle gen prob xs
-                 let mismatches = length . filter id . zipWith (/=) xs $ ys
-                 putStrLn $ show prob ++ " " ++ show (fromIntegral mismatches / nxs)
+      go pct = do
+        gen <- create
+        let prob = fromIntegral pct / 100
+        ys <- shuffle gen prob xs
+        let mismatches = length . filter id . zipWith (/=) xs $ ys
+        putStrLn $ show prob ++ " " ++ show (fromIntegral mismatches / nxs)
   mapM_ go [0..100]
 
 
