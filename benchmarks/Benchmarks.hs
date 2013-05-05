@@ -111,6 +111,22 @@ main = do
             , bench "trie" $ whnf (Trie.delete k) (Trie.delete k b_trie)
           ]
         ]
+      , bgroup "lookup" $
+        let k = fst . head $ b_randKVs in
+        [
+          bgroup "present" [
+              bench "critbit" $ whnf (C.lookup k) b_critbit
+            , bench "map" $ whnf (Map.lookup k) b_map
+            , bench "hashmap" $ whnf (H.lookup k) b_hashmap
+            , bench "trie" $ whnf (Trie.lookup k) b_trie
+          ]
+        , bgroup "missing" [
+              bench "critbit" $ whnf (C.lookup k) (C.delete k b_critbit)
+            , bench "map" $ whnf (Map.lookup k) (Map.delete k b_map)
+            , bench "hashmap" $ whnf (H.lookup k) (H.delete k b_hashmap)
+            , bench "trie" $ whnf (Trie.lookup k) (Trie.delete k b_trie)
+          ]
+        ]
       , bgroup "size" [
             bench "critbit" $ whnf C.size b_critbit
           , bench "map" $ whnf Map.size b_map
