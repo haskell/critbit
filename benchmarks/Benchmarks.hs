@@ -122,6 +122,7 @@ main = do
         ]
       , bgroup "delete" $ keyed C.delete Map.delete H.delete Trie.delete
       , bgroup "lookup" $ keyed C.lookup Map.lookup H.lookup Trie.lookup
+      , bgroup "member" $ keyed C.member Map.member H.member Trie.member
       ]
     , bgroup "text" [
         bgroup "fromList" [

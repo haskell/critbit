@@ -50,6 +50,12 @@ t_fromList_lookups _ (KV kvs) =
   where m = Map.fromList kvs
         c = C.fromList kvs
 
+t_fromList_members :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromList_members _ (KV kvs) =
+    all (\(k,_) -> Map.member k m == C.member k c) kvs
+  where m = Map.fromList kvs
+        c = C.fromList kvs
+
 t_fromList_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromList_toList _ (KV kvs) =
     Map.toList (Map.fromList kvs) == C.toList (C.fromList kvs)
@@ -70,6 +76,7 @@ propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
   , testProperty "t_fromList_size" $ t_fromList_size t
   , testProperty "t_fromList_lookups" $ t_fromList_lookups t
+  , testProperty "t_fromList_members" $ t_fromList_members t
   , testProperty "t_delete_present" $ t_delete_present t
   ]
 

@@ -18,6 +18,8 @@ module Data.CritBit.Tree
     , insert
     , delete
     , lookup
+    , member
+    , notMember
     ) where
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
@@ -40,6 +42,32 @@ null _               = False
 -- > size empty == 0
 empty :: CritBit k v
 empty = CritBit { cbRoot = Empty }
+
+-- | /O(log n)/. Is the key a member of the map?
+--
+-- > member "a" (fromList [("a", 5), ("b", 3)]) == True
+-- > member "c" (fromList [("a", 5), ("b", 3)]) == False
+--
+-- See also 'notMember'.
+member :: (CritBitKey k) => k -> CritBit k v -> Bool
+member k (CritBit root) = go root
+  where
+    go i@(Internal left right _ _)
+       | direction k i == 0  = go left
+       | otherwise           = go right
+    go (Leaf lk _) | k == lk = True
+    go _                     = False
+{-# INLINABLE member #-}
+
+-- | /O(log n)/. Is the key not a member of the map?
+--
+-- > notMember 5 (fromList [(5,'a'), (3,'b')]) == False
+-- > notMember 1 (fromList [(5,'a'), (3,'b')]) == True
+--
+-- See also 'member'.
+notMember :: (CritBitKey k) => k -> CritBit k v -> Bool
+notMember k m = not (member k m)
+{-# INLINE notMember #-}
 
 -- | /O(log n)/. Lookup the value at a key in the map.
 --
@@ -73,7 +101,7 @@ empty = CritBit { cbRoot = Empty }
 -- >   John's currency: Just "Euro"
 -- >   Pete's currency: Nothing
 lookup :: (CritBitKey k) => k -> CritBit k v -> Maybe v
-lookup k = go . cbRoot
+lookup k (CritBit root) = go root
   where
     go i@(Internal left right _ _)
        | direction k i == 0  = go left
