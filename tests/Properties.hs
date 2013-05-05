@@ -1,10 +1,11 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Properties
     where
 
 import Control.Applicative ((<$>))
 import Data.ByteString (ByteString)
-import Data.CritBit.Map.Lazy (CritBitKey)
+import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
 import Data.Text (Text)
 import Data.Word (Word8)
 import Test.Framework (Test, testGroup)
@@ -33,14 +34,18 @@ instance Arbitrary a => Arbitrary (KV a) where
     arbitrary = (KV . flip zip [0..]) <$> arbitrary
     shrink = map (KV . flip zip [0..]) . shrink . map fst . fromKV
 
-instance (Arbitrary k, Arbitrary v) => Arbitrary (CritBit k v) where
+instance (CritBitKey k, Arbitrary k, Arbitrary v) =>
+  Arbitrary (CritBit k v) where
     arbitrary = C.fromList <$> arbitrary
     shrink = map C.fromList . shrink . C.toList
 
-blist :: [ByteString] -> C.CritBit ByteString Word8
+newtype CB k = CB (CritBit k V)
+    deriving (Show, Eq, Arbitrary)
+
+blist :: [ByteString] -> CritBit ByteString Word8
 blist = C.fromList . flip zip [0..]
 
-tlist :: [Text] -> C.CritBit Text Word8
+tlist :: [Text] -> CritBit Text Word8
 tlist = C.fromList . flip zip [0..]
 
 mlist :: [ByteString] -> Map.Map ByteString Word8
@@ -48,17 +53,11 @@ mlist = Map.fromList . flip zip [0..]
 
 qc n = quickCheckWith stdArgs { maxSuccess = n }
 
-t_fromList_lookups :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_fromList_lookups _ (KV kvs) =
-    all (\(k,_) -> Map.lookup k m == C.lookup k c) kvs
-  where m = Map.fromList kvs
-        c = C.fromList kvs
+t_lookup_present :: (CritBitKey k) => k -> k -> V -> CB k -> Bool
+t_lookup_present _ k v (CB m) = C.lookup k (C.insert k v m) == Just v
 
-t_fromList_members :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_fromList_members _ (KV kvs) =
-    all (\(k,_) -> Map.member k m == C.member k c) kvs
-  where m = Map.fromList kvs
-        c = C.fromList kvs
+t_lookup_missing :: (CritBitKey k) => k -> k -> CB k -> Bool
+t_lookup_missing _ k (CB m) = C.lookup k (C.delete k m) == Nothing
 
 t_fromList_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromList_toList _ (KV kvs) =
@@ -79,8 +78,8 @@ propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
   , testProperty "t_fromList_size" $ t_fromList_size t
-  , testProperty "t_fromList_lookups" $ t_fromList_lookups t
-  , testProperty "t_fromList_members" $ t_fromList_members t
+  , testProperty "t_lookup_present" $ t_lookup_present t
+  , testProperty "t_lookup_missing" $ t_lookup_missing t
   , testProperty "t_delete_present" $ t_delete_present t
   ]
 
