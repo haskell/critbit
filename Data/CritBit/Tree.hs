@@ -18,6 +18,7 @@ module Data.CritBit.Tree
     , insert
     , delete
     , lookup
+    , findWithDefault
     , member
     , notMember
     ) where
@@ -50,13 +51,7 @@ empty = CritBit { cbRoot = Empty }
 --
 -- See also 'notMember'.
 member :: (CritBitKey k) => k -> CritBit k v -> Bool
-member k (CritBit root) = go root
-  where
-    go i@(Internal left right _ _)
-       | direction k i == 0  = go left
-       | otherwise           = go right
-    go (Leaf lk _) | k == lk = True
-    go _                     = False
+member k m = lookupWith False (const True) k m
 {-# INLINABLE member #-}
 
 -- | /O(log n)/. Is the key not a member of the map?
@@ -66,7 +61,7 @@ member k (CritBit root) = go root
 --
 -- See also 'member'.
 notMember :: (CritBitKey k) => k -> CritBit k v -> Bool
-notMember k m = not (member k m)
+notMember k m = lookupWith True (const False) k m
 {-# INLINE notMember #-}
 
 -- | /O(log n)/. Lookup the value at a key in the map.
@@ -101,14 +96,29 @@ notMember k m = not (member k m)
 -- >   John's currency: Just "Euro"
 -- >   Pete's currency: Nothing
 lookup :: (CritBitKey k) => k -> CritBit k v -> Maybe v
-lookup k (CritBit root) = go root
+lookup k m = lookupWith Nothing Just k m
+{-# INLINABLE lookup #-}
+
+-- | /O(log n)/. Returns the value associated with the given key, or
+-- the given default value if the key is not in the map.
+--
+-- > findWithDefault 1 "x" (fromList [("a",5), ("b",3)]) == 1
+-- > findWithDefault 1 "a" (fromList [("a",5), ("b",3)]) == 5
+findWithDefault :: (CritBitKey k) =>
+                   v -- ^ Default value to return if lookup fails.
+                -> k -> CritBit k v -> v
+findWithDefault d k m = lookupWith d id k m
+{-# INLINABLE findWithDefault #-}
+
+lookupWith :: (CritBitKey k) => a -> (v -> a) -> k -> CritBit k v -> a
+lookupWith notFound found k (CritBit root) = go root
   where
     go i@(Internal left right _ _)
        | direction k i == 0  = go left
        | otherwise           = go right
-    go (Leaf lk v) | k == lk = Just v
-    go _                     = Nothing
-{-# INLINABLE lookup #-}
+    go (Leaf lk v) | k == lk = found v
+    go _                     = notFound
+{-# INLINE lookupWith #-}
 
 direction :: (CritBitKey k) => k -> Node k v -> Int
 direction k (Internal _ _ byte otherBits) =
