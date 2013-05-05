@@ -136,9 +136,9 @@ followPrefixes k l = go 0
 -- the supplied value. 'insert' is equivalent to @'insertWith'
 -- 'const'@.
 --
--- > insert 5 'x' (fromList [(5,'a'), (3,'b')]) == fromList [(3, 'b'), (5, 'x')]
--- > insert 7 'x' (fromList [(5,'a'), (3,'b')]) == fromList [(3, 'b'), (5, 'a'), (7, 'x')]
--- > insert 5 'x' empty                         == singleton 5 'x'
+-- > insert "x" 5 (fromList [("a",5), ("b",3)]) == fromList [("b",3), ("x",5)]
+-- > insert "x" 7 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("x",7)]
+-- > insert "x" 5 empty                         == singleton "x" 5
 insert :: (CritBitKey k) => k -> v -> CritBit k v -> CritBit k v
 insert k v (CritBit root) = CritBit . go $ root
   where
@@ -169,6 +169,12 @@ insert k v (CritBit root) = CritBit . go $ root
     go Empty = Leaf k v
 {-# INLINABLE insert #-}
 
+-- | /O(log n)/. Delete a key and its value from the map. When the key is not
+-- a member of the map, the original map is returned.
+--
+-- > delete "a" (fromList [("a",5), ("b",3)]) == singleton "b" 3
+-- > delete "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
+-- > delete "a" empty                         == empty
 delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
 delete k t@(CritBit root) = go root CritBit
   where
@@ -206,7 +212,7 @@ singleton k v = CritBit (Leaf k v)
 -- | /O(n)/. Convert the map to a list of key\/value pairs. The list
 -- returned will be sorted in lexicographically ascending order.
 --
--- > toList (fromList [("a",5), ("b",3)]) == [("a",5),("b",3)]
+-- > toList (fromList [("b",3), ("a",5)]) == [("a",5),("b",3)]
 -- > toList empty == []
 toList :: CritBit k v -> [(k, v)]
 toList (CritBit root) = go root []
