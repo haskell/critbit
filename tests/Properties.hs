@@ -33,6 +33,10 @@ instance Arbitrary a => Arbitrary (KV a) where
     arbitrary = (KV . flip zip [0..]) <$> arbitrary
     shrink = map (KV . flip zip [0..]) . shrink . map fst . fromKV
 
+instance (Arbitrary k, Arbitrary v) => Arbitrary (CritBit k v) where
+    arbitrary = C.fromList <$> arbitrary
+    shrink = map C.fromList . shrink . C.toList
+
 blist :: [ByteString] -> C.CritBit ByteString Word8
 blist = C.fromList . flip zip [0..]
 
