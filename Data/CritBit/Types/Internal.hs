@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- |
 -- Module      :  Data.CritBit.Types.Internal
 -- Copyright   :  (c) Bryan O'Sullivan 2013
@@ -12,6 +13,7 @@ module Data.CritBit.Types.Internal
     , Node(..)
     ) where
 
+import Control.DeepSeq (NFData(..))
 import Data.Bits ((.|.), (.&.), shiftL, shiftR)
 import Data.ByteString (ByteString)
 import Data.Text ()
@@ -30,6 +32,11 @@ data Node k v = Internal {
               | Empty
                 deriving (Show)
 
+instance (NFData k, NFData v) => NFData (Node k v) where
+    rnf (Internal l r _ _) = rnf l `seq` rnf r
+    rnf (Leaf k v)         = rnf k `seq` rnf v
+    rnf Empty              = ()
+
 instance (Eq k, Eq v) => Eq (Node k v) where
     i0@(Internal _ _ _ _)  == i1@(Internal _ _ _ _) =
         ibyte i0 == ibyte i1 && iotherBits i0 == iotherBits i1 &&
@@ -40,7 +47,7 @@ instance (Eq k, Eq v) => Eq (Node k v) where
 
 newtype CritBit k v = CritBit {
       cbRoot :: Node k v
-    } deriving (Show, Eq)
+    } deriving (Show, Eq, NFData)
 
 class (Eq k) => CritBitKey k where
     -- | Return the number of bytes used by this key.
