@@ -124,6 +124,10 @@ main = do
       , bgroup "insert" $ keyed (flip C.insert 1) (flip Map.insert 1)
                                 (flip H.insert 1) (flip Trie.insert 1)
       , bgroup "lookup" $ keyed C.lookup Map.lookup H.lookup Trie.lookup
+      , bgroup "lookupGT" $ [
+          bench "critbit" $ whnf (C.lookupGT key) b_critbit
+        , bench "map" $ whnf (Map.lookupGT key) b_map
+        ]
       , bgroup "member" $ keyed C.member Map.member H.member Trie.member
       ]
     , bgroup "text" [

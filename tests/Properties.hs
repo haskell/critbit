@@ -59,6 +59,10 @@ t_lookup_present _ k v (CB m) = C.lookup k (C.insert k v m) == Just v
 t_lookup_missing :: (CritBitKey k) => k -> k -> CB k -> Bool
 t_lookup_missing _ k (CB m) = C.lookup k (C.delete k m) == Nothing
 
+t_lookupGT :: (Ord k, CritBitKey k) => k -> k -> KV k -> Bool
+t_lookupGT _ k (KV kvs) =
+    C.lookupGT k (C.fromList kvs) == Map.lookupGT k (Map.fromList kvs)
+
 t_fromList_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromList_toList _ (KV kvs) =
     Map.toList (Map.fromList kvs) == C.toList (C.fromList kvs)
@@ -80,6 +84,7 @@ propertiesFor t = [
   , testProperty "t_fromList_size" $ t_fromList_size t
   , testProperty "t_lookup_present" $ t_lookup_present t
   , testProperty "t_lookup_missing" $ t_lookup_missing t
+  , testProperty "t_lookupGT" $ t_lookupGT t
   , testProperty "t_delete_present" $ t_delete_present t
   ]
 
