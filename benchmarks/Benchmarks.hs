@@ -88,6 +88,18 @@ main = do
       b_map_1 = Map.delete key b_map
       b_hashmap_1 = H.delete key b_hashmap
       b_trie_1 = Trie.delete key b_trie
+      (b_randKVs_13, b_randKVs_23) = (take (l - n) b_randKVs, drop n b_randKVs)
+        where
+          l = length b_randKVs
+          n = l `div` 3
+      b_critbit_13 = C.fromList b_randKVs_13
+      b_critbit_23 = C.fromList b_randKVs_23
+      b_map_13 = Map.fromList b_randKVs_13
+      b_map_23 = Map.fromList b_randKVs_23
+      b_hashmap_13 = H.fromList b_randKVs_13
+      b_hashmap_23 = H.fromList b_randKVs_23
+      b_trie_13 = Trie.fromList b_randKVs_13
+      b_trie_23 = Trie.fromList b_randKVs_23
       fromList kvs = [
           bench "critbit" $ whnf C.fromList kvs
         , bench "map" $ whnf Map.fromList kvs
@@ -108,9 +120,19 @@ main = do
             , bench "trie" $ whnf (trie key) b_trie_1
           ]
         ]
+      twoMaps critbit map hashmap trie = [
+          bench "critbit" $ whnf (critbit b_critbit_13) b_critbit_23
+        , bench "map" $ whnf (map b_map_13) b_map_23
+        , bench "hashmap" $ whnf (hashmap b_hashmap_13) b_hashmap_23
+        , bench "trie" $ whnf (trie b_trie_13) b_trie_23
+        ]
   evaluate $ rnf [rnf b_critbit, rnf b_critbit_1, rnf b_map, rnf b_map_1,
                   rnf b_hashmap, rnf b_hashmap_1, rnf b_trie, rnf b_trie_1,
-                  rnf b_randKVs, rnf b_revKVs, rnf key]
+                  rnf b_randKVs, rnf b_revKVs, rnf key,
+                  rnf b_critbit_13, rnf b_critbit_23,
+                  rnf b_map_13, rnf b_map_23,
+                  rnf b_hashmap_13, rnf b_hashmap_23,
+                  rnf b_trie_13, rnf b_trie_23]
   defaultMain
     [ bgroup "bytestring" [
         bgroup "fromList" [
@@ -130,6 +152,7 @@ main = do
         , bench "map" $ whnf (Map.lookupGT key) b_map
         ]
       , bgroup "member" $ keyed C.member Map.member H.member Trie.member
+      , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       ]
     , bgroup "text" [
         bgroup "fromList" [

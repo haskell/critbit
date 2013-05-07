@@ -27,6 +27,16 @@ module Data.CritBit.Tree
     -- * Modification
     , insert
     , delete
+
+    -- * Combination
+    -- ** Union
+    , union
+    , unionL
+    , unionR
+
+    -- * Folds
+    -- ** Strict folds
+    , foldlWithKey'
     ) where
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
@@ -298,3 +308,23 @@ size (CritBit root) = go root
     go (Internal l r _ _) = go l + go r
     go (Leaf _ _) = 1
     go Empty      = 0
+
+foldlWithKey' :: (a -> k -> v -> a) -> a -> CritBit k v -> a
+foldlWithKey' f z0 (CritBit root) = go z0 root
+  where
+    go z (Internal left right _ _) = go (go z left) right
+    go z (Leaf k v) = f z k v
+    go z Empty = z
+{-# INLINABLE foldlWithKey' #-}
+
+unionL :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
+unionL a b = foldlWithKey' (\m k v -> insert k v m) b a
+{-# INLINABLE unionL #-}
+
+unionR :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
+unionR a b = foldlWithKey' (\m k v -> insert k v m) a b
+{-# INLINABLE unionR #-}
+
+union :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
+union a b = unionL a b
+{-# INLINE union #-}

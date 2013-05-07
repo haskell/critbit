@@ -78,6 +78,11 @@ t_delete_present _ (KV kvs) k v =
     c = C.insert k v $ C.fromList kvs
     m = Map.insert k v $ Map.fromList kvs
 
+t_unionL :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_unionL _ (KV kv0) (KV kv1) =
+    Map.toList (Map.fromList kv0 `Map.union` Map.fromList kv1) ==
+    C.toList (C.fromList kv0 `C.unionL` C.fromList kv1)
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -86,6 +91,7 @@ propertiesFor t = [
   , testProperty "t_lookup_missing" $ t_lookup_missing t
   , testProperty "t_lookupGT" $ t_lookupGT t
   , testProperty "t_delete_present" $ t_delete_present t
+  , testProperty "t_unionL" $ t_unionL t
   ]
 
 properties :: [Test]
