@@ -312,9 +312,9 @@ size (CritBit root) = go root
 foldlWithKey' :: (a -> k -> v -> a) -> a -> CritBit k v -> a
 foldlWithKey' f z0 (CritBit root) = go z0 root
   where
-    go z (Internal left right _ _) = go (go z left) right
-    go z (Leaf k v) = f z k v
-    go z Empty = z
+    go !z (Internal left right _ _) = go (go z left) right
+    go !z (Leaf k v)                = f z k v
+    go !z Empty                     = z
 {-# INLINABLE foldlWithKey' #-}
 
 unionL :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
