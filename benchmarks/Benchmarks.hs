@@ -109,7 +109,8 @@ main = do
           ]
         ]
   evaluate $ rnf [rnf b_critbit, rnf b_critbit_1, rnf b_map, rnf b_map_1,
-                  rnf b_hashmap, rnf b_hashmap_1, rnf b_trie, rnf b_trie_1]
+                  rnf b_hashmap, rnf b_hashmap_1, rnf b_trie, rnf b_trie_1,
+                  rnf b_randKVs, rnf b_revKVs, rnf key]
   defaultMain
     [ bgroup "bytestring" [
         bgroup "fromList" [
