@@ -35,14 +35,22 @@ module Data.CritBit.Tree
     , unionR
 
     -- * Folds
+    , foldl
+    , foldr
+    , foldlWithKey
+    , foldrWithKey
+
     -- ** Strict folds
+    , foldl'
+    , foldr'
     , foldlWithKey'
+    , foldrWithKey'
     ) where
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
 import Data.CritBit.Types.Internal (CritBitKey(..), CritBit(..), Node(..))
 import Data.Word (Word16)
-import Prelude hiding (lookup, null)
+import Prelude hiding (foldl, foldr, lookup, null)
 import qualified Data.List as List
 
 -- | /O(1)/. Is the map empty?
@@ -309,13 +317,103 @@ size (CritBit root) = go root
     go (Leaf _ _) = 1
     go Empty      = 0
 
+-- | /O(n)/. Fold the values in the map using the given
+-- left-associative function, such that
+-- @'foldl' f z == 'Prelude.foldl' f z . 'elems'@.
+--
+-- Examples:
+--
+-- > elems = reverse . foldl (flip (:)) []
+--
+-- > foldl (+) 0 (fromList [("a",5), ("bbb",3)]) == 8
+foldl :: (a -> v -> a) -> a -> CritBit k v -> a
+foldl f z m = foldlWithKeyWith (\_ b -> b) (\a _ v -> f a v) z m
+{-# INLINABLE foldl #-}
+
+-- | /O(n)/. A strict version of 'foldl'. Each application of the
+-- function is evaluated before using the result in the next
+-- application. This function is strict in the starting value.
+foldl' :: (a -> v -> a) -> a -> CritBit k v -> a
+foldl' f z m = foldlWithKeyWith seq (\a _ v -> f a v) z m
+{-# INLINABLE foldl' #-}
+
+-- | /O(n)/. Fold the keys and values in the map using the given
+-- left-associative function, such that
+-- @'foldlWithKey' f z == 'Prelude.foldl' (\\z' (kx, x) -> f z' kx x) z . 'toAscList'@.
+--
+-- Examples:
+--
+-- > keys = reverse . foldlWithKey (\ks k x -> k:ks) []
+--
+-- > let f result k a = result ++ "(" ++ show k ++ ":" ++ a ++ ")"
+-- > foldlWithKey f "Map: " (fromList [("a",5), ("b",3)]) == "Map: (b:3)(a:5)"
+foldlWithKey :: (a -> k -> v -> a) -> a -> CritBit k v -> a
+foldlWithKey f z m = foldlWithKeyWith (\_ b -> b) f z m
+{-# INLINABLE foldlWithKey #-}
+
+-- | /O(n)/. A strict version of 'foldlWithKey'. Each application of
+-- the function is evaluated before using the result in the next
+-- application. This function is strict in the starting value.
 foldlWithKey' :: (a -> k -> v -> a) -> a -> CritBit k v -> a
-foldlWithKey' f z0 (CritBit root) = go z0 root
-  where
-    go !z (Internal left right _ _) = go (go z left) right
-    go !z (Leaf k v)                = f z k v
-    go !z Empty                     = z
+foldlWithKey' f z m = foldlWithKeyWith seq f z m
 {-# INLINABLE foldlWithKey' #-}
+
+foldlWithKeyWith :: (a -> a -> a) -> (a -> k -> v -> a) -> a -> CritBit k v -> a
+foldlWithKeyWith maybeSeq f z0 (CritBit root) = go z0 root
+  where
+    go z (Internal left right _ _) = let z' = go z left
+                                     in z' `maybeSeq` go z' right
+    go z (Leaf k v)                = f z k v
+    go z Empty                     = z
+{-# INLINE foldlWithKeyWith #-}
+
+-- | /O(n)/. Fold the values in the map using the given
+-- right-associative function, such that
+-- @'foldr' f z == 'Prelude.foldr' f z . 'elems'@.
+--
+-- Example:
+--
+-- > elems map = foldr (:) [] map
+foldr :: (v -> a -> a) -> a -> CritBit k v -> a
+foldr f z m = foldrWithKeyWith (\_ b -> b) (\_ v a -> f v a) z m
+{-# INLINABLE foldr #-}
+
+-- | /O(n)/. A strict version of 'foldr'. Each application of the
+-- function is evaluated before using the result in the next
+-- application. This function is strict in the starting value.
+foldr' :: (v -> a -> a) -> a -> CritBit k v -> a
+foldr' f z m = foldrWithKeyWith seq (\_ v a -> f v a) z m
+{-# INLINABLE foldr' #-}
+
+-- | /O(n)/. Fold the keys and values in the map using the given
+-- right-associative function, such that
+-- @'foldrWithKey' f z == 'Prelude.foldr' ('uncurry' f) z . 'toAscList'@.
+--
+-- Examples:
+--
+-- > keys map = foldrWithKey (\k x ks -> k:ks) [] map
+--
+-- > let f k a result = result ++ "(" ++ (show k) ++ ":" ++ a ++ ")"
+-- > foldrWithKey f "Map: " (fromList [("a",5), ("b",3)]) == "Map: (a:5)(b:3)"
+foldrWithKey :: (k -> v -> a -> a) -> a -> CritBit k v -> a
+foldrWithKey f z m = foldrWithKeyWith (\_ b -> b) f z m
+{-# INLINABLE foldrWithKey #-}
+
+-- | /O(n)/. A strict version of 'foldrWithKey'. Each application of
+-- the function is evaluated before using the result in the next
+-- application. This function is strict in the starting value.
+foldrWithKey' :: (k -> v -> a -> a) -> a -> CritBit k v -> a
+foldrWithKey' f z m = foldrWithKeyWith seq f z m
+{-# INLINABLE foldrWithKey' #-}
+
+foldrWithKeyWith :: (a -> a -> a) -> (k -> v -> a -> a) -> a -> CritBit k v -> a
+foldrWithKeyWith maybeSeq f z0 (CritBit root) = go root z0
+  where
+    go (Internal left right _ _) z = let z' = go right z
+                                     in z' `maybeSeq` go left z
+    go (Leaf k v) z                = f k v z
+    go Empty z                     = z
+{-# INLINE foldrWithKeyWith #-}
 
 unionL :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
 unionL a b = foldlWithKey' (\m k v -> insert k v m) b a

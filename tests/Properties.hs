@@ -83,6 +83,28 @@ t_unionL _ (KV kv0) (KV kv1) =
     Map.toList (Map.fromList kv0 `Map.union` Map.fromList kv1) ==
     C.toList (C.fromList kv0 `C.unionL` C.fromList kv1)
 
+t_foldl :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldl _ (KV kvs) =
+    C.foldl (+) 0 (C.fromList kvs) == Map.foldl (+) 0 (Map.fromList kvs)
+
+t_foldlWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldlWithKey _ (KV kvs) =
+    C.foldlWithKey f ([], 0) (C.fromList kvs) ==
+    Map.foldlWithKey f ([], 0) (Map.fromList kvs)
+  where
+    f (l,s) k v = (k:l,s+v)
+
+t_foldl' :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldl' _ (KV kvs) =
+    C.foldl' (+) 0 (C.fromList kvs) == Map.foldl' (+) 0 (Map.fromList kvs)
+
+t_foldlWithKey' :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldlWithKey' _ (KV kvs) =
+    C.foldlWithKey' f ([], 0) (C.fromList kvs) ==
+    Map.foldlWithKey' f ([], 0) (Map.fromList kvs)
+  where
+    f (l,s) k v = (k:l,s+v)
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -92,6 +114,10 @@ propertiesFor t = [
   , testProperty "t_lookupGT" $ t_lookupGT t
   , testProperty "t_delete_present" $ t_delete_present t
   , testProperty "t_unionL" $ t_unionL t
+  , testProperty "t_foldl" $ t_foldl t
+  , testProperty "t_foldlWithKey" $ t_foldlWithKey t
+  , testProperty "t_foldl'" $ t_foldl' t
+  , testProperty "t_foldlWithKey'" $ t_foldlWithKey' t
   ]
 
 properties :: [Test]
