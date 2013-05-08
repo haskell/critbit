@@ -11,6 +11,7 @@ module Data.CritBit.Types.Internal
       CritBitKey(..)
     , CritBit(..)
     , Node(..)
+    , toList
     ) where
 
 import Control.DeepSeq (NFData(..))
@@ -23,14 +24,19 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.Text.Array as T
 
-data Node k v = Internal {
-                  ileft, iright :: !(Node k v)
-                , ibyte         :: !Int
-                , iotherBits    :: !Word16
-                }
-              | Leaf k v
-              | Empty
-                deriving (Show)
+data Node k v =
+    Internal {
+      ileft, iright :: !(Node k v)
+    , ibyte         :: !Int
+    -- ^ The byte at which the left and right subtrees differ.
+    , iotherBits    :: !Word16
+    -- ^ The bitmask representing the critical bit within the
+    -- differing byte. If the critical bit is e.g. 0x8, the bitmask
+    -- will have every bit below 0x8 set, hence 0x7.
+    }
+    | Leaf k v
+    | Empty
+      deriving (Show)
 
 instance (NFData k, NFData v) => NFData (Node k v) where
     rnf (Internal l r _ _) = rnf l `seq` rnf r
@@ -45,10 +51,15 @@ instance (Eq k, Eq v) => Eq (Node k v) where
     Empty        == Empty       = True
     _            == _           = False
 
+-- | A crit-bit tree.
 newtype CritBit k v = CritBit {
       cbRoot :: Node k v
-    } deriving (Show, Eq, NFData)
+    } deriving (Eq, NFData)
 
+instance (Show k, Show v) => Show (CritBit k v) where
+    show t = "fromList " ++ show (toList t)
+
+-- | A type that can be used as a key in a crit-bit tree.
 class (Eq k) => CritBitKey k where
     -- | Return the number of bytes used by this key.
     --
@@ -84,3 +95,15 @@ instance CritBitKey Text where
             in byteInWord .|. 256
         | otherwise       = 0
     {-# INLINE getByte #-}
+
+-- | /O(n)/. Convert the map to a list of key\/value pairs. The list
+-- returned will be sorted in lexicographically ascending order.
+--
+-- > toList (fromList [("b",3), ("a",5)]) == [("a",5),("b",3)]
+-- > toList empty == []
+toList :: CritBit k v -> [(k, v)]
+toList (CritBit root) = go root []
+  where
+    go (Internal l r _ _) next = go l (go r next)
+    go (Leaf k v) next         = (k,v) : next
+    go Empty next              = next

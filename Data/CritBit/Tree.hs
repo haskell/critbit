@@ -48,7 +48,7 @@ module Data.CritBit.Tree
     ) where
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
-import Data.CritBit.Types.Internal (CritBitKey(..), CritBit(..), Node(..))
+import Data.CritBit.Types.Internal
 import Data.Word (Word16)
 import Prelude hiding (foldl, foldr, lookup, null)
 import qualified Data.List as List
@@ -70,8 +70,8 @@ empty = CritBit { cbRoot = Empty }
 
 -- | /O(log n)/. Is the key a member of the map?
 --
--- > member "a" (fromList [("a", 5), ("b", 3)]) == True
--- > member "c" (fromList [("a", 5), ("b", 3)]) == False
+-- > member "a" (fromList [("a",5), ("b",3)]) == True
+-- > member "c" (fromList [("a",5), ("b",3)]) == False
 --
 -- See also 'notMember'.
 member :: (CritBitKey k) => k -> CritBit k v -> Bool
@@ -80,8 +80,8 @@ member k m = lookupWith False (const True) k m
 
 -- | /O(log n)/. Is the key not a member of the map?
 --
--- > notMember 5 (fromList [(5,'a'), (3,'b')]) == False
--- > notMember 1 (fromList [(5,'a'), (3,'b')]) == True
+-- > notMember "a" (fromList [("a",5), ("b",3)]) == False
+-- > notMember "c" (fromList [("a",5), ("b",3)]) == True
 --
 -- See also 'member'.
 notMember :: (CritBitKey k) => k -> CritBit k v -> Bool
@@ -147,7 +147,7 @@ lookupWith notFound found k (CritBit root) = go root
 -- | /O(log n)/. Find smallest key greater than the given one and
 -- return the corresponding (key, value) pair.
 --
--- > lookupGT "aa" (fromList [("a",3), ("b",5)]) == Just ("b", 5)
+-- > lookupGT "aa" (fromList [("a",3), ("b",5)]) == Just ("b",5)
 -- > lookupGT "b"  (fromList [("a",3), ("b",5)]) == Nothing
 lookupGT :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
 lookupGT k (CritBit root) = go root
@@ -292,18 +292,6 @@ fromList = List.foldl' (flip (uncurry insert)) empty
 singleton :: k -> v -> CritBit k v
 singleton k v = CritBit (Leaf k v)
 {-# INLINE singleton #-}
-
--- | /O(n)/. Convert the map to a list of key\/value pairs. The list
--- returned will be sorted in lexicographically ascending order.
---
--- > toList (fromList [("b",3), ("a",5)]) == [("a",5),("b",3)]
--- > toList empty == []
-toList :: CritBit k v -> [(k, v)]
-toList (CritBit root) = go root []
-  where
-    go (Internal l r _ _) next = go l (go r next)
-    go (Leaf k v) next         = (k,v) : next
-    go Empty next              = next
 
 -- | /O(n)/. The number of elements in the map.
 --
