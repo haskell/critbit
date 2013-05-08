@@ -36,6 +36,12 @@ data Node k v =
     }
     | Leaf k v
     | Empty
+    -- ^ Logically, the 'Empty' constructor is a property of the tree,
+    -- rather than a node (a non-empty tree will never contain any
+    -- 'Empty' constructors). In practice, turning 'CritBit' from a
+    -- newtype into an ADT with an 'Empty' constructor adds a
+    -- pattern-match and a memory indirection to every function, which
+    -- slows them all down.
       deriving (Eq, Show)
 
 instance (NFData k, NFData v) => NFData (Node k v) where

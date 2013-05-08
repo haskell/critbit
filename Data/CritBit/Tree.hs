@@ -9,6 +9,10 @@
 -- Portability :  GHC
 module Data.CritBit.Tree
     (
+    -- * Operators
+    -- , (!)
+    -- , (\\)
+
     -- * Query
       null
     , size
@@ -17,22 +21,58 @@ module Data.CritBit.Tree
     , lookup
     , findWithDefault
     , lookupGT
+    -- , lookupGE
 
     -- * Construction
     , empty
     , singleton
-    , fromList
-    , toList
 
-    -- * Modification
+    -- * Insertion
     , insert
+    -- , insertWith
+    -- , insertWithKey
+    -- , insertLookupWithKey
+
+    -- * Deletion
     , delete
+    -- , adjust
+    -- , adjustWithKey
+    -- , update
+    -- , updateWithKey
+    -- , updateLookupWithKey
+    -- , alter
 
     -- * Combination
     -- ** Union
     , union
+    -- , unionWith
+    -- , unionWithKey
+    -- , unions
+    -- , unionsWith
     , unionL
     , unionR
+
+    -- ** Difference
+    -- , difference
+    -- , differenceWith
+    -- , differenceWithKey
+
+    -- ** Intersection
+    -- , intersection
+    -- , intersectionWith
+    -- , intersectionWithKey
+
+    -- * Traversal
+    -- ** Map
+    -- , map
+    -- , mapWithKey
+    -- , traverseWithKey
+    -- , mapAccum
+    -- , mapAccumWithKey
+    -- , mapAccumRWithKey
+    -- , mapKeys
+    -- , mapKeysWith
+    -- , mapKeysMonotonic
 
     -- * Folds
     , foldl
@@ -45,6 +85,63 @@ module Data.CritBit.Tree
     , foldr'
     , foldlWithKey'
     , foldrWithKey'
+
+    -- * Conversion
+    -- , elems
+    -- , keys
+    -- , assocs
+    -- , keysSet
+    -- , fromSet
+
+    -- ** Lists
+    , toList
+    , fromList
+    -- , fromListWith
+    -- , fromListWithKey
+
+    -- ** Ordered lists
+    -- , toAscList
+    -- , toDescList
+    -- , fromAscList
+    -- , fromAscListWith
+    -- , fromAscListWithKey
+    -- , fromDistinctAscList
+
+    -- * Filter
+    -- , filter
+    -- , filterWithKey
+    -- , partition
+    -- , partitionWithKey
+
+    -- , mapMaybe
+    -- , mapMaybeWithKey
+    -- , mapEither
+    -- , mapEitherWithKey
+
+    -- , split
+    -- , splitLookup
+
+    -- * Submap
+    -- , isSubmapOf
+    -- , isSubmapOfBy
+    -- , isProperSubmapOf
+    -- , isProperSubmapOfBy
+
+    -- -- * Min\/Max
+    -- , findMin
+    -- , findMax
+    -- , deleteMin
+    -- , deleteMax
+    -- , deleteFindMin
+    -- , deleteFindMax
+    -- , updateMin
+    -- , updateMax
+    -- , updateMinWithKey
+    -- , updateMaxWithKey
+    -- , minView
+    -- , maxView
+    -- , minViewWithKey
+    -- , maxViewWithKey
     ) where
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
