@@ -36,20 +36,12 @@ data Node k v =
     }
     | Leaf k v
     | Empty
-      deriving (Show)
+      deriving (Eq, Show)
 
 instance (NFData k, NFData v) => NFData (Node k v) where
     rnf (Internal l r _ _) = rnf l `seq` rnf r
     rnf (Leaf k v)         = rnf k `seq` rnf v
     rnf Empty              = ()
-
-instance (Eq k, Eq v) => Eq (Node k v) where
-    i0@(Internal _ _ _ _)  == i1@(Internal _ _ _ _) =
-        ibyte i0 == ibyte i1 && iotherBits i0 == iotherBits i1 &&
-        ileft i0 == ileft i1 && iright i0 == iright i1
-    Leaf k0 v0   == Leaf k1 v1  = k0 == k1 && v0 == v1
-    Empty        == Empty       = True
-    _            == _           = False
 
 -- | A crit-bit tree.
 newtype CritBit k v = CritBit {
