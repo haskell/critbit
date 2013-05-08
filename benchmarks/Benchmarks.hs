@@ -1,17 +1,21 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 module Main (main) where
 
 import Control.Applicative ((<$>))
 import Control.Arrow (first)
 import Control.DeepSeq (NFData(..))
-import Control.Exception (evaluate)
-import Control.Monad.Trans (liftIO)
+import Control.Exception (catch, evaluate)
 import Control.Monad (when)
+import Control.Monad.Trans (liftIO)
 import Criterion.Main (bench, bgroup, defaultMain, whnf)
 import Data.Hashable (Hashable(..), hashByteArray)
+import Data.Maybe (fromMaybe)
 import Data.Text.Array (aBA)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Internal (Text(..))
+import System.Environment (lookupEnv)
+import System.IO (hPutStrLn, stderr)
+import System.IO.Error (ioError, isDoesNotExistError)
 import System.Random.MWC (GenIO, GenST, asGenST, create, uniform, uniformR)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.CritBit.Map.Lazy as C
@@ -23,7 +27,6 @@ import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Trie as Trie
 import qualified Data.Vector.Generic.Mutable as M
-import Control.Monad.ST
 
 #if 0
 instance Hashable Text where
@@ -68,7 +71,14 @@ chartres = do
 
 
 main = do
-  ordKeys <- (every 5 . B.lines) <$> B.readFile "/usr/share/dict/words"
+  fileName <- fromMaybe "/usr/share/dict/words" <$> lookupEnv "WORDS"
+  ordKeys <- (every 5 . B.words) <$> B.readFile fileName
+             `catch` \(err::IOError) -> do
+               when (isDoesNotExistError err) $ do
+                 hPutStrLn stderr
+                    ("(point the 'WORDS' environment variable at a file " ++
+                     "to use it for benchmark data)")
+               ioError err
   let b_ordKVs = zip ordKeys [(0::Int)..]
       b_revKVs = reverse b_ordKVs
   b_randKVs <- do
