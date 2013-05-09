@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, Rank2Types, ScopedTypeVariables #-}
 module Main (main) where
 
 import Control.Applicative ((<$>))
@@ -7,7 +7,8 @@ import Control.DeepSeq (NFData(..))
 import Control.Exception (catch, evaluate)
 import Control.Monad (when)
 import Control.Monad.Trans (liftIO)
-import Criterion.Main (bench, bgroup, defaultMain, whnf)
+import Criterion.Main (bench, bgroup, defaultMain, nf, whnf)
+import Criterion.Types (Pure)
 import Data.Hashable (Hashable(..), hashByteArray)
 import Data.Maybe (fromMaybe)
 import Data.Text.Array (aBA)
@@ -136,11 +137,12 @@ main = do
         , bench "hashmap" $ whnf (hashmap b_hashmap_13) b_hashmap_23
         , bench "trie" $ whnf (trie b_trie_13) b_trie_23
         ]
-      function critbit map hashmap trie = [
-         bench "critbit" $ whnf critbit b_critbit
-       , bench "map" $ whnf map b_map
-       , bench "hashmap" $ whnf hashmap b_hashmap
-       , bench "trie" $ whnf trie b_trie
+      function (eval :: forall a b. NFData b => (a -> b) -> a -> Pure)
+               critbit map hashmap trie = [
+         bench "critbit" $ eval critbit b_critbit
+       , bench "map" $ eval map b_map
+       , bench "hashmap" $ eval hashmap b_hashmap
+       , bench "trie" $ eval trie b_trie
        ]
   evaluate $ rnf [rnf b_critbit, rnf b_critbit_1, rnf b_map, rnf b_map_1,
                   rnf b_hashmap, rnf b_hashmap_1, rnf b_trie, rnf b_trie_1,
@@ -169,12 +171,11 @@ main = do
         ]
       , bgroup "member" $ keyed C.member Map.member H.member Trie.member
       , bgroup "foldlWithKey'" $ let f a _ b = a + b
-                                 in function (C.foldlWithKey' f 0)
-                                             (Map.foldlWithKey' f 0)
-                                             (H.foldlWithKey' f 0) id
-      , bgroup "foldl'" $ function (C.foldl' (+) 0)
-                                   (Map.foldl' (+) 0)
-                                   (H.foldl' (+) 0) id
+                                 in function whnf (C.foldlWithKey' f 0)
+                                    (Map.foldlWithKey' f 0)
+                                    (H.foldlWithKey' f 0) id
+      , bgroup "foldl'" $ function whnf (C.foldl' (+) 0) (Map.foldl' (+) 0)
+                          (H.foldl' (+) 0) id
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       ]
     , bgroup "text" [
