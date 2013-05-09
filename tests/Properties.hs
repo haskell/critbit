@@ -85,9 +85,8 @@ t_unionL _ (KV kv0) (KV kv1) =
     Map.toList (Map.fromList kv0 `Map.union` Map.fromList kv1) ==
     C.toList (C.fromList kv0 `C.unionL` C.fromList kv1)
 
-t_foldl :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_foldl _ (KV kvs) =
-    C.foldl (+) 0 (C.fromList kvs) == Map.foldl (+) 0 (Map.fromList kvs)
+t_foldl :: (CritBitKey k) => k -> CritBit k V -> Bool
+t_foldl _ m = C.foldl (+) 0 m == C.foldr (+) 0 m
 
 t_foldlWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_foldlWithKey _ (KV kvs) =
