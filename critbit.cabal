@@ -44,7 +44,8 @@ test-suite tests
   type:           exitcode-stdio-1.0
   hs-source-dirs: tests
   main-is:        Main.hs
-  other-modules:  Properties
+  if impl(ghc >= 7.4)
+    other-modules:  Properties
 
   ghc-options:
     -Wall -threaded -rtsopts
