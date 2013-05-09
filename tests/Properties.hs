@@ -96,9 +96,8 @@ t_foldlWithKey _ (KV kvs) =
   where
     f (l,s) k v = (k:l,s+v)
 
-t_foldl' :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_foldl' _ (KV kvs) =
-    C.foldl' (+) 0 (C.fromList kvs) == Map.foldl' (+) 0 (Map.fromList kvs)
+t_foldl' :: (CritBitKey k) => k -> CritBit k V -> Bool
+t_foldl' _ m = C.foldl' (+) 0 m == C.foldl (+) 0 m
 
 t_foldlWithKey' :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_foldlWithKey' _ (KV kvs) =
