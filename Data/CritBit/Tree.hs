@@ -495,7 +495,7 @@ foldrWithKeyWith :: (a -> a -> a) -> (k -> v -> a -> a) -> a -> CritBit k v -> a
 foldrWithKeyWith maybeSeq f z0 (CritBit root) = go root z0
   where
     go (Internal left right _ _) z = let z' = go right z
-                                     in z' `maybeSeq` go left z
+                                     in z' `maybeSeq` go left z'
     go (Leaf k v) z                = f k v z
     go Empty z                     = z
 {-# INLINE foldrWithKeyWith #-}
