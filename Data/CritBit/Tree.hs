@@ -65,11 +65,11 @@ module Data.CritBit.Tree
     -- * Traversal
     -- ** Map
     , map
-    -- , mapWithKey
-    -- , traverseWithKey
-    -- , mapAccum
-    -- , mapAccumWithKey
-    -- , mapAccumRWithKey
+    , mapWithKey
+    , traverseWithKey
+    , mapAccum
+    , mapAccumWithKey
+    , mapAccumRWithKey
     -- , mapKeys
     -- , mapKeysWith
     -- , mapKeysMonotonic
@@ -144,10 +144,12 @@ module Data.CritBit.Tree
     -- , maxViewWithKey
     ) where
 
+import Control.Applicative hiding (empty)
+import Control.Arrow (second)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
-import Prelude hiding (foldl, foldr, lookup, null, map)
 import qualified Data.List as List
+import Prelude hiding (foldl, foldr, lookup, null, map)
 
 -- | /O(1)/. Is the map empty?
 --
@@ -434,3 +436,68 @@ union a b = unionL a b
 map :: (CritBitKey k) => (v -> w) -> CritBit k v -> CritBit k w
 map = fmap
 
+-- | /O(n). Apply a function to all values.
+--
+-- >  let f key x = (show key) ++ ":" ++ (show x)
+-- >  mapWithKey f (fromList [("a", 5), ("b", 3)]) == fromList [("a", "a:5"), ("b", "b:3")]
+mapWithKey :: (CritBitKey k) => (k -> v -> w) -> CritBit k v -> CritBit k w
+mapWithKey f (CritBit root) = CritBit (go root)
+  where
+    go i@(Internal l r _ _) = i { ileft = go l, iright = go r }
+    go (Leaf k v)           = Leaf k (f k v)
+    go  Empty               = Empty
+{-# INLINABLE mapWithKey #-}
+
+-- | /O(n)/.
+-- That is, behaves exactly like a regular 'traverse' except that the traversing
+-- function also has access to the key associated with a value.
+--
+-- > let f key value = (show key) ++ ":" ++ (show value)
+-- > traverseWithKey (\k v -> if odd v then Just (f k v) else Nothing) (fromList [("a", 3), ("b", 5)]) == Just (fromList [("a", "a:3"), ("b", "b:5")])
+-- > traverseWithKey (\k v -> if odd v then Just (f k v) else Nothing) (fromList [("c", 2)])           == Nothing
+traverseWithKey :: (CritBitKey k, Applicative t) => (k -> v -> t w) -> CritBit k v -> t (CritBit k w)
+traverseWithKey f (CritBit root) = fmap CritBit (go root)
+  where
+    go i@(Internal l r _ _) = let constr l' r' = i { ileft = l', iright = r' }
+                              in constr <$> go l <*> go r
+    go (Leaf k v)           = (Leaf k) <$> f k v
+    go Empty                = pure Empty
+{-# INLINABLE traverseWithKey #-}
+
+-- | /O(n)/. The function 'mapAccum' threads an accumulating
+-- argument through the map in ascending order of keys.
+--
+-- > let f a b = (a ++ (show b), (show b) ++ "X")
+-- > mapAccum f "Everything: " (fromList [("a", 5), ("b", 3)]) == ("Everything: 53", fromList [("a", "5X"), ("b", "3X")])
+mapAccum :: (CritBitKey k) => (a -> v -> (a, w)) -> a -> CritBit k v -> (a, CritBit k w)
+mapAccum f = mapAccumWithKey (\a _ v -> f a v)
+{-# INLINE mapAccum #-}
+
+-- | /O(n)/. The function 'mapAccumWithKey' threads an accumulating
+-- argument through the map in ascending order of keys.
+--
+-- > let f a k b = (a ++ " " ++ (show k) ++ "-" ++ (show b), (show b) ++ "X")
+-- > mapAccumWithKey f "Everything: " (fromList [("a", 5), ("b", 3)]) == ("Everything: a-5 b-3", fromList [("a", "5X"), ("b", "3X")])
+mapAccumWithKey :: (CritBitKey k) => (a -> k -> v -> (a, w)) -> a -> CritBit k v -> (a, CritBit k w)
+mapAccumWithKey f start (CritBit root) = second CritBit (go start root)
+  where
+    go a i@(Internal l r _ _) = let (a0, l')  = go a l
+                                    (a1, r')  = go a0 r
+                                in (a1, i { ileft = l', iright = r' })
+                                     
+    go a (Leaf k v)           = let (a0, w) = f a k v in (a0, Leaf k w)
+    go a Empty                = (a, Empty)
+{-# INLINABLE mapAccumWithKey #-}
+
+-- | /O(n)/. The function 'mapAccumRWithKey' threads an accumulating
+-- argument through the map in descending order of keys.
+mapAccumRWithKey :: (CritBitKey k) => (a -> k -> v -> (a, w)) -> a -> CritBit k v -> (a, CritBit k w)
+mapAccumRWithKey f start (CritBit root) = second CritBit (go start root)
+  where
+    go a i@(Internal l r _ _) = let (a0, r')  = go a r
+                                    (a1, l')  = go a0 l
+                                in (a1, i { ileft = l', iright = r' })
+
+    go a (Leaf k v)           = let (a0, w) = f a k v in (a0, Leaf k w)
+    go a Empty                = (a, Empty)
+{-# INLINABLE mapAccumRWithKey #-}

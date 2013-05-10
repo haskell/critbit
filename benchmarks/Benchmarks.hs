@@ -4,35 +4,40 @@ module Main (main) where
 import Control.Applicative ((<$>))
 import Control.Arrow (first)
 import Control.DeepSeq (NFData(..))
-import Control.Exception (catch, evaluate)
 import Control.Monad (when)
 import Control.Monad.Trans (liftIO)
 import Criterion.Main (bench, bgroup, defaultMain, nf, whnf)
 import Criterion.Types (Pure)
+import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..), hashByteArray)
 import Data.Maybe (fromMaybe)
 import Data.Text.Array (aBA)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Internal (Text(..))
-import System.Environment (lookupEnv)
+import System.Environment (getEnv)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Error (ioError, isDoesNotExistError)
 import System.Random.MWC (GenIO, GenST, asGenST, create, uniform, uniformR)
+import qualified Control.Exception as Exc
 import qualified Data.ByteString.Char8 as B
 import qualified Data.CritBit.Map.Lazy as C
 import qualified Data.HashMap.Lazy as H
 import qualified Data.Map as Map
 import qualified Data.Text as T
+import qualified Data.Trie as Trie
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
-import qualified Data.Vector.Unboxed as U
-import qualified Data.Trie as Trie
 import qualified Data.Vector.Generic.Mutable as M
+import qualified Data.Vector.Unboxed as U
 
 #if 0
 instance Hashable Text where
     hash (Text arr off len) = hashByteArray (aBA arr) (off * 2) (len * 2)
     {-# INLINE hash #-}
+#endif
+
+#if !MIN_VERSION_bytestring(0,10,0)
+instance NFData B.ByteString
 #endif
 
 instance (NFData a) => NFData (Trie.Trie a) where
@@ -72,9 +77,10 @@ chartres = do
 
 
 main = do
-  fileName <- fromMaybe "/usr/share/dict/words" <$> lookupEnv "WORDS"
+  fileName <- getEnv "WORDS" `Exc.catch` \(_::IOError) ->
+              return "/usr/share/dict/words"
   ordKeys <- (every 5 . B.words) <$> B.readFile fileName
-             `catch` \(err::IOError) -> do
+             `Exc.catch` \(err::IOError) -> do
                when (isDoesNotExistError err) $ do
                  hPutStrLn stderr
                     ("(point the 'WORDS' environment variable at a file " ++
@@ -144,7 +150,7 @@ main = do
        , bench "hashmap" $ eval hashmap b_hashmap
        , bench "trie" $ eval trie b_trie
        ]
-  evaluate $ rnf [rnf b_critbit, rnf b_critbit_1, rnf b_map, rnf b_map_1,
+  Exc.evaluate $ rnf [rnf b_critbit, rnf b_critbit_1, rnf b_map, rnf b_map_1,
                   rnf b_hashmap, rnf b_hashmap_1, rnf b_trie, rnf b_trie_1,
                   rnf b_randKVs, rnf b_revKVs, rnf key,
                   rnf b_critbit_13, rnf b_critbit_23,
@@ -165,10 +171,12 @@ main = do
       , bgroup "insert" $ keyed (flip C.insert 1) (flip Map.insert 1)
                                 (flip H.insert 1) (flip Trie.insert 1)
       , bgroup "lookup" $ keyed C.lookup Map.lookup H.lookup Trie.lookup
+#if MIN_VERSION_containers(0,5,0)
       , bgroup "lookupGT" $ [
           bench "critbit" $ whnf (C.lookupGT key) b_critbit
         , bench "map" $ whnf (Map.lookupGT key) b_map
         ]
+#endif
       , bgroup "member" $ keyed C.member Map.member H.member Trie.member
       , bgroup "foldlWithKey'" $ let f a _ b = a + b
                                  in function whnf (C.foldlWithKey' f 0)
@@ -180,6 +188,12 @@ main = do
       , bgroup "keys" $ function nf C.keys Map.keys H.keys Trie.keys
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
+      , bgroup "traverseWithKey" $ let f _ = Identity . (+3)
+                                   in function nf 
+                                          (runIdentity . C.traverseWithKey f) 
+                                          (runIdentity . Map.traverseWithKey f)
+                                          (runIdentity . H.traverseWithKey f)
+                                          (fmap f)
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       ]
     , bgroup "text" [

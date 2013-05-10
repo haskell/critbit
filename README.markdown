@@ -1,8 +1,12 @@
 Crit-bit trees for Haskell
 ====
 
-This is the first purely functional implementation of crit-bit trees
-that I'm aware of.
+This is the first purely functional implementation of [crit-bit
+trees](http://cr.yp.to/critbit.html) that I'm aware of.
+
+A crit-bit tree is a key/value container that allows efficient lookups
+and ordered traversal for data that can be represented as a string of
+bits.
 
 This package exists in part with education in mind:
 

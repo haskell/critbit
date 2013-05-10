@@ -32,7 +32,7 @@ library
     base >= 4 && < 5,
     bytestring >= 0.9,
     deepseq,
-    text >= 0.11.3.1,
+    text >= 0.11.2.3,
     vector
 
   ghc-options: -Wall -funbox-strict-fields -O2 -fwarn-tabs
@@ -59,7 +59,8 @@ test-suite tests
     QuickCheck >= 2.4,
     test-framework >= 0.4,
     test-framework-quickcheck2 >= 0.2,
-    text
+    text,
+    transformers >=0.3
 
 benchmark benchmarks
   type:           exitcode-stdio-1.0
@@ -80,7 +81,8 @@ benchmark benchmarks
     mwc-random,
     text,
     unordered-containers,
-    vector
+    vector,
+    transformers >=0.3
 
 source-repository head
   type:     git
