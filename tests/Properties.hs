@@ -154,7 +154,7 @@ propertiesFor t = [
   , testProperty "t_mapWithKey" $ t_mapWithKey t
   , testProperty "t_traverseWithKey" $ t_traverseWithKey t
   , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t 
-  , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t 
+  , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t 
   ]
 
 properties :: [Test]

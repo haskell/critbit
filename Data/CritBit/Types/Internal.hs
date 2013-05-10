@@ -63,8 +63,8 @@ instance Functor (Node k) where
 
 instance Foldable (Node k) where
     foldMap f (Internal l r _ _) = mappend (foldMap f l) (foldMap f r)
-    foldMap f (Leaf _ v)           = f v
-    foldMap _ Empty                = mempty
+    foldMap f (Leaf _ v)         = f v
+    foldMap _ Empty              = mempty
 
 instance Traversable (Node k) where
     traverse f i@(Internal l r _ _) = (\l' r' -> i { ileft = l', iright = r' }) <$> traverse f l <*> traverse f r
