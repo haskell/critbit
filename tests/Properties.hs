@@ -95,6 +95,9 @@ t_foldlWithKey' _ (KV kvs) =
   where
     f (l,s) k v = (k:l,s+v)
 
+t_elems :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_elems _ (KV kvs) = C.elems (C.fromList kvs) == Map.elems (Map.fromList kvs)
+
 t_keys :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_keys _ (KV kvs) = C.keys (C.fromList kvs) == Map.keys (Map.fromList kvs)
 
@@ -113,6 +116,7 @@ propertiesFor t = [
   , testProperty "t_foldlWithKey" $ t_foldlWithKey t
   , testProperty "t_foldl'" $ t_foldl' t
   , testProperty "t_foldlWithKey'" $ t_foldlWithKey' t
+  , testProperty "t_elems" $ t_elems t
   , testProperty "t_keys" $ t_keys t
   ]
 

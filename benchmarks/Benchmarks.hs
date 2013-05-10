@@ -176,6 +176,7 @@ main = do
                                     (H.foldlWithKey' f 0) id
       , bgroup "foldl'" $ function whnf (C.foldl' (+) 0) (Map.foldl' (+) 0)
                           (H.foldl' (+) 0) id
+      , bgroup "elems" $ function nf C.elems Map.elems H.elems Trie.elems
       , bgroup "keys" $ function nf C.keys Map.keys H.keys Trie.keys
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       ]

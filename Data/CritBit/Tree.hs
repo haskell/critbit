@@ -87,7 +87,7 @@ module Data.CritBit.Tree
     , foldrWithKey'
 
     -- * Conversion
-    -- , elems
+    , elems
     , keys
     -- , assocs
     -- , keysSet
@@ -399,6 +399,14 @@ foldrWithKeyWith maybeSeq f z0 (CritBit root) = go root z0
     go (Leaf k v) z                = f k v z
     go Empty z                     = z
 {-# INLINE foldrWithKeyWith #-}
+
+-- | /O(n)/. Return all the elements of the map in ascending order of their keys.
+--
+-- > elems (fromList [("b",5), ("a",3)]) == [3,5]
+-- > elems empty == []
+elems :: CritBit k v -> [v]
+elems m = foldrWithKey f [] m 
+  where f _ v vs = v : vs
 
 -- | /O(n)/. Return all keys of the map in ascending order.
 --
