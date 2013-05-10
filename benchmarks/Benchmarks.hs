@@ -9,6 +9,7 @@ import Control.Monad (when)
 import Control.Monad.Trans (liftIO)
 import Criterion.Main (bench, bgroup, defaultMain, nf, whnf)
 import Criterion.Types (Pure)
+import Data.Functor.Identity
 import Data.Hashable (Hashable(..), hashByteArray)
 import Data.Maybe (fromMaybe)
 import Data.Text.Array (aBA)
@@ -180,6 +181,8 @@ main = do
       , bgroup "keys" $ function nf C.keys Map.keys H.keys Trie.keys
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
+      , bgroup "traverseWithKey" $ let f _ = Identity . (+3)
+                              in function nf (runIdentity . C.traverseWithKey f) (runIdentity . Map.traverseWithKey f) (runIdentity . H.traverseWithKey f) (fmap f)
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       ]
     , bgroup "text" [

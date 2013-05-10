@@ -15,9 +15,13 @@ module Data.CritBit.Types.Internal
     , toList
     ) where
 
+import Control.Applicative (Applicative(..), (<$>))
 import Control.DeepSeq (NFData(..))
 import Data.Bits ((.|.), (.&.), shiftL, shiftR)
 import Data.ByteString (ByteString)
+import Data.Foldable (Foldable, foldMap)
+import Data.Monoid (Monoid(..))
+import Data.Traversable (Traversable, traverse)
 import Data.Text ()
 import Data.Text.Internal (Text(..))
 import Data.Word (Word16)
@@ -57,10 +61,20 @@ instance Functor (Node k) where
     fmap f (Leaf k v)           = Leaf k (f v)
     fmap _ Empty                = Empty
 
+instance Foldable (Node k) where
+    foldMap f (Internal l r _ _) = mappend (foldMap f l) (foldMap f r)
+    foldMap f (Leaf _ v)           = f v
+    foldMap _ Empty                = mempty
+
+instance Traversable (Node k) where
+    traverse f i@(Internal l r _ _) = (\l' r' -> i { ileft = l', iright = r' }) <$> traverse f l <*> traverse f r
+    traverse f (Leaf k v)           = (Leaf k) <$> f v
+    traverse _ Empty                = pure Empty
+
 -- | A crit-bit tree.
 newtype CritBit k v = CritBit {
       cbRoot :: Node k v
-    } deriving (Eq, NFData, Functor)
+    } deriving (Eq, NFData, Functor, Foldable, Traversable)
 
 instance (Show k, Show v) => Show (CritBit k v) where
     show t = "fromList " ++ show (toList t)

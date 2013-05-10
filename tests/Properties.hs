@@ -3,9 +3,11 @@
 module Properties
     where
 
+import Control.Arrow (second)
 import Control.Applicative ((<$>))
 import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
+import Data.Functor.Identity
 import Data.Text (Text)
 import Data.Word (Word8)
 import Test.Framework (Test, testGroup)
@@ -107,6 +109,30 @@ t_map _ (KV kvs) = mappedC == mappedM
           mappedC = C.toList . C.map fun $ (C.fromList kvs)
           mappedM = Map.toList . Map.map fun $ (Map.fromList kvs)
 
+t_mapWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapWithKey _ (KV kvs) = mappedC == mappedM
+    where fun _   = show . (+3)
+          mappedC = C.toList . C.mapWithKey fun $ (C.fromList kvs)
+          mappedM = Map.toList . Map.mapWithKey fun $ (Map.fromList kvs)
+
+t_traverseWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_traverseWithKey _ (KV kvs) = mappedC == mappedM
+    where fun _   = Identity . show . (+3)
+          mappedC = C.toList . runIdentity . C.traverseWithKey fun $ (C.fromList kvs)
+          mappedM = Map.toList . runIdentity . Map.traverseWithKey fun $ (Map.fromList kvs)
+
+t_mapAccumWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapAccumWithKey _ (KV kvs) = mappedC == mappedM
+    where fun i _ v = (i + 1, show $ v + 3)
+          mappedC = second C.toList . C.mapAccumWithKey fun (0 :: Int) $ (C.fromList kvs)
+          mappedM = second Map.toList . Map.mapAccumWithKey fun (0 :: Int) $ (Map.fromList kvs)
+
+t_mapAccumRWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapAccumRWithKey _ (KV kvs) = mappedC == mappedM
+    where fun i _ v = (i + 1, show $ v + 3)
+          mappedC = second C.toList . C.mapAccumRWithKey fun (0 :: Int) $ (C.fromList kvs)
+          mappedM = second Map.toList . Map.mapAccumRWithKey fun (0 :: Int) $ (Map.fromList kvs)
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -125,6 +151,10 @@ propertiesFor t = [
   , testProperty "t_elems" $ t_elems t
   , testProperty "t_keys" $ t_keys t
   , testProperty "t_map" $ t_map t
+  , testProperty "t_mapWithKey" $ t_mapWithKey t
+  , testProperty "t_traverseWithKey" $ t_traverseWithKey t
+  , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t 
+  , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t 
   ]
 
 properties :: [Test]
