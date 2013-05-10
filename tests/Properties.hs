@@ -101,6 +101,12 @@ t_elems _ (KV kvs) = C.elems (C.fromList kvs) == Map.elems (Map.fromList kvs)
 t_keys :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_keys _ (KV kvs) = C.keys (C.fromList kvs) == Map.keys (Map.fromList kvs)
 
+t_map :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_map _ (KV kvs) = mappedC == mappedM
+    where fun     = show . (+3)
+          mappedC = C.toList . C.map fun $ (C.fromList kvs)
+          mappedM = Map.toList . Map.map fun $ (Map.fromList kvs)
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -118,6 +124,7 @@ propertiesFor t = [
   , testProperty "t_foldlWithKey'" $ t_foldlWithKey' t
   , testProperty "t_elems" $ t_elems t
   , testProperty "t_keys" $ t_keys t
+  , testProperty "t_map" $ t_map t
   ]
 
 properties :: [Test]

@@ -52,10 +52,15 @@ instance (NFData k, NFData v) => NFData (Node k v) where
     rnf (Leaf k v)         = rnf k `seq` rnf v
     rnf Empty              = ()
 
+instance Functor (Node k) where
+    fmap f i@(Internal l r _ _) = i { ileft = fmap f l, iright = fmap f r }
+    fmap f (Leaf k v)           = Leaf k (f v)
+    fmap _ Empty                = Empty
+
 -- | A crit-bit tree.
 newtype CritBit k v = CritBit {
       cbRoot :: Node k v
-    } deriving (Eq, NFData)
+    } deriving (Eq, NFData, Functor)
 
 instance (Show k, Show v) => Show (CritBit k v) where
     show t = "fromList " ++ show (toList t)
