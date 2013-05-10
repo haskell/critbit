@@ -56,9 +56,9 @@ dependencies, so hang in there.
     cd critbit
     cabal-dev install \
         --enable-tests \
-	--enable-benchmarks \
+        --enable-benchmarks \
         --only-dependencies \
-	-j
+        -j
 
 The `cabal-dev` command is just a sandboxing wrapper around the
 `cabal` command.  The `-j` flag above tells `cabal` to use all of your
@@ -67,7 +67,7 @@ minutes.
 
     cabal-dev configure \
         --enable-tests \
-	--enable-benchmarks
+        --enable-benchmarks
     cabal-dev build
 
 
@@ -110,7 +110,8 @@ Open the `lookup.html` file in your browser. [Here's an
 example](http://htmlpreview.github.io/?https://github.com/bos/critbit/blob/master/doc/criterion-sample-lookup.html)
 of what to expect.
 
-As with `tests`, use `--help` if you want to do some exploring.
+As with `tests`, run the `benchmarks` program with `--help` if you
+want to do some exploring.
 
 
 
