@@ -50,23 +50,78 @@ Get the `critbit` source.
 
 Set up a sandbox.
 
-Build the library. The first time through, this will download and
-install a ton of dependencies, so hang in there.
+The first time through, you need to download and install a ton of
+dependencies, so hang in there.
 
     cd critbit
-    cabal-dev install --enable-tests --enable-benchmarks -j
+    cabal-dev install \
+        --enable-tests \
+	--enable-benchmarks \
+        --only-dependencies \
+	-j
 
 The `cabal-dev` command is just a sandboxing wrapper around the
 `cabal` command.  The `-j` flag above tells `cabal` to use all of your
 CPUs, so even the initial build shouldn't take more than a few
 minutes.
 
+    cabal-dev configure \
+        --enable-tests \
+	--enable-benchmarks
+    cabal-dev build
+
+
+Running the test suite
+----
+
+Once you've built the code, you can run the entire test suite in a few
+seconds.
+
+    dist/build/tests/tests +RTS -N
+
+(The `+RTS -N` above tells GHC's runtime system to use all available
+cores.)
+
+If you want to explore, the `tests` program accepts a `--help`
+option. Try it out.
+
+
+Running benchmarks
+----
+
+It is just as easy to benchmark stuff as to test it.
+
+First, you need a dictionary. If your system doesn't have a file named
+`/usr/share/dict/words`, you can [download a dictionary
+here](http://www.cs.duke.edu/~ola/ap/linuxwords).
+
+If you've downloaded a dictionary, tell the benchmark
+suite where to find it by setting the `WORDS` environment variable.
+
+    export WORDS=/my/path/to/linuxwords
+
+You can then run benchmarks and generate a report. For instance, this
+runs every benchmark that begins with `bytestring/lookup`.
+
+    dist/build/benchmarks/benchmarks -o lookup.html \
+        bytestring/lookup
+
+Open the `lookup.html` file in your browser. [Here's an
+example](http://htmlpreview.github.io/?https://github.com/bos/critbit/blob/master/doc/criterion-sample-lookup.html)
+of what to expect.
+
+As with `tests`, use `--help` if you want to do some exploring.
+
+
 
 What your code should look like
 ----
 
+Okay, so you've bought into this idea, and would like to try writing a
+patch. How to begin?
+
 I've generally tried to write commits with a view to being readable,
-so there are examples of the kind of structure you should follow.
+so there are examples you can follow.
 
 For instance, [here's the commit where I added the `keys`
 function](https://github.com/bos/critbit/commit/48438b48ca9bc5d96c1987afe7acdf4dada823f3). This
