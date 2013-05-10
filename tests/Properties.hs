@@ -11,6 +11,7 @@ import Data.Word (Word8)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary(..), Args(..), quickCheckWith, stdArgs)
+import Test.QuickCheck.Property (Testable)
 import qualified Data.ByteString as BB
 import qualified Data.ByteString.Char8 as B
 import qualified Data.CritBit.Map.Lazy as C
@@ -41,17 +42,6 @@ instance (CritBitKey k, Arbitrary k, Arbitrary v) =>
 
 newtype CB k = CB (CritBit k V)
     deriving (Show, Eq, Arbitrary)
-
-blist :: [ByteString] -> CritBit ByteString Word8
-blist = C.fromList . flip zip [0..]
-
-tlist :: [Text] -> CritBit Text Word8
-tlist = C.fromList . flip zip [0..]
-
-mlist :: [ByteString] -> Map.Map ByteString Word8
-mlist = Map.fromList . flip zip [0..]
-
-qc n = quickCheckWith stdArgs { maxSuccess = n }
 
 t_lookup_present :: (CritBitKey k) => k -> k -> V -> CB k -> Bool
 t_lookup_present _ k v (CB m) = C.lookup k (C.insert k v m) == Just v
@@ -131,3 +121,17 @@ properties = [
     testGroup "text" $ propertiesFor T.empty
   , testGroup "bytestring" $ propertiesFor B.empty
   ]
+
+-- Handy functions for fiddling with from ghci.
+
+blist :: [ByteString] -> CritBit ByteString Word8
+blist = C.fromList . flip zip [0..]
+
+tlist :: [Text] -> CritBit Text Word8
+tlist = C.fromList . flip zip [0..]
+
+mlist :: [ByteString] -> Map.Map ByteString Word8
+mlist = Map.fromList . flip zip [0..]
+
+qc :: Testable prop => Int -> prop -> IO ()
+qc n = quickCheckWith stdArgs { maxSuccess = n }
