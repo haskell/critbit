@@ -30,7 +30,7 @@ module Data.CritBit.Tree
     -- * Insertion
     , insert
     -- , insertWith
-    -- , insertWithKey
+    , insertWithKey
     -- , insertLookupWithKey
 
     -- * Deletion
@@ -433,4 +433,42 @@ union a b = unionL a b
 -- > map show (fromList [("b",5), ("a",3)]) == fromList [("b","5"), ("a","3")]
 map :: (CritBitKey k) => (v -> w) -> CritBit k v -> CritBit k w
 map = fmap
+
+-- | /O(log n)/. Insert with a function, combining key, new value and old value. 
+-- @'insertWithKey' f key value cb@ 
+-- will insert the pair (key, value) into cb if key does not exist in the map. 
+-- If the key does exist, the function will insert the pair 
+-- @(key,f key new_value old_value)@. 
+-- Note that the key passed to f is the same key passed to insertWithKey.
+--
+-- > let f key new_value old_value = byteCount key + new_value + old_value
+-- > insertWithKey f "a" 1 (fromList [("a",5), ("b",3)]) == fromList [("a",7), ("b",3)]
+-- > insertWithKey f "c" 1 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("c",1)]
+-- > insertWithKey f "a" 1 empty                         == singleton "a" 1
+insertWithKey :: CritBitKey k => (k -> v -> v -> v) -> k -> v -> CritBit k v -> CritBit k v
+insertWithKey f k v (CritBit root) = CritBit . go $ root
+  where
+    go i@(Internal left right _ _)
+      | direction k i == 0 = go left
+      | otherwise          = go right
+    go (Leaf lk _)         = rewalk root
+      where
+        rewalk i@(Internal left right byte otherBits)
+          | byte > n                     = finish i
+          | byte == n && otherBits > nob = finish i
+          | direction k i == 0           = i { ileft = rewalk left }
+          | otherwise                    = i { iright = rewalk right }
+        rewalk i                         = finish i
+
+        finish (Leaf _ v') | k == lk = Leaf k (f k v v')
+        finish node
+          | nd == 0   = Internal { ileft = node, iright = Leaf k v,
+                                   ibyte = n, iotherBits = nob }
+          | otherwise = Internal { ileft = Leaf k v, iright = node,
+                                   ibyte = n, iotherBits = nob }
+
+        (n, nob, c) = followPrefixes k lk
+        nd          = calcDirection nob c
+    go Empty = Leaf k v
+{-# INLINABLE insertWithKey #-}
 

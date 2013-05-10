@@ -169,6 +169,16 @@ main = do
       , bgroup "delete" $ keyed C.delete Map.delete H.delete Trie.delete
       , bgroup "insert" $ keyed (flip C.insert 1) (flip Map.insert 1)
                                 (flip H.insert 1) (flip Trie.insert 1)
+      , bgroup "insertWithKey" $ let f _ a b = a + b in [
+          bgroup "present" [
+            bench "critbit" $ whnf (C.insertWithKey f key 1) b_critbit
+          , bench "map" $ whnf (Map.insertWithKey f key 1) b_map
+          ]
+        , bgroup "missing" [
+            bench "critbit" $ whnf (C.insertWithKey f key 1) b_critbit_1
+          , bench "map" $ whnf (Map.insertWithKey f key 1) b_map_1
+          ]
+        ] 
       , bgroup "lookup" $ keyed C.lookup Map.lookup H.lookup Trie.lookup
 #if MIN_VERSION_containers(0,5,0)
       , bgroup "lookupGT" $ [

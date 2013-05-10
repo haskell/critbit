@@ -107,6 +107,20 @@ t_map _ (KV kvs) = mappedC == mappedM
           mappedC = C.toList . C.map fun $ (C.fromList kvs)
           mappedM = Map.toList . Map.map fun $ (Map.fromList kvs)
 
+t_insertWithKey_present :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
+t_insertWithKey_present _ k v (KV kvs) = Map.toList m == C.toList c
+  where
+    f key v1 v2 = fromIntegral (C.byteCount key) + v1 + v2
+    m = Map.insertWithKey f k v $ Map.insert k v $ Map.fromList kvs
+    c =   C.insertWithKey f k v $   C.insert k v $   C.fromList kvs
+
+t_insertWithKey_missing :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
+t_insertWithKey_missing _ k v (KV kvs) = Map.toList m == C.toList c
+  where
+    f key v1 v2 = fromIntegral (C.byteCount key) + v1 + v2
+    m = Map.insertWithKey f k v $ Map.fromList kvs
+    c =   C.insertWithKey f k v $   C.fromList kvs
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -125,6 +139,8 @@ propertiesFor t = [
   , testProperty "t_elems" $ t_elems t
   , testProperty "t_keys" $ t_keys t
   , testProperty "t_map" $ t_map t
+  , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
+  , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   ]
 
 properties :: [Test]
