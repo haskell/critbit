@@ -24,6 +24,7 @@ library
   exposed-modules:
     Data.CritBit.Map.Lazy
   other-modules:
+    Data.CritBit.Core
     Data.CritBit.Types.Internal
     Data.CritBit.Tree
 

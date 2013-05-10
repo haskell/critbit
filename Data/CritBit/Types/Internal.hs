@@ -10,6 +10,7 @@ module Data.CritBit.Types.Internal
     (
       CritBitKey(..)
     , CritBit(..)
+    , BitMask
     , Node(..)
     , toList
     ) where
@@ -24,12 +25,14 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.Text.Array as T
 
+type BitMask = Word16
+
 data Node k v =
     Internal {
       ileft, iright :: !(Node k v)
     , ibyte         :: !Int
     -- ^ The byte at which the left and right subtrees differ.
-    , iotherBits    :: !Word16
+    , iotherBits    :: !BitMask
     -- ^ The bitmask representing the critical bit within the
     -- differing byte. If the critical bit is e.g. 0x8, the bitmask
     -- will have every bit below 0x8 set, hence 0x7.
@@ -58,6 +61,15 @@ instance (Show k, Show v) => Show (CritBit k v) where
     show t = "fromList " ++ show (toList t)
 
 -- | A type that can be used as a key in a crit-bit tree.
+--
+-- We use 9 bits to represent 8-bit bytes so that we can distinguish
+-- between an interior byte that is zero (which must have the 9th bit
+-- set) and a byte past the end of the input (which must /not/ have
+-- the 9th bit set).
+--
+-- Without this trick, the critical bit calculations would fail on
+-- zero bytes /within/ a string, and our tree would be unable to
+-- handle arbitrary binary data.
 class (Eq k) => CritBitKey k where
     -- | Return the number of bytes used by this key.
     --

@@ -144,9 +144,8 @@ module Data.CritBit.Tree
     -- , maxViewWithKey
     ) where
 
-import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
+import Data.CritBit.Core
 import Data.CritBit.Types.Internal
-import Data.Word (Word16)
 import Prelude hiding (foldl, foldr, lookup, null)
 import qualified Data.List as List
 
@@ -231,16 +230,6 @@ findWithDefault :: (CritBitKey k) =>
 findWithDefault d k m = lookupWith d id k m
 {-# INLINABLE findWithDefault #-}
 
-lookupWith :: (CritBitKey k) => a -> (v -> a) -> k -> CritBit k v -> a
-lookupWith notFound found k (CritBit root) = go root
-  where
-    go i@(Internal left right _ _)
-       | direction k i == 0  = go left
-       | otherwise           = go right
-    go (Leaf lk v) | k == lk = found v
-    go _                     = notFound
-{-# INLINE lookupWith #-}
-
 -- | /O(log n)/. Find smallest key greater than the given one and
 -- return the corresponding (key, value) pair.
 --
@@ -268,8 +257,7 @@ lookupGT k (CritBit root) = go root
                                              wat     -> wat
           | otherwise                    = rewalk right
         rewalk i                         = finish i
-        (n, bc, c) = followPrefixes k lk
-        nob        = maskLowerBits bc
+        (n, nob, c) = followPrefixes k lk
     go Empty = Nothing
     leftmost (Internal left _ _ _) = leftmost left
     leftmost (Leaf lmk lmv)        = Just (lmk, lmv)
@@ -284,94 +272,6 @@ byteCompare a b = go 0
              wat            -> wat
       where ba = getByte a i
 {-# INLINABLE byteCompare #-}
-
-direction :: (CritBitKey k) => k -> Node k v -> Int
-direction k (Internal _ _ byte otherBits) =
-    calcDirection otherBits (getByte k byte)
-direction _ _ = error "Data.CritBit.Tree.direction: unpossible!"
-{-# INLINE direction #-}
-
-calcDirection :: Word16 -> Word16 -> Int
-calcDirection otherBits c = (1 + fromIntegral (otherBits .|. c)) `shiftR` 9
-{-# INLINE calcDirection #-}
-
-followPrefixes :: (CritBitKey k) => k -> k -> (Int, Word16, Word16)
-followPrefixes k l = go 0
-  where
-    go n | n == byteCount k = (n, c, c)
-         | n == byteCount l = (n, b, 0)
-         | b /= c           = (n, b `xor` c, c)
-         | otherwise        = go (n+1)
-      where b = getByte k n
-            c = getByte l n
-{-# INLINE followPrefixes #-}
-
--- | /O(log n)/. Insert a new key and value in the map.  If the key is
--- already present in the map, the associated value is replaced with
--- the supplied value. 'insert' is equivalent to @'insertWith'
--- 'const'@.
---
--- > insert "b" 7 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",7)]
--- > insert "x" 7 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("x",7)]
--- > insert "x" 5 empty                         == singleton "x" 5
-insert :: (CritBitKey k) => k -> v -> CritBit k v -> CritBit k v
-insert k v (CritBit root) = CritBit . go $ root
-  where
-    go i@(Internal left right _ _)
-      | direction k i == 0 = go left
-      | otherwise          = go right
-    go (Leaf lk _)         = rewalk root
-      where
-        finish (Leaf _ _) | k == lk = Leaf lk v
-        finish node
-          | nd == 0   = Internal { ileft = node, iright = Leaf k v,
-                                   ibyte = n, iotherBits = nob }
-          | otherwise = Internal { ileft = Leaf k v, iright = node,
-                                   ibyte = n, iotherBits = nob }
-        rewalk i@(Internal left right byte otherBits)
-          | byte > n                     = finish i
-          | byte == n && otherBits > nob = finish i
-          | direction k i == 0           = i { ileft = rewalk left }
-          | otherwise                    = i { iright = rewalk right }
-        rewalk i                         = finish i
-        (n, bc, c) = followPrefixes k lk
-        nob        = maskLowerBits bc
-        nd         = calcDirection nob c
-    go Empty = Leaf k v
-{-# INLINABLE insert #-}
-
--- | Set every bit to 1 in a 9-bit "byte", except the MSB.
-maskLowerBits :: Word16 -> Word16
-maskLowerBits v = (n3 .&. (complement (n3 `shiftR` 1))) `xor` 511
-  where
-    n3 = n2 .|. (n2 `shiftR` 8)
-    n2 = n1 .|. (n1 `shiftR` 4)
-    n1 = n0 .|. (n0 `shiftR` 2)
-    n0 = v  .|. (v  `shiftR` 1)
-{-# INLINE maskLowerBits #-}
-
--- | /O(log n)/. Delete a key and its value from the map. When the key is not
--- a member of the map, the original map is returned.
---
--- > delete "a" (fromList [("a",5), ("b",3)]) == singleton "b" 3
--- > delete "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
--- > delete "a" empty                         == empty
-delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
-delete k t@(CritBit root) = go root CritBit
-  where
-    go i@(Internal left right _ _) cont
-      | direction k i == 0 = go left $ \new ->
-                             case new of
-                               Empty -> cont right
-                               l     -> cont $! i { ileft = l }
-      | otherwise          = go right $ \new ->
-                             case new of
-                               Empty -> cont left
-                               r     -> cont $! i { iright = r }
-    go (Leaf lk _) cont
-       | k == lk = cont Empty
-    go _ _       = t
-{-# INLINABLE delete #-}
 
 -- | /O(n*log n)/. Build a map from a list of key\/value pairs.  If
 -- the list contains more than one value for the same key, the last
