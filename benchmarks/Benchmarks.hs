@@ -14,7 +14,13 @@ import Data.Maybe (fromMaybe)
 import Data.Text.Array (aBA)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Internal (Text(..))
+#if __GLASGOW_HASKELL__ < 706
+import Prelude hiding (catch)
+import System.Environment (getEnv)
+#else
+-- lookupEnv is present in base >= 4.6.0
 import System.Environment (lookupEnv)
+#endif
 import System.IO (hPutStrLn, stderr)
 import System.IO.Error (ioError, isDoesNotExistError)
 import System.Random.MWC (GenIO, GenST, asGenST, create, uniform, uniformR)
@@ -28,6 +34,15 @@ import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Unboxed as U
 import qualified Data.Trie as Trie
 import qualified Data.Vector.Generic.Mutable as M
+
+#if __GLASGOW_HASKELL__ < 706
+-- lookupEnv is present in base >= 4.6.0
+lookupEnv :: String -> IO (Maybe String)
+lookupEnv name = (Just <$> getEnv name) `catch` \(_::IOError) -> return Nothing
+-- bytestring 0.10.0 includes instances of NFData for ByteString types
+-- http://hackage.haskell.org/trac/ghc/ticket/5601
+instance NFData B.ByteString
+#endif
 
 #if 0
 instance Hashable Text where
@@ -167,7 +182,10 @@ main = do
       , bgroup "lookup" $ keyed C.lookup Map.lookup H.lookup Trie.lookup
       , bgroup "lookupGT" $ [
           bench "critbit" $ whnf (C.lookupGT key) b_critbit
-        , bench "map" $ whnf (Map.lookupGT key) b_map
+#if __GLASGOW_HASKELL__ >= 706
+          -- Map.lookupGT is in containers >= 0.5.0
+          , bench "map" $ whnf (Map.lookupGT key) b_map
+#endif
         ]
       , bgroup "member" $ keyed C.member Map.member H.member Trie.member
       , bgroup "foldlWithKey'" $ let f a _ b = a + b
