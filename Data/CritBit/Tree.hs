@@ -64,7 +64,7 @@ module Data.CritBit.Tree
 
     -- * Traversal
     -- ** Map
-    -- , map
+    , map
     -- , mapWithKey
     -- , traverseWithKey
     -- , mapAccum
@@ -146,7 +146,7 @@ module Data.CritBit.Tree
 
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
-import Prelude hiding (foldl, foldr, lookup, null)
+import Prelude hiding (foldl, foldr, lookup, null, map)
 import qualified Data.List as List
 
 -- | /O(1)/. Is the map empty?
@@ -427,3 +427,10 @@ unionR a b = foldlWithKey' (\m k v -> insert k v m) a b
 union :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
 union a b = unionL a b
 {-# INLINE union #-}
+
+-- | /O(n)/. Apply a function to all values.
+--
+-- > map show (fromList [("b",5), ("a",3)]) == fromList [("b","5"), ("a","3")]
+map :: (CritBitKey k) => (v -> w) -> CritBit k v -> CritBit k w
+map = fmap
+
