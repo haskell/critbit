@@ -248,20 +248,18 @@ lookupGT k (CritBit root) = go root
                               _ -> Nothing
         finish node
           | calcDirection nob c == 0 = Nothing
-          | otherwise                = leftmost node
+          | otherwise                = leftmost Nothing pair node
         rewalk i@(Internal left right byte otherBits)
           | byte > n                     = finish i
           | byte == n && otherBits > nob = finish i
-          | direction k i == 0           = case rewalk left of
-                                             Nothing -> leftmost right
-                                             wat     -> wat
+          | direction k i == 0       = case rewalk left of
+                                        Nothing -> leftmost Nothing pair right
+                                        wat     -> wat
           | otherwise                    = rewalk right
         rewalk i                         = finish i
         (n, nob, c) = followPrefixes k lk
+        pair a b = Just (a, b)
     go Empty = Nothing
-    leftmost (Internal left _ _ _) = leftmost left
-    leftmost (Leaf lmk lmv)        = Just (lmk, lmv)
-    leftmost _                     = Nothing
 {-# INLINABLE lookupGT #-}
 
 byteCompare :: (CritBitKey k) => k -> k -> Ordering
@@ -441,11 +439,9 @@ map = fmap
 -- > findMin (fromList [("b",3), ("a",5)]) == ("a",5)
 -- > findMin empty                       Error: empty map has no minimal element
 findMin :: CritBit k v -> (k,v)
-findMin (CritBit root) = go root
+findMin (CritBit root) = leftmost emptyMap (,) root
   where
-    go (Leaf k v) = (k,v)
-    go (Internal left _ _ _) = go left
-    go Empty = error "CritBit.findMin: empty map has no minimal element"
+    emptyMap = error "CritBit.findMin: empty map has no minimal element"
 {-# INLINABLE findMin #-}
 
 -- | /O(log n)/. The maximal key of the map. Calls 'error' if the map
@@ -454,11 +450,9 @@ findMin (CritBit root) = go root
 -- > findMax (fromList [("b",3), ("a",5)]) == ("b",3)
 -- > findMax empty                       Error: empty map has no minimal element
 findMax :: CritBit k v -> (k,v)
-findMax (CritBit root) = go root
+findMax (CritBit root) = rightmost emptyMap (,) root
   where
-    go (Leaf k v) = (k,v)
-    go (Internal _ right _ _) = go right
-    go Empty = error "CritBit.findMax: empty map has no maximal element"
+    emptyMap = error "CritBit.findMax: empty map has no maximal element"
 {-# INLINABLE findMax #-}
 
 -- | /O(log n)/. Delete the minimal key. Returns an empty map if the

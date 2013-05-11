@@ -20,6 +20,8 @@ module Data.CritBit.Core
       insert
     , lookupWith
     , delete
+    , leftmost
+    , rightmost
     -- * Internal functions
     , calcDirection
     , direction
@@ -151,3 +153,22 @@ followPrefixes k l = go 0
         n2 = n1 .|. (n1 `shiftR` 4)
         n1 = n0 .|. (n0 `shiftR` 2)
         n0 = v  .|. (v  `shiftR` 1)
+
+leftmost, rightmost :: a -> (k -> v -> a) -> Node k v -> a
+leftmost  = extremity ileft
+{-# INLINE leftmost #-}
+rightmost = extremity iright
+{-# INLINE rightmost #-}
+
+-- | Generic function so we can easily implement 'leftmost' and 'rightmost'.
+extremity :: (Node k v -> Node k v) -- ^ Either 'ileft' or 'iright'.
+          -> a                      -- ^ 'Empty' continuation.
+          -> (k -> v -> a)          -- ^ 'Leaf' continuation.
+          -> Node k v
+          -> a
+extremity direct onEmpty onLeaf node = go node
+  where
+    go i@(Internal{}) = go $ direct i
+    go (Leaf k v)     = onLeaf k v
+    go _              = onEmpty
+{-# INLINE extremity #-}
