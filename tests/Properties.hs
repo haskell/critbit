@@ -49,7 +49,7 @@ t_lookup_present _ k v (CB m) = C.lookup k (C.insert k v m) == Just v
 t_lookup_missing :: (CritBitKey k) => k -> k -> CB k -> Bool
 t_lookup_missing _ k (CB m) = C.lookup k (C.delete k m) == Nothing
 
-#if MIN_VERSION_containers(0,5,0)
+#ifdef MIN_VERSION_containers(0,5,0)
 t_lookupGT :: (Ord k, CritBitKey k) => k -> k -> KV k -> Bool
 t_lookupGT _ k (KV kvs) =
     C.lookupGT k (C.fromList kvs) == Map.lookupGT k (Map.fromList kvs)
@@ -113,7 +113,7 @@ propertiesFor t = [
   , testProperty "t_fromList_size" $ t_fromList_size t
   , testProperty "t_lookup_present" $ t_lookup_present t
   , testProperty "t_lookup_missing" $ t_lookup_missing t
-#if MIN_VERSION_containers(0,5,0)
+#ifdef MIN_VERSION_containers(0,5,0)
   , testProperty "t_lookupGT" $ t_lookupGT t
 #endif
   , testProperty "t_delete_present" $ t_delete_present t
