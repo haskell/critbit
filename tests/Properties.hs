@@ -7,7 +7,7 @@ import Control.Applicative ((<$>))
 import Control.Arrow (second)
 import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
-import Data.Functor.Identity
+import Data.Functor.Identity (Identity(..))
 import Data.Text (Text)
 import Data.Word (Word8)
 import Test.Framework (Test, testGroup)
