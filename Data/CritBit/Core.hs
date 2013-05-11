@@ -144,7 +144,8 @@ followPrefixes k l = go 0
       where b = getByte k n
             c = getByte l n
 
-    maskLowerBits v = (n3 .&. (complement (n3 `shiftR` 1))) `xor` 511
+    maskLowerBits :: Word16 -> Word16
+    maskLowerBits v = (n3 .&. (complement (n3 `shiftR` 1))) `xor` 0x1FF
       where
         n3 = n2 .|. (n2 `shiftR` 8)
         n2 = n1 .|. (n1 `shiftR` 4)
