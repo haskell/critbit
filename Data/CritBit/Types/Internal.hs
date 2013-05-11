@@ -35,7 +35,9 @@ data Node k v =
     , iotherBits    :: !BitMask
     -- ^ The bitmask representing the critical bit within the
     -- differing byte. If the critical bit is e.g. 0x8, the bitmask
-    -- will have every bit below 0x8 set, hence 0x7.
+    -- will have every bit other than 0x8 set, hence 0x1F7
+    -- (the ninth bit is set because we're using 9 bits for representing
+    -- bytes).
     }
     | Leaf k v
     | Empty
