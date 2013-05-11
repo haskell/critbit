@@ -65,11 +65,11 @@ module Data.CritBit.Tree
     -- * Traversal
     -- ** Map
     , map
-    -- , mapWithKey
-    -- , traverseWithKey
-    -- , mapAccum
-    -- , mapAccumWithKey
-    -- , mapAccumRWithKey
+    , mapWithKey
+    , traverseWithKey
+    , mapAccum
+    , mapAccumWithKey
+    , mapAccumRWithKey
     -- , mapKeys
     -- , mapKeysWith
     -- , mapKeysMonotonic
@@ -147,6 +147,8 @@ module Data.CritBit.Tree
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
 import Prelude hiding (foldl, foldr, lookup, null, map)
+import Control.Applicative hiding (empty)
+import Control.Arrow (second)
 import qualified Data.List as List
 
 -- | /O(1)/. Is the map empty?
@@ -434,3 +436,64 @@ union a b = unionL a b
 map :: (CritBitKey k) => (v -> w) -> CritBit k v -> CritBit k w
 map = fmap
 
+-- | /O(n). Apply a function to all values
+--
+-- >  let f key x = (show key) ++ ":" ++ x
+-- >  mapWithKey f (fromList [(5,"a"), (3,"b")]) == fromList [(3, "3:b"), (5, "5:a")]
+mapWithKey :: (CritBitKey k) => (k -> v -> w) -> CritBit k v -> CritBit k w
+mapWithKey f = CritBit . go . cbRoot
+    where
+      go i@(Internal l r _ _) = i { ileft = go l, iright = go r }
+      go (Leaf k v)           = Leaf k (f k v)
+      go  Empty               = Empty
+
+-- | /O(n)/.
+-- @'traverseWithKey' f s == 'fromList' <$> 'traverse' (\(k, v) -> (,) k <$> f k v) ('toList' m)@
+-- That is, behaves exactly like a regular 'traverse' except that the traversing
+-- function also has access to the key associated with a value.
+--
+-- > traverseWithKey (\k v -> if odd k then Just (succ v) else Nothing) (fromList [(1, 'a'), (5, 'e')]) == Just (fromList [(1, 'b'), (5, 'f')])
+-- > traverseWithKey (\k v -> if odd k then Just (succ v) else Nothing) (fromList [(2, 'c')])           == Nothing
+traverseWithKey :: (CritBitKey k, Applicative t) => (k -> v -> t w) -> CritBit k v -> t (CritBit k w)
+traverseWithKey f = fmap CritBit . go . cbRoot
+    where
+      go i@(Internal l r _ _) = (\l' r' -> i { ileft = l', iright = r' }) <$> go l <*> go r
+      go (Leaf k v)           = (Leaf k) <$> f k v
+      go Empty                = pure Empty
+
+
+-- | /O(n)/. The function 'mapAccum' threads an accumulating
+-- argument through the map in ascending order of keys.
+--
+-- > let f a b = (a ++ b, b ++ "X")
+-- > mapAccum f "Everything: " (fromList [(5,"a"), (3,"b")]) == ("Everything: ba", fromList [(3, "bX"), (5, "aX")])
+mapAccum :: (CritBitKey k) => (a -> v -> (a, w)) -> a -> CritBit k v -> (a, CritBit k w)
+mapAccum f = mapAccumWithKey (\a _ v -> f a v) 
+
+
+-- | /O(n)/. The function 'mapAccumWithKey' threads an accumulating
+-- argument through the map in ascending order of keys.
+--
+-- > let f a k b = (a ++ " " ++ (show k) ++ "-" ++ b, b ++ "X")
+-- > mapAccumWithKey f "Everything:" (fromList [(5,"a"), (3,"b")]) == ("Everything: 3-b 5-a", fromList [(3, "bX"), (5, "aX")])
+mapAccumWithKey :: (CritBitKey k) => (a -> k -> v -> (a, w)) -> a -> CritBit k v -> (a, CritBit k w)
+mapAccumWithKey f start = second CritBit . go start . cbRoot
+    where
+      go a i@(Internal l r _ _) = let (a', l')  = go a l
+                                      (a'', r') = go a' r
+                                  in (a'', i { ileft = l', iright = r' })
+
+      go a (Leaf k v)           = let (a', w) = f a k v in (a', Leaf k w)
+      go a Empty                = (a, Empty)
+
+-- | /O(n)/. The function 'mapAccumRWithKey' threads an accumulating
+-- argument through the map in descending order of keys.
+mapAccumRWithKey :: (CritBitKey k) => (a -> k -> v -> (a, w)) -> a -> CritBit k v -> (a, CritBit k w)
+mapAccumRWithKey f start = second CritBit . go start . cbRoot
+    where
+      go a i@(Internal l r _ _) = let (a', r')  = go a r
+                                      (a'', l') = go a' l
+                                  in (a'', i { ileft = l', iright = r' })
+
+      go a (Leaf k v)           = let (a', w) = f a k v in (a', Leaf k w)
+      go a Empty                = (a, Empty)
