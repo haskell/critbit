@@ -117,6 +117,38 @@ t_findMax _ (KV kvs)
   | null kvs  = True
   | otherwise = C.findMax (C.fromList kvs) == Map.findMax (Map.fromList kvs) 
 
+t_deleteMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_deleteMin _ (KV kvs) = critDelMin == mapDelMin
+  where
+    critDelMin = C.toList $ C.deleteMin $ C.fromList kvs
+    mapDelMin  = Map.toList $ Map.deleteMin $ Map.fromList kvs
+
+t_deleteMax :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_deleteMax _ (KV kvs) = critDelMax == mapDelMax
+  where
+    critDelMax = C.toList $ C.deleteMax $ C.fromList kvs
+    mapDelMax  = Map.toList $ Map.deleteMax $ Map.fromList kvs
+
+t_deleteFindMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_deleteFindMin _ (KV kvs)
+  | null kvs  = True
+  | otherwise = critMin == mapMin
+    where
+      critMin = let (kmin, m) = C.deleteFindMin cMap in (kmin, C.toList m)
+      mapMin  = let (kmin, m) = Map.deleteFindMin mMap in (kmin, Map.toList m)
+      cMap = C.fromList kvs
+      mMap = Map.fromList kvs
+
+t_deleteFindMax :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_deleteFindMax _ (KV kvs)
+  | null kvs  = True
+  | otherwise = critMax == mapMax
+    where
+      critMax = let (kmax, m) = C.deleteFindMax cMap in (kmax, C.toList m)
+      mapMax  = let (kmax, m) = Map.deleteFindMax mMap in (kmax, Map.toList m)
+      cMap = C.fromList kvs
+      mMap = Map.fromList kvs
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -137,6 +169,10 @@ propertiesFor t = [
   , testProperty "t_map" $ t_map t
   , testProperty "t_findMin" $ t_findMin t
   , testProperty "t_findMax" $ t_findMax t
+  , testProperty "t_deleteMin" $ t_deleteMin t
+  , testProperty "t_deleteMax" $ t_deleteMax t
+  , testProperty "t_deleteFindMin" $ t_deleteFindMin t
+  , testProperty "t_deleteFIndMax" $ t_deleteFindMax t
   ]
 
 properties :: [Test]

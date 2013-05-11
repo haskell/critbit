@@ -130,10 +130,10 @@ module Data.CritBit.Tree
     -- -- * Min\/Max
     , findMin
     , findMax
-    -- , deleteMin
-    -- , deleteMax
-    -- , deleteFindMin
-    -- , deleteFindMax
+    , deleteMin
+    , deleteMax
+    , deleteFindMin
+    , deleteFindMax
     -- , updateMin
     -- , updateMax
     -- , updateMinWithKey
@@ -460,3 +460,63 @@ findMax (CritBit root) = go root
     go (Internal _ right _ _) = go right
     go Empty = error "CritBit.findMax: empty map has no maximal element"
 {-# INLINABLE findMax #-}
+
+-- | /O(log n)/. Delete the minimal key. Returns an empty map if the
+-- map is empty.
+--
+-- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("b",3), ("c",7)]
+-- > deleteMin empty == empty
+deleteMin :: CritBit k v -> CritBit k v
+deleteMin (CritBit root) = CritBit $ go root
+  where
+    go i@(Internal left _ _ _) = i { ileft = go left }
+    go (Leaf _ _) = Empty
+    go _  = root
+{-# INLINABLE deleteMin #-}
+
+-- | /O(log n)/. Delete the maximal key. Returns an empty map if the
+-- map is empty.
+--
+-- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("a",5), ("b","3")]
+-- > deleteMin empty == empty
+deleteMax :: CritBit k v -> CritBit k v
+deleteMax (CritBit root) = CritBit $ go root
+  where
+    go i@(Internal _ right _ _) = i { iright = go right }
+    go (Leaf _ _) = Empty
+    go _ = root
+{-# INLINABLE deleteMax #-}
+
+-- | /O(log n)/. Delete and find the minimal element.
+--
+-- > deleteFindMin (fromList [("a",5), ("b",3), ("c",10)]) == (("a",5), fromList[("b",3), ("c",10)])
+-- > deleteFindMin     Error: can not return the minimal element of an empty map
+deleteFindMin :: CritBit k v -> ((k, v), CritBit k v)
+deleteFindMin (CritBit root) = let (km, r) = go root in (km, CritBit r)
+  where
+    go i@(Internal left _ _ _) =
+      let
+        (kmin, left') = go left
+      in
+        (kmin, i { ileft = left' })
+    go (Leaf k v) = ((k, v), Empty)
+    go _ = error $ "CritBit.deleteFindMin: can not return the minimal \
+                   \element of an empty map"
+{-# INLINABLE deleteFindMin #-}
+
+-- | /O(log n)/. Delete and find the maximal element.
+--
+-- > deleteFindMax (fromList [("a",5), ("b",3), ("c",10)]) == (("c",10), fromList[("a",5), ("b",3)])
+-- > deleteFindMax     Error: can not return the maximal element of an empty map
+deleteFindMax :: CritBit k v -> ((k, v), CritBit k v)
+deleteFindMax (CritBit root) = let (km, r) = go root in (km, CritBit r)
+  where
+    go i@(Internal _ right _ _) =
+      let
+        (kmin, right') = go right
+      in
+        (kmin, i { iright = right' })
+    go (Leaf k v) = ((k, v), Empty)
+    go _ = error "CritBit.deleteFindMin: can not return the maximal element \
+                 \of an empty map"
+{-# INLINABLE deleteFindMax #-}
