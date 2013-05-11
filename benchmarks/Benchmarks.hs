@@ -188,6 +188,8 @@ main = do
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
+      , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
+      , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
       ]
     , bgroup "text" [
         bgroup "fromList" [

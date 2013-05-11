@@ -89,7 +89,7 @@ module Data.CritBit.Tree
     -- * Conversion
     , elems
     , keys
-    -- , assocs
+    , assocs
     -- , keysSet
     -- , fromSet
 
@@ -100,8 +100,8 @@ module Data.CritBit.Tree
     -- , fromListWithKey
 
     -- ** Ordered lists
-    -- , toAscList
-    -- , toDescList
+    , toAscList
+    , toDescList
     -- , fromAscList
     -- , fromAscListWith
     -- , fromAscListWithKey
@@ -408,6 +408,14 @@ elems :: CritBit k v -> [v]
 elems m = foldrWithKey f [] m
   where f _ v vs = v : vs
 
+-- | /O(n)/. An alias for 'toAscList'. Return all key/value pairs in the map in
+-- ascending order.
+--
+-- > assocs (fromList [(5,"a"), (3,"b")]) == [(3,"b"), (5,"a")]
+-- > assocs empty == []
+assocs :: CritBit k v -> [(k,v)]
+assocs m = toAscList m
+
 -- | /O(n)/. Return all keys of the map in ascending order.
 --
 -- > keys (fromList [("b",5), ("a",3)]) == ["a","b"]
@@ -433,3 +441,19 @@ union a b = unionL a b
 -- > map show (fromList [("b",5), ("a",3)]) == fromList [("b","5"), ("a","3")]
 map :: (CritBitKey k) => (v -> w) -> CritBit k v -> CritBit k w
 map = fmap
+
+-- | /O(n)/. Convert the map to a list of key/value pairs where the keys are in
+-- ascending order.
+--
+-- > toAscList (fromList [(5,"a"), (3,"b")]) == [(3,"b"), (5,"a")]
+toAscList :: CritBit k v -> [(k,v)]
+toAscList m = foldrWithKey f [] m
+  where f k v vs = (k,v) : vs
+
+-- | /O(n)/. Convert the map to a list of key/value pairs where the keys are in
+-- descending order.
+--
+-- > toDescList (fromList [(5,"a"), (3,"b")]) == [(5,"a"), (3,"b")]
+toDescList :: CritBit k v -> [(k,v)]
+toDescList m = foldlWithKey f [] m
+  where f vs k v = (k,v):vs

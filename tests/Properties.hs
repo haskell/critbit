@@ -107,6 +107,14 @@ t_map _ (KV kvs) = mappedC == mappedM
           mappedC = C.toList . C.map fun $ (C.fromList kvs)
           mappedM = Map.toList . Map.map fun $ (Map.fromList kvs)
 
+t_toAscList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_toAscList _ (KV kvs) = C.toAscList (C.fromList kvs)
+                         == Map.toAscList (Map.fromList kvs)
+
+t_toDescList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_toDescList _ (KV kvs) = C.toDescList (C.fromList kvs)
+                         == Map.toDescList (Map.fromList kvs)
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -125,6 +133,8 @@ propertiesFor t = [
   , testProperty "t_elems" $ t_elems t
   , testProperty "t_keys" $ t_keys t
   , testProperty "t_map" $ t_map t
+  , testProperty "t_toAscList" $ t_toAscList t
+  , testProperty "t_toDescList" $ t_toDescList t
   ]
 
 properties :: [Test]
