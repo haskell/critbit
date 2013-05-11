@@ -61,7 +61,7 @@ insert k v (CritBit root) = CritBit . go $ root
                                    ibyte = n, iotherBits = nob }
 
         (n, nob, c) = followPrefixes k lk
-        nd         = calcDirection nob c
+        nd          = calcDirection nob c
     go Empty = Leaf k v
 {-# INLINABLE insert #-}
 
