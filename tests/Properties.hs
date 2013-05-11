@@ -107,6 +107,16 @@ t_map _ (KV kvs) = mappedC == mappedM
           mappedC = C.toList . C.map fun $ (C.fromList kvs)
           mappedM = Map.toList . Map.map fun $ (Map.fromList kvs)
 
+t_findMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_findMin _ (KV kvs)
+  | null kvs  = True
+  | otherwise = C.findMin (C.fromList kvs) == Map.findMin (Map.fromList kvs)
+
+t_findMax :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_findMax _ (KV kvs)
+  | null kvs  = True
+  | otherwise = C.findMax (C.fromList kvs) == Map.findMax (Map.fromList kvs) 
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -125,6 +135,8 @@ propertiesFor t = [
   , testProperty "t_elems" $ t_elems t
   , testProperty "t_keys" $ t_keys t
   , testProperty "t_map" $ t_map t
+  , testProperty "t_findMin" $ t_findMin t
+  , testProperty "t_findMax" $ t_findMax t
   ]
 
 properties :: [Test]
