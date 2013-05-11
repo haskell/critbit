@@ -128,8 +128,8 @@ module Data.CritBit.Tree
     -- , isProperSubmapOfBy
 
     -- -- * Min\/Max
-    -- , findMin
-    -- , findMax
+    , findMin
+    , findMax
     -- , deleteMin
     -- , deleteMax
     -- , deleteFindMin
@@ -434,3 +434,26 @@ union a b = unionL a b
 map :: (CritBitKey k) => (v -> w) -> CritBit k v -> CritBit k w
 map = fmap
 
+-- | /O(log n)/. The minimal key of the map. Calls 'error' if the map is empty.
+--
+-- > findMin (fromList [("b",3), ("a",5)]) == ("a",5)
+-- > findMin empty                            Error: empty map has no minimal element
+findMin :: CritBit k v -> (k,v)
+findMin (CritBit root) = go root
+  where
+    go (Leaf k v) = (k,v)
+    go (Internal left _ _ _) = go left
+    go Empty = error "CritBit.findMin: empty map has no minimal element"
+{-# INLINABLE findMin #-}
+
+-- | /O(log n)/. The maximal key of the map. Calls 'error' if the map si empty.
+--
+-- > findMax (fromList [("b",3), ("a",5)]) == ("b",3)
+-- > findMax empty                            Error: empty map has no minimal element
+findMax :: CritBit k v -> (k,v)
+findMax (CritBit root) = go root
+  where
+    go (Leaf k v) = (k,v)
+    go (Internal _ right _ _) = go right
+    go Empty = error "CritBit.findMax: empty map has no maximal element"
+{-# INLINABLE findMax #-}

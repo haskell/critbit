@@ -189,6 +189,14 @@ main = do
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       ]
+      , bgroup "findMin" $ [
+          bench "critbit" $ whnf (C.findMin) b_critbit
+        , bench "map" $ whnf (Map.findMin) b_map
+        ]
+      , bgroup "findMax" $ [
+          bench "critbit" $ whnf (C.findMax) b_critbit
+        , bench "map" $ whnf (Map.findMax) b_map
+        ]
     , bgroup "text" [
         bgroup "fromList" [
           bgroup "ordered" $ fromList t_ordKVs
