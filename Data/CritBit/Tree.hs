@@ -511,11 +511,12 @@ deleteMax (CritBit root) = CritBit $ go root
 deleteFindMin :: CritBit k v -> ((k, v), CritBit k v)
 deleteFindMin (CritBit root)   = let (km, r) = go root in (km, CritBit r)
   where
-    go i@(Internal left _ _ _) = (kmin, i { ileft = left' })
-        where (kmin, left')    = go left
-    go (Leaf k v)              = ((k, v), Empty)
-    go _ = error $ "CritBit.deleteFindMin: can not return the minimal \
-                   \element of an empty map"
+    go (Internal (Leaf k v) r _ _) = ((k, v), r)
+    go i@(Internal left _ _ _)     = (kmin, i { ileft = left' })
+        where (kmin, left')        = go left
+    go (Leaf k v)                  = ((k, v), Empty)
+    go _ = error $ "CritBit.deleteFindMin: can not return the minimal element \
+                   \of an empty map"
 {-# INLINABLE deleteFindMin #-}
 
 -- | /O(log n)/. Delete and find the maximal element.
@@ -525,9 +526,11 @@ deleteFindMin (CritBit root)   = let (km, r) = go root in (km, CritBit r)
 deleteFindMax :: CritBit k v -> ((k, v), CritBit k v)
 deleteFindMax (CritBit root) = let (km, r) = go root in (km, CritBit r)
   where
-    go i@(Internal _ right _ _) = (kmin, i { iright = right' })
-      where (kmin, right') = go right
-    go (Leaf k v) = ((k, v), Empty)
-    go _ = error "CritBit.deleteFindMin: can not return the maximal element \
+    go (Internal l (Leaf k v) _ _) = ((k, v), l)
+    go i@(Internal _ right _ _)    = (kmin, i { iright = right' })
+      where (kmin, right')         = go right
+    go (Leaf k v)                  = ((k, v), Empty)
+    go _ = error "CritBit.deleteFindMax: can not return the maximal element \
                  \of an empty map"
 {-# INLINABLE deleteFindMax #-}
+
