@@ -108,8 +108,8 @@ module Data.CritBit.Tree
     -- , fromDistinctAscList
 
     -- * Filter
-    -- , filter
-    -- , filterWithKey
+    , filter
+    , filterWithKey
     -- , partition
     -- , partitionWithKey
 
@@ -144,9 +144,12 @@ module Data.CritBit.Tree
     -- , maxViewWithKey
     ) where
 
+import Control.Applicative hiding (empty)
+import Control.Monad
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
-import Prelude hiding (foldl, foldr, lookup, null, map)
+import Data.Maybe
+import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.List as List
 
 -- | /O(1)/. Is the map empty?
@@ -456,7 +459,27 @@ toAscList m = foldrWithKey f [] m
 toDescList :: CritBit k v -> [(k,v)]
 toDescList m = foldlWithKey f [] m
   where f vs k v = (k,v):vs
-  
+
+-- | /O(n)/. Filter all values that satisfy the predicate.
+--
+-- > filter (> "a") (fromList [("5","a"), ("3","b")]) == fromList [("3","b")]
+-- > filter (> "x") (fromList [("5","a"), ("3","b")]) == empty
+-- > filter (< "a") (fromList [("5","a"), ("3","b")]) == empty
+filter :: (v -> Bool) -> CritBit k v -> CritBit k v
+filter p = filterWithKey (\_ -> p)
+
+-- | /O(n)/. Filter all keys\/values that satisfy the predicate.
+--
+-- > filterWithKey (\k _ -> k > "4") (fromList [("5","a"), ("3","b")]) == fromList[("5","a")]
+filterWithKey :: (k -> v -> Bool) -> CritBit k v -> CritBit k v
+filterWithKey p (CritBit root) = CritBit $ fromMaybe Empty (go root)
+  where go Empty                  = Nothing
+        go l@(Leaf k v)           = guard (p k v) *> pure l
+        go i@(Internal l r _ _)   = let (ml, mr) = (go l, go r)
+                                    in  liftA2 modInternal ml mr <|> (ml <|> mr)
+          where modInternal nl nr = i { ileft = nl, iright = nr }
+{-# INLINABLE filterWithKey #-}
+
 -- | /O(log n)/. The minimal key of the map. Calls 'error' if the map
 -- is empty.
 --
