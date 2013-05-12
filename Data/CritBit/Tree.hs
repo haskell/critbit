@@ -138,10 +138,10 @@ module Data.CritBit.Tree
     -- , updateMax
     -- , updateMinWithKey
     -- , updateMaxWithKey
-    -- , minView
-    -- , maxView
-    -- , minViewWithKey
-    -- , maxViewWithKey
+    , minView
+    , maxView
+    , minViewWithKey
+    , maxViewWithKey
     ) where
 
 import Control.Applicative ((*>), (<|>), pure, liftA2)
@@ -550,11 +550,56 @@ deleteFindMax :: CritBit k v -> ((k, v), CritBit k v)
 deleteFindMax (CritBit root) = let (km, r) = go root in (km, CritBit r)
   where
     go i@(Internal _ right _ _) = (kmin, i { iright = right' })
-      where (kmin, right') = go right
-    go (Leaf k v) = ((k, v), Empty)
+      where (kmin, right')      = go right
+    go (Leaf k v)               = ((k, v), Empty)
     go _ = error "CritBit.deleteFindMin: can not return the maximal element \
                  \of an empty map"
 {-# INLINABLE deleteFindMax #-}
+
+-- | /O(log n)/. Retrieves the value associated with minimal key of the
+-- map, and the map stripped of that element, or 'Nothing' if passed an
+-- empty map.
+--
+-- > minView (fromList [("a",5), ("b",3)]) == Just (5, fromList [("b",3)])
+-- > minView empty == Nothing
+minView :: CritBit k v -> Maybe (v, CritBit k v)
+minView (CritBit Empty) = Nothing
+minView m = Just $ first snd $ deleteFindMin m
+{-# INLINABLE minView #-}
+
+-- | /O(log n)/. Retrieves the value associated with maximal key of the
+-- map, and the map stripped of that element, or 'Nothing' if passed an
+--
+-- > maxView (fromList [("a",5), ("b",3)]) == Just (3, fromList [("a",5)])
+-- > maxView empty == Nothing
+maxView :: CritBit k v -> Maybe (v, CritBit k v)
+maxView (CritBit Empty) = Nothing
+maxView m = Just $ first snd $ deleteFindMax m
+{-# INLINABLE maxView #-}
+
+-- | /O(log n)/. Retrieves the minimal (key,value) pair of the map, and
+-- the map stripped of that element, or 'Nothing' if passed an empty map.
+--
+-- > minViewWithKey (fromList [("a",5), ("b",3)]) == Just (("a",5), fromList [("b",3)])
+-- > minViewWithKey empty == Nothing
+minViewWithKey :: CritBit k v -> Maybe ((k, v), CritBit k v)
+minViewWithKey (CritBit Empty) = Nothing
+minViewWithKey m = Just $ deleteFindMin m
+{-# INLINABLE minViewWithKey #-}
+
+-- | /O(log n)/. Retrieves the maximal (key,value) pair of the map, and
+-- the map stripped of that element, or 'Nothing' if passed an empty map.
+--
+-- > maxViewWithKey (fromList [("a",5), ("b",3)]) == Just (("b",3), fromList [("a",5)])
+-- > maxViewWithKey empty == Nothing
+maxViewWithKey :: CritBit k v -> Maybe ((k,v), CritBit k v)
+maxViewWithKey (CritBit Empty) = Nothing
+maxViewWithKey m = Just $ deleteFindMax m
+{-# INLINABLE maxViewWithKey #-}
+
+first :: (a -> b) -> (a,c) -> (b,c)
+first f (x,y) = (f x, y)
+{-# INLINE first #-}
 
 -- | /O(log n)/. Insert a new key and value in the map.  If the key is
 -- already present in the map, the associated value is replaced with

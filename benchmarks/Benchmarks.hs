@@ -240,6 +240,22 @@ main = do
           bench "critbit" $ whnf (C.deleteFindMax) b_critbit
         , bench "map" $ whnf (Map.deleteFindMax) b_map
         ]
+      , bgroup "minView" $ [
+          bench "critbit" $ whnf C.minView b_critbit
+        , bench "map" $ whnf Map.minView b_map
+        ]
+      , bgroup "maxView" $ [
+          bench "critbit" $ whnf C.maxView b_critbit
+        , bench "map" $ whnf Map.maxView b_map
+        ]
+      , bgroup "minViewWithKey" $ [
+          bench "critbit" $ whnf C.minViewWithKey b_critbit
+        , bench "map" $ whnf Map.minViewWithKey b_map
+        ]
+      , bgroup "maxViewWithKey" $ [
+          bench "critbit" $ whnf C.minViewWithKey b_critbit
+        , bench "map" $ whnf Map.minViewWithKey b_map
+        ]
     ]
     , bgroup "text" [
         bgroup "fromList" [
