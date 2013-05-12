@@ -190,7 +190,31 @@ main = do
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
-      ]
+      , bgroup "findMin" $ [
+          bench "critbit" $ whnf (C.findMin) b_critbit
+        , bench "map" $ whnf (Map.findMin) b_map
+        ]
+      , bgroup "findMax" $ [
+          bench "critbit" $ whnf (C.findMax) b_critbit
+        , bench "map" $ whnf (Map.findMax) b_map
+        ]
+      , bgroup "deleteMin" $ [
+          bench "critbit" $ whnf (C.deleteMin) b_critbit
+        , bench "map" $ whnf (Map.deleteMin) b_map
+        ]
+      , bgroup "deleteMax" $ [
+          bench "critbit" $ whnf (C.deleteMax) b_critbit
+        , bench "map" $ whnf (Map.deleteMax) b_map
+       ]
+      , bgroup "deleteFindMin" $ [
+          bench "critbit" $ whnf (C.deleteFindMin) b_critbit
+        , bench "map" $ whnf (Map.deleteFindMin) b_map
+        ]
+      , bgroup "deleteFindMax" $ [
+          bench "critbit" $ whnf (C.deleteFindMax) b_critbit
+        , bench "map" $ whnf (Map.deleteFindMax) b_map
+        ]
+    ]
     , bgroup "text" [
         bgroup "fromList" [
           bgroup "ordered" $ fromList t_ordKVs
