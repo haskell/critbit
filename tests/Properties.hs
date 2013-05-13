@@ -115,6 +115,12 @@ t_toDescList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_toDescList _ (KV kvs) = C.toDescList (C.fromList kvs)
                          == Map.toDescList (Map.fromList kvs)
 
+t_filter :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_filter _ (KV kvs) = filteredC == filteredM
+  where p         = ( > (maxBound - minBound) `div` 2)
+        filteredC = C.toList $ C.filter p (C.fromList kvs)
+        filteredM = Map.toList $ Map.filter p (Map.fromList kvs)
+
 t_findMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_findMin _ (KV kvs)
   | null kvs  = True
@@ -174,6 +180,7 @@ propertiesFor t = [
   , testProperty "t_map" $ t_map t
   , testProperty "t_toAscList" $ t_toAscList t
   , testProperty "t_toDescList" $ t_toDescList t
+  , testProperty "t_filter" $ t_filter t
   , testProperty "t_findMin" $ t_findMin t
   , testProperty "t_findMax" $ t_findMax t
   , testProperty "t_deleteMin" $ t_deleteMin t
