@@ -17,8 +17,7 @@
 module Data.CritBit.Core
     (
     -- * Public functions
-      insert
-    , lookupWith
+      lookupWith
     , delete
     , leftmost
     , rightmost
@@ -31,41 +30,6 @@ module Data.CritBit.Core
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
 import Data.CritBit.Types.Internal
 import Data.Word (Word16)
-
--- | /O(log n)/. Insert a new key and value in the map.  If the key is
--- already present in the map, the associated value is replaced with
--- the supplied value. 'insert' is equivalent to @'insertWith'
--- 'const'@.
---
--- > insert "b" 7 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",7)]
--- > insert "x" 7 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("x",7)]
--- > insert "x" 5 empty                         == singleton "x" 5
-insert :: (CritBitKey k) => k -> v -> CritBit k v -> CritBit k v
-insert k v (CritBit root) = CritBit . go $ root
-  where
-    go i@(Internal left right _ _)
-      | direction k i == 0 = go left
-      | otherwise          = go right
-    go (Leaf lk _)         = rewalk root
-      where
-        rewalk i@(Internal left right byte otherBits)
-          | byte > n                     = finish i
-          | byte == n && otherBits > nob = finish i
-          | direction k i == 0           = i { ileft = rewalk left }
-          | otherwise                    = i { iright = rewalk right }
-        rewalk i                         = finish i
-
-        finish (Leaf _ _) | k == lk = Leaf lk v
-        finish node
-          | nd == 0   = Internal { ileft = node, iright = Leaf k v,
-                                   ibyte = n, iotherBits = nob }
-          | otherwise = Internal { ileft = Leaf k v, iright = node,
-                                   ibyte = n, iotherBits = nob }
-
-        (n, nob, c) = followPrefixes k lk
-        nd          = calcDirection nob c
-    go Empty = Leaf k v
-{-# INLINABLE insert #-}
 
 lookupWith :: (CritBitKey k) =>
               a                 -- ^ Failure continuation

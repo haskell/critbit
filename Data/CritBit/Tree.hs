@@ -29,7 +29,7 @@ module Data.CritBit.Tree
 
     -- * Insertion
     , insert
-    -- , insertWith
+    , insertWith
     , insertWithKey
     -- , insertLookupWithKey
 
@@ -531,6 +531,32 @@ deleteFindMax (CritBit root) = let (km, r) = go root in (km, CritBit r)
     go _ = error "CritBit.deleteFindMin: can not return the maximal element \
                  \of an empty map"
 {-# INLINABLE deleteFindMax #-}
+
+-- | /O(log n)/. Insert a new key and value in the map.  If the key is
+-- already present in the map, the associated value is replaced with
+-- the supplied value. 'insert' is equivalent to @'insertWith'
+-- 'const'@.
+--
+-- > insert "b" 7 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",7)]
+-- > insert "x" 7 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("x",7)]
+-- > insert "x" 5 empty                         == singleton "x" 5
+insert :: (CritBitKey k) => k -> v -> CritBit k v -> CritBit k v
+insert = insertWithKey (\_ v _ -> v)
+{-# INLINABLE insert #-}
+
+-- | /O(log n)/. Insert with a function, combining new value and old value.
+-- @'insertWith' f key value cb@
+-- will insert the pair (key, value) into @cb@ if key does
+-- not exist in the map. If the key does exist, the function will
+-- insert the pair @(key, f new_value old_value)@.
+-- 
+-- > insertWith (+) "a" 1 (fromList [("a",5), ("b",3)]) == fromList [("a",6), ("b",3)]
+-- > insertWith (+) "c" 7 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("c",7)]
+-- > insertWith (+) "x" 5 empty                         == singleton "x" 5
+--
+insertWith :: CritBitKey k => (v -> v -> v) -> k -> v -> CritBit k v -> CritBit k v
+insertWith f = insertWithKey (\_ v v' -> f v v')
+{-# INLINABLE insertWith #-}
 
 -- | /O(log n)/. Insert with a function, combining key, new value and old value. 
 -- @'insertWithKey' f key value cb@ 
