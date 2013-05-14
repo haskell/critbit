@@ -550,11 +550,12 @@ deleteFindMin (CritBit root)   = let (km, r) = go root in (km, CritBit r)
 deleteFindMax :: CritBit k v -> ((k, v), CritBit k v)
 deleteFindMax (CritBit root) = let (km, r) = go root in (km, CritBit r)
   where
-    go i@(Internal _ right _ _) = (kmin, i { iright = right' })
-      where (kmin, right') = go right
-    go (Leaf k v) = ((k, v), Empty)
-    go _ = error "CritBit.deleteFindMin: can not return the maximal element \
-                 \of an empty map"
+    go (Internal l (Leaf k v) _ _) = ((k, v), l)
+    go i@(Internal _ right _ _)    = (kmin, i { iright = newRight })
+      where (kmin, newRight)       = go right
+    go (Leaf k v)                  = ((k, v), Empty)
+    go _ = error "CritBit.deleteFindMax: can not return the maximal element \
+                  \of an empty map"
 {-# INLINABLE deleteFindMax #-}
 
 -- | /O(log n)/. Insert a new key and value in the map.  If the key is
