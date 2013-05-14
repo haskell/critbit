@@ -144,11 +144,11 @@ module Data.CritBit.Tree
     -- , maxViewWithKey
     ) where
 
-import Control.Applicative hiding (empty)
-import Control.Monad
+import Control.Applicative ((*>), (<|>), pure, liftA2)
+import Control.Monad (guard)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
-import Data.Maybe
+import Data.Maybe (fromMaybe)
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.List as List
 
