@@ -43,7 +43,8 @@ import Data.Word (Word16)
 -- > insertWithKey f "a" 1 (fromList [("a",5), ("b",3)]) == fromList [("a",7), ("b",3)]
 -- > insertWithKey f "c" 1 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("c",1)]
 -- > insertWithKey f "a" 1 empty                         == singleton "a" 1
-insertWithKey :: CritBitKey k => (k -> v -> v -> v) -> k -> v -> CritBit k v -> CritBit k v
+insertWithKey :: CritBitKey k => (k -> v -> v -> v) -> k -> v -> CritBit k v
+              -> CritBit k v
 insertWithKey f k v (CritBit root) = CritBit . go $ root
   where
     go i@(Internal left right _ _)
