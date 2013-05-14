@@ -168,7 +168,6 @@ main = do
                               [ bench "trie" $ whnf Trie.fromList b_revKVs ]
         ]
       , bgroup "delete" $ keyed C.delete Map.delete H.delete Trie.delete
-      , bgroup "oldDelete" $ keyed C.oldDelete Map.delete H.delete Trie.delete
       , bgroup "insert" $ keyed (flip C.insert 1) (flip Map.insert 1)
                                 (flip H.insert 1) (flip Trie.insert 1)
       , bgroup "insertWith" $ [

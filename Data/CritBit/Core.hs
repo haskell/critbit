@@ -20,7 +20,6 @@ module Data.CritBit.Core
       insertWithKey
     , lookupWith
     , updateWithKey
-    , oldDelete
     , leftmost
     , rightmost
     -- * Internal functions
@@ -87,35 +86,6 @@ lookupWith notFound found k (CritBit root) = go root
     go (Leaf lk v) | k == lk = found v
     go _                     = notFound
 {-# INLINE lookupWith #-}
-
--- | /O(log n)/. Delete a key and its value from the map. When the key
--- is not a member of the map, the original map is returned.
---
--- > delete "a" (fromList [("a",5), ("b",3)]) == singleton "b" 3
--- > delete "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
--- > delete "a" empty == empty
-oldDelete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
--- Once again with the continuations! It's somewhat faster to do
--- things this way than to expicitly unwind our recursion once we've
--- found the leaf to delete. It's also a ton less code.
---
--- (If you want a good little exercise, rewrite this function without
--- using continuations, and benchmark the two versions.)
-oldDelete k t@(CritBit root) = go root CritBit
-  where
-    go i@(Internal left right _ _) cont
-      | direction k i == 0 = go left $ \new ->
-                             case new of
-                               Empty -> cont right
-                               l     -> cont $! i { ileft = l }
-      | otherwise          = go right $ \new ->
-                             case new of
-                               Empty -> cont left
-                               r     -> cont $! i { iright = r }
-    go (Leaf lk _) cont
-       | k == lk = cont Empty
-    go _ _       = t
-{-# INLINABLE oldDelete #-}
 
 -- | /O(log n)/. The expression (@'updateWithKey' f k map@) updates the
 -- value @x@ at @k@ (if it is in the map). If (@f k x@) is 'Nothing',

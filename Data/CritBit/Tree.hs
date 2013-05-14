@@ -35,7 +35,6 @@ module Data.CritBit.Tree
 
     -- * Deletion
     , delete
-    , oldDelete
     -- , adjust
     -- , adjustWithKey
     -- , update
