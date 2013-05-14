@@ -472,12 +472,13 @@ filter p = filterWithKey (\_ -> p)
 --
 -- > filterWithKey (\k _ -> k > "4") (fromList [("5","a"), ("3","b")]) == fromList[("5","a")]
 filterWithKey :: (k -> v -> Bool) -> CritBit k v -> CritBit k v
-filterWithKey p (CritBit root) = CritBit $ fromMaybe Empty (go root)
-  where go Empty                  = Nothing
-        go l@(Leaf k v)           = guard (p k v) *> pure l
-        go i@(Internal l r _ _)   = let (ml, mr) = (go l, go r)
-                                    in  liftA2 modInternal ml mr <|> (ml <|> mr)
+filterWithKey p (CritBit root)    = CritBit $ fromMaybe Empty (go root)
+  where go i@(Internal l r _ _)   = liftA2 modInternal ml mr <|> (ml <|> mr)
           where modInternal nl nr = i { ileft = nl, iright = nr }
+                ml = go l
+                mr = go r
+        go l@(Leaf k v)           = guard (p k v) *> pure l
+        go Empty                  = Nothing
 {-# INLINABLE filterWithKey #-}
 
 -- | /O(log n)/. The minimal key of the map. Calls 'error' if the map
