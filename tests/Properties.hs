@@ -160,6 +160,44 @@ t_deleteFindMax _ (KV kvs) =
     deleteFindAll C.null C.deleteFindMax (C.fromList kvs) ==
     deleteFindAll Map.null Map.deleteFindMax (Map.fromList kvs)
 
+t_insert_present :: (CritBitKey k, Ord k) => k -> k -> V -> V -> KV k -> Bool
+t_insert_present _ k v v' (KV kvs) = Map.toList m == C.toList c
+  where 
+    m = Map.insert k v $ Map.insert k v' $ Map.fromList kvs
+    c =   C.insert k v $   C.insert k v' $   C.fromList kvs
+
+t_insert_missing :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
+t_insert_missing _ k v (KV kvs) = Map.toList m == C.toList c
+  where 
+    m = Map.insert k v $ Map.fromList kvs
+    c =   C.insert k v $   C.fromList kvs
+
+t_insertWith_present :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
+t_insertWith_present _ k v (KV kvs) = Map.toList m == C.toList c
+  where 
+    m = Map.insertWith (+) k v $ Map.insert k v $ Map.fromList kvs
+    c =   C.insertWith (+) k v $   C.insert k v $   C.fromList kvs
+    
+t_insertWith_missing :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
+t_insertWith_missing _ k v (KV kvs) = Map.toList m == C.toList c
+  where 
+    m = Map.insertWith (+) k v $ Map.fromList kvs
+    c =   C.insertWith (+) k v $   C.fromList kvs
+
+t_insertWithKey_present :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
+t_insertWithKey_present _ k v (KV kvs) = Map.toList m == C.toList c
+  where
+    f key v1 v2 = fromIntegral (C.byteCount key) + v1 + v2
+    m = Map.insertWithKey f k v $ Map.insert k v $ Map.fromList kvs
+    c =   C.insertWithKey f k v $   C.insert k v $   C.fromList kvs
+
+t_insertWithKey_missing :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
+t_insertWithKey_missing _ k v (KV kvs) = Map.toList m == C.toList c
+  where
+    f key v1 v2 = fromIntegral (C.byteCount key) + v1 + v2
+    m = Map.insertWithKey f k v $ Map.fromList kvs
+    c =   C.insertWithKey f k v $   C.fromList kvs
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -187,6 +225,12 @@ propertiesFor t = [
   , testProperty "t_deleteMax" $ t_deleteMax t
   , testProperty "t_deleteFindMin" $ t_deleteFindMin t
   , testProperty "t_deleteFindMax" $ t_deleteFindMax t
+  , testProperty "t_insert_present" $ t_insert_present t
+  , testProperty "t_insert_missing" $ t_insert_missing t
+  , testProperty "t_insertWith_present" $ t_insertWith_present t
+  , testProperty "t_insertWith_missing" $ t_insertWith_missing t
+  , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
+  , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   ]
 
 properties :: [Test]
