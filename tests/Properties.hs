@@ -6,6 +6,7 @@ module Properties
 import Control.Applicative ((<$>))
 import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
+import Data.List (unfoldr)
 import Data.Text (Text)
 import Data.Word (Word8)
 import Test.Framework (Test, testGroup)
@@ -107,8 +108,8 @@ t_keys _ (KV kvs) = C.keys (C.fromList kvs) == Map.keys (Map.fromList kvs)
 t_map :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_map _ (KV kvs) = mappedC == mappedM
     where fun     = show . (+3)
-          mappedC = C.toList . C.map fun $ (C.fromList kvs)
-          mappedM = Map.toList . Map.map fun $ (Map.fromList kvs)
+          mappedC = C.toList . C.map fun $ C.fromList kvs
+          mappedM = Map.toList . Map.map fun $ Map.fromList kvs
 
 t_toAscList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_toAscList _ (KV kvs) = C.toAscList (C.fromList kvs)
@@ -137,21 +138,20 @@ t_findMax _ (KV kvs)
 t_deleteMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_deleteMin _ (KV kvs) = critDelMin == mapDelMin
   where
-    critDelMin = C.toList $ C.deleteMin $ C.fromList kvs
-    mapDelMin  = Map.toList $ Map.deleteMin $ Map.fromList kvs
+    critDelMin = C.toList . C.deleteMin . C.fromList $ kvs
+    mapDelMin  = Map.toList . Map.deleteMin . Map.fromList $ kvs
 
 t_deleteMax :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_deleteMax _ (KV kvs) = critDelMax == mapDelMax
   where
-    critDelMax = C.toList $ C.deleteMax $ C.fromList kvs
-    mapDelMax  = Map.toList $ Map.deleteMax $ Map.fromList kvs
+    critDelMax = C.toList . C.deleteMax . C.fromList $ kvs
+    mapDelMax  = Map.toList . Map.deleteMax . Map.fromList $ kvs
 
 deleteFindAll :: (m -> Bool) -> (m -> (a, m)) -> m -> [a]
-deleteFindAll isEmpty deleteFind m0 = go m0
-  where
-    go m | isEmpty m = []
-         | otherwise = case deleteFind m of
-                         (x,m') -> x : go m'
+deleteFindAll isEmpty deleteFind m0 = unfoldr maybeDeleteFind m0
+  where maybeDeleteFind m
+          | isEmpty m = Nothing
+          | otherwise = Just . deleteFind $ m
 
 t_deleteFindMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_deleteFindMin _ (KV kvs) =
@@ -258,3 +258,4 @@ mlist = Map.fromList . flip zip [0..]
 
 qc :: Testable prop => Int -> prop -> IO ()
 qc n = quickCheckWith stdArgs { maxSuccess = n }
+
