@@ -190,6 +190,10 @@ main = do
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
+      , bgroup "filter" $ let p  = (< 128)
+                              p' = \e -> if p e then Just e else Nothing
+                          in  function nf (C.filter p) (Map.filter p)
+                                          (H.filter p) (Trie.filterMap p')
       , bgroup "findMin" $ [
           bench "critbit" $ whnf (C.findMin) b_critbit
         , bench "map" $ whnf (Map.findMin) b_map
