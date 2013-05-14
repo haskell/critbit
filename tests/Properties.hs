@@ -43,6 +43,9 @@ instance (CritBitKey k, Arbitrary k, Arbitrary v) =>
 newtype CB k = CB (CritBit k V)
     deriving (Show, Eq, Arbitrary)
 
+t_null :: (CritBitKey k) => k -> KV k -> Bool
+t_null _ (KV kvs) = C.null (C.fromList kvs) == null kvs
+
 t_lookup_present :: (CritBitKey k) => k -> k -> V -> CB k -> Bool
 t_lookup_present _ k v (CB m) = C.lookup k (C.insert k v m) == Just v
 
@@ -202,6 +205,7 @@ propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
   , testProperty "t_fromList_size" $ t_fromList_size t
+  , testProperty "t_null" $ t_null t
   , testProperty "t_lookup_present" $ t_lookup_present t
   , testProperty "t_lookup_missing" $ t_lookup_missing t
 #if MIN_VERSION_containers(0,5,0)
