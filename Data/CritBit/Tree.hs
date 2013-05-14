@@ -508,11 +508,7 @@ findMax (CritBit root) = rightmost emptyMap (,) root
 -- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("b",3), ("c",7)]
 -- > deleteMin empty == empty
 deleteMin :: CritBit k v -> CritBit k v
-deleteMin (CritBit root) = CritBit $ go root
-  where
-    go i@(Internal left _ _ _) = i { ileft = go left }
-    go (Leaf _ _) = Empty
-    go _  = root
+deleteMin m = updateExtremity goLeft (const (const Nothing)) m
 {-# INLINABLE deleteMin #-}
 
 -- | /O(log n)/. Delete the maximal key. Returns an empty map if the
@@ -521,11 +517,7 @@ deleteMin (CritBit root) = CritBit $ go root
 -- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("a",5), ("b","3")]
 -- > deleteMin empty == empty
 deleteMax :: CritBit k v -> CritBit k v
-deleteMax (CritBit root) = CritBit $ go root
-  where
-    go i@(Internal _ right _ _) = i { iright = go right }
-    go (Leaf _ _) = Empty
-    go _ = root
+deleteMax m = updateExtremity goRight (const (const Nothing)) m
 {-# INLINABLE deleteMax #-}
 
 -- | /O(log n)/. Delete and find the minimal element.
