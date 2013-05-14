@@ -199,6 +199,31 @@ If you forget, I'll be sad and offer you only a terse "fix your
 formatting" review, and then you'll be sad too.
 
 
+What your commits should look like
+----
+
+Please follow the guidelines below, as they make it easier to review
+your pull request and deal with your commits afterwards.
+
+* One logical idea per commit! If you want to add five functions,
+  that's fine, but please spread them across five commits.
+
+* Do not reorganize or refactor unrelated code in a commit whose
+  purpose is to add new code.
+
+* When you add a new function, add its tests and benchmarks in the
+  same commit.
+
+* Do not add trailing whitespace. Follow the same formatting and
+  naming conventions as you already see in the code around you.
+
+* Keep your maximum line length at 80 columns for everything except
+  lines of example code in documentation.
+
+(If you can't follow the guidelines, there's a good chance I'll ask
+you to fix your commits and resubmit them.)
+
+
 Setting expectations
 ====
 
