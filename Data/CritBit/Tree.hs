@@ -69,7 +69,7 @@ module Data.CritBit.Tree
     -- , traverseWithKey
     -- , mapAccum
     -- , mapAccumWithKey
-    -- , mapAccumRWithKey
+    , mapAccumRWithKey
     -- , mapKeys
     -- , mapKeysWith
     -- , mapKeysMonotonic
@@ -145,6 +145,7 @@ module Data.CritBit.Tree
     ) where
 
 import Control.Applicative ((*>), (<|>), pure, liftA2)
+import Control.Arrow (second)
 import Control.Monad (guard)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
@@ -681,3 +682,16 @@ insert = insertWithKey (\_ v _ -> v)
 insertWith :: CritBitKey k => (v -> v -> v) -> k -> v -> CritBit k v -> CritBit k v
 insertWith f = insertWithKey (\_ v v' -> f v v')
 {-# INLINABLE insertWith #-}
+
+-- | /O(n)/. The function 'mapAccumRWithKey' threads an accumulating
+-- argument through the map in descending order of keys.
+mapAccumRWithKey :: (CritBitKey k) => (a -> k -> v -> (a, w)) -> a -> CritBit k v -> (a, CritBit k w)
+mapAccumRWithKey f start (CritBit root) = second CritBit (go start root)
+  where
+    go a i@(Internal l r _ _) = let (a0, r')  = go a r
+                                    (a1, l')  = go a0 l
+                                in (a1, i { ileft = l', iright = r' })
+
+    go a (Leaf k v)           = let (a0, w) = f a k v in (a0, Leaf k w)
+    go a Empty                = (a, Empty)
+{-# INLINABLE mapAccumRWithKey #-}
