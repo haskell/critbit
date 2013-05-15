@@ -24,6 +24,7 @@ import qualified Data.HashMap.Lazy as H
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Trie as Trie
+import qualified Data.Trie.Convenience as TC
 import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Generic.Mutable as M
@@ -191,6 +192,19 @@ main = do
           , bench "map" $ whnf (Map.insertWithKey f key 1) b_map_1
           ]
         ] 
+      , bgroup "updateWithKey" $
+        let f k v = Just (v + fromIntegral (C.byteCount k)) in [
+          bgroup "present" [
+            bench "critbit" $ whnf (C.updateWithKey f key) b_critbit
+          , bench "map" $ whnf (Map.updateWithKey f key) b_map
+          , bench "trie" $ whnf (TC.updateWithKey f key) b_trie
+          ]
+        , bgroup "missing" [
+            bench "critbit" $ whnf (C.updateWithKey f key) b_critbit_1
+          , bench "map" $ whnf (Map.updateWithKey f key) b_map_1
+          , bench "trie" $ whnf (TC.updateWithKey f key) b_trie_1
+          ]
+        ]
       , bgroup "lookup" $ keyed C.lookup Map.lookup H.lookup Trie.lookup
 #if MIN_VERSION_containers(0,5,0)
       , bgroup "lookupGT" $ [

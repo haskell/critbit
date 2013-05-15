@@ -74,6 +74,30 @@ t_delete_present _ (KV kvs) k v =
     c = C.insert k v $ C.fromList kvs
     m = Map.insert k v $ Map.fromList kvs
 
+t_updateWithKey_general :: (CritBitKey k) 
+                        => (k -> V -> CritBit k V -> CritBit k V) 
+                        -> k -> V -> CB k -> Bool
+t_updateWithKey_general h k0 v0 (CB m0) =
+    C.updateWithKey f k0 m1 == naiveUpdateWithKey f k0 m1
+  where
+    m1 = h k0 v0 m0
+    naiveUpdateWithKey g k m =
+      case C.lookup k m of
+        Just v  -> case g k v of
+                     Just v' -> C.insert k v' m
+                     Nothing -> C.delete k m
+        Nothing -> m
+    f k x
+      | even (fromIntegral x :: Int) =
+        Just (x + fromIntegral (C.byteCount k))
+      | otherwise = Nothing
+
+t_updateWithKey_present :: (CritBitKey k) => k -> V -> CB k -> Bool
+t_updateWithKey_present = t_updateWithKey_general C.insert
+
+t_updateWithKey_missing :: (CritBitKey k) => k -> V -> CB k -> Bool
+t_updateWithKey_missing = t_updateWithKey_general (\k _v m -> C.delete k m)
+
 t_unionL :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
 t_unionL _ (KV kv0) (KV kv1) =
     Map.toList (Map.fromList kv0 `Map.union` Map.fromList kv1) ==
@@ -212,6 +236,8 @@ propertiesFor t = [
   , testProperty "t_lookupGT" $ t_lookupGT t
 #endif
   , testProperty "t_delete_present" $ t_delete_present t
+  , testProperty "t_updateWithKey_present" $ t_updateWithKey_present t
+  , testProperty "t_updateWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_unionL" $ t_unionL t
   , testProperty "t_foldl" $ t_foldl t
   , testProperty "t_foldlWithKey" $ t_foldlWithKey t
