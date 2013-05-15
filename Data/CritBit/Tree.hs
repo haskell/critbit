@@ -70,7 +70,7 @@ module Data.CritBit.Tree
     -- , mapAccum
     -- , mapAccumWithKey
     -- , mapAccumRWithKey
-    -- , mapKeys
+    , mapKeys
     -- , mapKeysWith
     -- , mapKeysMonotonic
 
@@ -454,6 +454,11 @@ union a b = unionL a b
 map :: (CritBitKey k) => (v -> w) -> CritBit k v -> CritBit k w
 map = fmap
 
+mapKeys :: (CritBitKey k1, CritBitKey k2) =>
+           (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
+mapKeys f = foldrWithKey g empty
+  where g k x m = insert (f k) x m
+
 -- | /O(n)/. Convert the map to a list of key/value pairs where the keys are in
 -- ascending order.
 --
@@ -638,8 +643,8 @@ updateMaxWithKey f m = updateExtremity goRight f m
 {-# INLINABLE updateMaxWithKey #-}
 
 updateExtremity :: ((Node k v -> Node k v) -> Node k v -> Node k v)
-                -> (k -> v -> Maybe v) 
-                -> CritBit k v 
+                -> (k -> v -> Maybe v)
+                -> CritBit k v
                 -> CritBit k v
 updateExtremity dir maybeUpdate (CritBit root) = CritBit $ go root
   where

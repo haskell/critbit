@@ -7,6 +7,7 @@ import Control.Applicative ((<$>))
 import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
 import Data.List (unfoldr)
+import Data.String (IsString, fromString)
 import Data.Text (Text)
 import Data.Word (Word8)
 import Test.Framework (Test, testGroup)
@@ -74,8 +75,8 @@ t_delete_present _ (KV kvs) k v =
     c = C.insert k v $ C.fromList kvs
     m = Map.insert k v $ Map.fromList kvs
 
-t_updateWithKey_general :: (CritBitKey k) 
-                        => (k -> V -> CritBit k V -> CritBit k V) 
+t_updateWithKey_general :: (CritBitKey k)
+                        => (k -> V -> CritBit k V -> CritBit k V)
                         -> k -> V -> CB k -> Bool
 t_updateWithKey_general h k0 v0 (CB m0) =
     C.updateWithKey f k0 m1 == naiveUpdateWithKey f k0 m1
@@ -134,6 +135,14 @@ t_map _ (KV kvs) = mappedC == mappedM
     where fun     = show . (+3)
           mappedC = C.toList . C.map fun $ C.fromList kvs
           mappedM = Map.toList . Map.map fun $ Map.fromList kvs
+
+t_mapKeys :: (CritBitKey k, Ord k, IsString k, Show k) => k -> KV k -> Bool
+t_mapKeys _ (KV kvs) = mappedC == mappedM
+  where
+    f :: (CritBitKey k, Ord k, IsString k, Show k) => k -> k
+    f       = fromString . (++ "test") . show
+    mappedC = C.toList . C.mapKeys f $ C.fromList kvs
+    mappedM = Map.toList . Map.mapKeys f $ Map.fromList kvs
 
 t_toAscList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_toAscList _ (KV kvs) = C.toAscList (C.fromList kvs)
@@ -201,7 +210,7 @@ t_minViewWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_minViewWithKey _ (KV kvs) =
   unfoldr C.minViewWithKey (C.fromList kvs) ==
   unfoldr Map.minViewWithKey (Map.fromList kvs)
-  
+
 t_maxViewWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_maxViewWithKey _ (KV kvs) =
   unfoldr C.maxViewWithKey (C.fromList kvs) ==
@@ -283,6 +292,7 @@ propertiesFor t = [
   , testProperty "t_elems" $ t_elems t
   , testProperty "t_keys" $ t_keys t
   , testProperty "t_map" $ t_map t
+  , testProperty "t_mapKeys" $ t_map t
   , testProperty "t_toAscList" $ t_toAscList t
   , testProperty "t_toDescList" $ t_toDescList t
   , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
@@ -327,4 +337,3 @@ mlist = Map.fromList . flip zip [0..]
 
 qc :: Testable prop => Int -> prop -> IO ()
 qc n = quickCheckWith stdArgs { maxSuccess = n }
-
