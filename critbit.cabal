@@ -1,10 +1,21 @@
 name:           critbit
-version:        0.0.0.0
+version:        0.1.0.0
 homepage:       https://github.com/bos/critbit
 bug-reports:    https://github.com/bos/critbit/issues
 synopsis:       Crit-bit maps and sets
 description:
-    Whee.
+    This package implements crit-bit trees, a key-value container type
+    for storing keys that can be treated as bitstrings (e.g.
+    'ByteString' and 'Text').
+    .
+    Compared to the data structures from the containers and
+    unordered-containers packages, you will find that sometimes the
+    functions implemented in this package are faster, sometimes
+    slower.
+    .
+    In many cases, a 'CritBit' tree provides performance close to that
+    of a 'HashMap', while providing ordered storage and traversal
+    like a 'Map'.
 license:        BSD3
 license-file:   LICENSE
 author:         Bryan O'Sullivan <bos@serpentine.com>
