@@ -38,7 +38,7 @@ module Data.CritBit.Tree
     -- , adjust
     -- , adjustWithKey
     -- , update
-    -- , updateWithKey
+    , updateWithKey
     -- , updateLookupWithKey
     -- , alter
 
@@ -221,6 +221,16 @@ notMember k m = lookupWith True (const False) k m
 lookup :: (CritBitKey k) => k -> CritBit k v -> Maybe v
 lookup k m = lookupWith Nothing Just k m
 {-# INLINABLE lookup #-}
+
+-- | /O(log n)/. Delete a key and its value from the map. When the key
+-- is not a member of the map, the original map is returned.
+--
+-- > delete "a" (fromList [("a",5), ("b",3)]) == singleton "b" 3
+-- > delete "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
+-- > delete "a" empty                         == empty
+delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
+delete = updateWithKey (\_k _v -> Nothing)
+{-# INLINABLE delete #-}
 
 -- | /O(log n)/. Returns the value associated with the given key, or
 -- the given default value if the key is not in the map.

@@ -19,7 +19,7 @@ module Data.CritBit.Core
     -- * Public functions
       insertWithKey
     , lookupWith
-    , delete
+    , updateWithKey
     , leftmost
     , rightmost
     -- * Internal functions
@@ -87,20 +87,24 @@ lookupWith notFound found k (CritBit root) = go root
     go _                     = notFound
 {-# INLINE lookupWith #-}
 
--- | /O(log n)/. Delete a key and its value from the map. When the key
--- is not a member of the map, the original map is returned.
+-- | /O(log n)/. The expression (@'updateWithKey' f k map@) updates the
+-- value @x@ at @k@ (if it is in the map). If (@f k x@) is 'Nothing',
+-- the element is deleted. If it is (@'Just' y@), the key @k@ is bound
+-- to the new value @y@.
 --
--- > delete "a" (fromList [("a",5), ("b",3)]) == singleton "b" 3
--- > delete "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
--- > delete "a" empty                         == empty
-delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
+-- > let f k x = if x == 5 then Just (x + fromEnum (k < "d")) else Nothing
+-- > updateWithKey f "a" (fromList [("b",3), ("a",5)]) == fromList [("a", 6), ("b",3)]
+-- > updateWithKey f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
+-- > updateWithKey f "b" (fromList [("a",5), ("b",3)]) == singleton "a" 5
+updateWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k -> CritBit k v
+              -> CritBit k v
 -- Once again with the continuations! It's somewhat faster to do
 -- things this way than to expicitly unwind our recursion once we've
 -- found the leaf to delete. It's also a ton less code.
 --
 -- (If you want a good little exercise, rewrite this function without
 -- using continuations, and benchmark the two versions.)
-delete k t@(CritBit root) = go root CritBit
+updateWithKey f k t@(CritBit root) = go root CritBit
   where
     go i@(Internal left right _ _) cont
       | direction k i == 0 = go left $ \new ->
@@ -111,10 +115,12 @@ delete k t@(CritBit root) = go root CritBit
                              case new of
                                Empty -> cont left
                                r     -> cont $! i { iright = r }
-    go (Leaf lk _) cont
-       | k == lk = cont Empty
-    go _ _       = t
-{-# INLINABLE delete #-}
+    go (Leaf lk lv) cont
+      | k == lk = case f k lv of
+                    Just lv' -> cont (Leaf lk lv')
+                    Nothing  -> cont Empty
+    go _ _      = t
+{-# INLINABLE updateWithKey #-}
 
 -- | Determine which direction we should move down the tree based on
 -- the critical bitmask at the current node and the corresponding byte
