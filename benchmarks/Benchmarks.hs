@@ -235,6 +235,10 @@ main = do
           bench "critbit" $ whnf (C.mapAccumWithKey mapAccumFKey 0) b_critbit
         , bench "map" $ whnf (Map.mapAccumWithKey mapAccumFKey 0) b_map
         ]
+      , bgroup "mapAccumRWithKey" $ [
+          bench "critbit" $ whnf (C.mapAccumRWithKey mapAccumFKey 0) b_critbit
+        , bench "map" $ whnf (Map.mapAccumRWithKey mapAccumFKey 0) b_map
+        ]
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id

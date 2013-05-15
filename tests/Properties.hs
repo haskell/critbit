@@ -144,6 +144,14 @@ t_mapAccumWithKey _ (KV kvs) = mappedC == mappedM
         mappedM = second Map.toList . Map.mapAccumWithKey fun (0 :: Int) $ 
                   (Map.fromList kvs)
 
+t_mapAccumRWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapAccumRWithKey _ (KV kvs) = mappedC == mappedM
+  where fun i _ v = (i + 1, show $ v + 3)
+        mappedC = second C.toList . C.mapAccumRWithKey fun (0 :: Int) $
+                  (C.fromList kvs)
+        mappedM = second Map.toList . Map.mapAccumRWithKey fun (0 :: Int) $
+                  (Map.fromList kvs)
+
 t_toAscList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_toAscList _ (KV kvs) = C.toAscList (C.fromList kvs)
                          == Map.toAscList (Map.fromList kvs)
@@ -293,6 +301,7 @@ propertiesFor t = [
   , testProperty "t_keys" $ t_keys t
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t
+  , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t 
   , testProperty "t_toAscList" $ t_toAscList t
   , testProperty "t_toDescList" $ t_toDescList t
   , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
