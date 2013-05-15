@@ -454,10 +454,19 @@ union a b = unionL a b
 map :: (CritBitKey k) => (v -> w) -> CritBit k v -> CritBit k w
 map = fmap
 
+-- | /O(n*log n)/.
+-- @mapKeys f@ applies the function @f@ to the keys of the map.
+--
+-- If @f@ maps multiple keys to the same new key, the new key is
+-- associated with the value of the greatest of the original keys.
+--
+-- > let f = fromString . (++ "1") . show
+-- > mapKeys f (fromList [("a", 5), ("b", 3)])            == fromList ([("a1", 5), ("b1", 3)])
+-- > mapKeys (\ _ -> "a") (fromList [("a", 5), ("b", 3)]) == singleton "a" 3
 mapKeys :: (CritBitKey k1, CritBitKey k2) =>
            (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
 mapKeys f = foldrWithKey g empty
-  where g k x m = insert (f k) x m
+  where g k x m = insertWithKey (\_ _ x0 -> x0) (f k) x m
 
 -- | /O(n)/. Convert the map to a list of key/value pairs where the keys are in
 -- ascending order.
