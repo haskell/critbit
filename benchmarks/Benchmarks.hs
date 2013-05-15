@@ -8,6 +8,7 @@ import Control.Monad (when)
 import Control.Monad.Trans (liftIO)
 import Criterion.Main (bench, bgroup, defaultMain, nf, whnf)
 import Criterion.Types (Pure)
+import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..), hashByteArray)
 import Data.Maybe (fromMaybe)
 import Data.Text.Array (aBA)
@@ -283,6 +284,12 @@ main = do
           bench "critbit" $ whnf (C.updateMax updateFVal) b_critbit
         , bench "map" $ whnf (Map.updateMax updateFVal) b_map
         ]
+      , bgroup "traverseWithKey" $ let f _ = Identity . (+3)
+                                   in function nf 
+                                        (runIdentity . C.traverseWithKey f) 
+                                        (runIdentity . Map.traverseWithKey f)
+                                        (runIdentity . H.traverseWithKey f)
+                                        (fmap f)
       , bgroup "updateMinWithKey" $ [
           bench "critbit" $ whnf (C.updateMinWithKey updateFKey) b_critbit
         , bench "map" $ whnf (Map.updateMinWithKey updateFKey) b_map
