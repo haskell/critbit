@@ -187,6 +187,43 @@ t_deleteFindMax _ (KV kvs) =
     deleteFindAll C.null C.deleteFindMax (C.fromList kvs) ==
     deleteFindAll Map.null Map.deleteFindMax (Map.fromList kvs)
 
+t_minView :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_minView _ (KV kvs) =
+  unfoldr C.minView (C.fromList kvs) ==
+  unfoldr Map.minView (Map.fromList kvs)
+
+t_maxView :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_maxView _ (KV kvs) =
+  unfoldr C.maxView (C.fromList kvs) ==
+  unfoldr Map.maxView (Map.fromList kvs)
+
+t_minViewWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_minViewWithKey _ (KV kvs) =
+  unfoldr C.minViewWithKey (C.fromList kvs) ==
+  unfoldr Map.minViewWithKey (Map.fromList kvs)
+  
+t_maxViewWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_maxViewWithKey _ (KV kvs) =
+  unfoldr C.maxViewWithKey (C.fromList kvs) ==
+  unfoldr Map.maxViewWithKey (Map.fromList kvs)
+
+updateFun :: Integral v => k -> v -> Maybe v
+updateFun _ v
+  | v `rem` 2 == 0 = Nothing
+  | otherwise = Just (v + 1)
+
+t_updateMinWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_updateMinWithKey _ (KV kvs) = critUpdate == mapUpdate
+  where
+    critUpdate = C.toList $ C.updateMinWithKey  updateFun $ C.fromList kvs
+    mapUpdate  = Map.toList $ Map.updateMinWithKey updateFun $ Map.fromList kvs
+
+t_updateMaxWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_updateMaxWithKey _ (KV kvs) = critUpdate == mapUpdate
+  where
+    critUpdate = C.toList $ C.updateMaxWithKey  updateFun $ C.fromList kvs
+    mapUpdate  = Map.toList $ Map.updateMaxWithKey updateFun $ Map.fromList kvs
+
 t_insert_present :: (CritBitKey k, Ord k) => k -> k -> V -> V -> KV k -> Bool
 t_insert_present _ k v v' (KV kvs) = Map.toList m == C.toList c
   where
@@ -257,6 +294,12 @@ propertiesFor t = [
   , testProperty "t_deleteMax" $ t_deleteMax t
   , testProperty "t_deleteFindMin" $ t_deleteFindMin t
   , testProperty "t_deleteFindMax" $ t_deleteFindMax t
+  , testProperty "t_minView" $ t_minView t
+  , testProperty "t_maxView" $ t_maxView t
+  , testProperty "t_minViewWithKey" $ t_minViewWithKey t
+  , testProperty "t_maxViewWithKey" $ t_maxViewWithKey t
+  , testProperty "t_updateMinWithKey" $ t_updateMinWithKey t
+  , testProperty "t_updateMaxWithKey" $ t_updateMaxWithKey t
   , testProperty "t_insert_present" $ t_insert_present t
   , testProperty "t_insert_missing" $ t_insert_missing t
   , testProperty "t_insertWith_present" $ t_insertWith_present t

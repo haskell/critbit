@@ -134,14 +134,14 @@ module Data.CritBit.Tree
     , deleteMax
     , deleteFindMin
     , deleteFindMax
-    -- , updateMin
-    -- , updateMax
-    -- , updateMinWithKey
-    -- , updateMaxWithKey
-    -- , minView
-    -- , maxView
-    -- , minViewWithKey
-    -- , maxViewWithKey
+    , updateMin
+    , updateMax
+    , updateMinWithKey
+    , updateMaxWithKey
+    , minView
+    , maxView
+    , minViewWithKey
+    , maxViewWithKey
     ) where
 
 import Control.Applicative ((*>), (<|>), pure, liftA2)
@@ -518,11 +518,7 @@ findMax (CritBit root) = rightmost emptyMap (,) root
 -- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("b",3), ("c",7)]
 -- > deleteMin empty == empty
 deleteMin :: CritBit k v -> CritBit k v
-deleteMin (CritBit root) = CritBit $ go root
-  where
-    go i@(Internal left _ _ _) = i { ileft = go left }
-    go (Leaf _ _) = Empty
-    go _  = root
+deleteMin m = updateExtremity goLeft (const (const Nothing)) m
 {-# INLINABLE deleteMin #-}
 
 -- | /O(log n)/. Delete the maximal key. Returns an empty map if the
@@ -531,11 +527,7 @@ deleteMin (CritBit root) = CritBit $ go root
 -- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("a",5), ("b","3")]
 -- > deleteMin empty == empty
 deleteMax :: CritBit k v -> CritBit k v
-deleteMax (CritBit root) = CritBit $ go root
-  where
-    go i@(Internal _ right _ _) = i { iright = go right }
-    go (Leaf _ _) = Empty
-    go _ = root
+deleteMax m = updateExtremity goRight (const (const Nothing)) m
 {-# INLINABLE deleteMax #-}
 
 -- | /O(log n)/. Delete and find the minimal element.
@@ -567,6 +559,102 @@ deleteFindMax (CritBit root) = let (km, r) = go root in (km, CritBit r)
     go _ = error "CritBit.deleteFindMax: can not return the maximal element \
                   \of an empty map"
 {-# INLINABLE deleteFindMax #-}
+
+-- | /O(log n)/. Retrieves the value associated with minimal key of the
+-- map, and the map stripped of that element, or 'Nothing' if passed an
+-- empty map.
+--
+-- > minView (fromList [("a",5), ("b",3)]) == Just (5, fromList [("b",3)])
+-- > minView empty == Nothing
+minView :: CritBit k v -> Maybe (v, CritBit k v)
+minView (CritBit Empty) = Nothing
+minView m = Just $ first snd $ deleteFindMin m
+{-# INLINABLE minView #-}
+
+-- | /O(log n)/. Retrieves the value associated with maximal key of the
+-- map, and the map stripped of that element, or 'Nothing' if passed an
+--
+-- > maxView (fromList [("a",5), ("b",3)]) == Just (3, fromList [("a",5)])
+-- > maxView empty == Nothing
+maxView :: CritBit k v -> Maybe (v, CritBit k v)
+maxView (CritBit Empty) = Nothing
+maxView m = Just $ first snd $ deleteFindMax m
+{-# INLINABLE maxView #-}
+
+-- | /O(log n)/. Retrieves the minimal (key,value) pair of the map, and
+-- the map stripped of that element, or 'Nothing' if passed an empty map.
+--
+-- > minViewWithKey (fromList [("a",5), ("b",3)]) == Just (("a",5), fromList [("b",3)])
+-- > minViewWithKey empty == Nothing
+minViewWithKey :: CritBit k v -> Maybe ((k, v), CritBit k v)
+minViewWithKey (CritBit Empty) = Nothing
+minViewWithKey m = Just $ deleteFindMin m
+{-# INLINABLE minViewWithKey #-}
+
+-- | /O(log n)/. Retrieves the maximal (key,value) pair of the map, and
+-- the map stripped of that element, or 'Nothing' if passed an empty map.
+--
+-- > maxViewWithKey (fromList [("a",5), ("b",3)]) == Just (("b",3), fromList [("a",5)])
+-- > maxViewWithKey empty == Nothing
+maxViewWithKey :: CritBit k v -> Maybe ((k,v), CritBit k v)
+maxViewWithKey (CritBit Empty) = Nothing
+maxViewWithKey m = Just $ deleteFindMax m
+{-# INLINABLE maxViewWithKey #-}
+
+first :: (a -> b) -> (a,c) -> (b,c)
+first f (x,y) = (f x, y)
+{-# INLINE first #-}
+
+-- | /O(log n)/. Update the value at the minimal key.
+--
+-- > updateMin (\ a -> Just (a + 7)) (fromList [("a",5), ("b",3)]) == fromList [("a",12), ("b",3)]
+-- > updateMin (\ _ -> Nothing)      (fromList [("a",5), ("b",3)]) == fromList [("b",3)]
+updateMin :: (v -> Maybe v) -> CritBit k v -> CritBit k v
+updateMin f m = updateExtremity goLeft (const f) m
+{-# INLINABLE updateMin #-}
+
+-- | /O(log n)/. Update the value at the maximal key.
+--
+-- > updateMax (\ a -> Just (a + 7)) (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",10)]
+-- > updateMax (\ _ -> Nothing)      (fromList [("a",5), ("b",3)]) == fromList [("a",5)]
+updateMax :: (v -> Maybe v) -> CritBit k v -> CritBit k v
+updateMax f m = updateExtremity goRight (const f) m
+{-# INLINABLE updateMax #-}
+
+-- | /O(log n)/. Update the value at the minimal key.
+--
+-- > updateMinWithKey (\ k a -> Just (length k + a)) (fromList [("a",5), ("b",3)]) == fromList [("a",6), ("b",3)]
+-- > updateMinWithKey (\ _ _ -> Nothing)             (fromList [("a",5), ("b",3)]) == fromList [("b",3)]
+updateMinWithKey :: (k -> v -> Maybe v) -> CritBit k v -> CritBit k v
+updateMinWithKey f m = updateExtremity goLeft f m
+{-# INLINABLE updateMinWithKey #-}
+
+-- | /O(log n)/. Update the value at the maximal key.
+--
+-- > updateMaxWithKey (\ k a -> Just (length k + a)) (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",4)]
+-- > updateMaxWithKey (\ _ _ -> Nothing)             (fromList [("a",5), ("b",3)]) == fromList [("a",5)]
+updateMaxWithKey :: (k -> v -> Maybe v) -> CritBit k v -> CritBit k v
+updateMaxWithKey f m = updateExtremity goRight f m
+{-# INLINABLE updateMaxWithKey #-}
+
+updateExtremity :: ((Node k v -> Node k v) -> Node k v -> Node k v)
+                -> (k -> v -> Maybe v) 
+                -> CritBit k v 
+                -> CritBit k v
+updateExtremity dir maybeUpdate (CritBit root) = CritBit $ go root
+  where
+    go i@(Internal {}) = dir go i
+    go (Leaf k v0)     = maybe Empty (Leaf k) (maybeUpdate k v0)
+    go _               = root
+{-# INLINE updateExtremity #-}
+
+goLeft, goRight :: (Node k v -> Node k v) -> Node k v -> Node k v
+goLeft f n = n { ileft = f l }
+  where l = ileft n
+{-# INLINE goLeft #-}
+goRight f n = n { iright = f r }
+  where r = iright n
+{-# INLINE goRight #-}
 
 -- | /O(log n)/. Insert a new key and value in the map.  If the key is
 -- already present in the map, the associated value is replaced with

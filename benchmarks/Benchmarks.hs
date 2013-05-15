@@ -75,6 +75,11 @@ chartres = do
         putStrLn $ show prob ++ " " ++ show (fromIntegral mismatches / nxs)
   mapM_ go [0..100]
 
+updateFKey :: Num v => k -> v -> Maybe v
+updateFKey _ v = Just $ v + 1
+
+updateFVal :: Num v => v -> Maybe v
+updateFVal v = updateFKey undefined v
 
 main = do
   fileName <- getEnv "WORDS" `Exc.catch` \(_::IOError) ->
@@ -253,6 +258,38 @@ main = do
       , bgroup "deleteFindMax" $ [
           bench "critbit" $ whnf (C.deleteFindMax) b_critbit
         , bench "map" $ whnf (Map.deleteFindMax) b_map
+        ]
+      , bgroup "minView" $ [
+          bench "critbit" $ whnf C.minView b_critbit
+        , bench "map" $ whnf Map.minView b_map
+        ]
+      , bgroup "maxView" $ [
+          bench "critbit" $ whnf C.maxView b_critbit
+        , bench "map" $ whnf Map.maxView b_map
+        ]
+      , bgroup "minViewWithKey" $ [
+          bench "critbit" $ whnf C.minViewWithKey b_critbit
+        , bench "map" $ whnf Map.minViewWithKey b_map
+        ]
+      , bgroup "maxViewWithKey" $ [
+          bench "critbit" $ whnf C.minViewWithKey b_critbit
+        , bench "map" $ whnf Map.minViewWithKey b_map
+        ]
+      , bgroup "updateMin" $ [
+          bench "critbit" $ whnf (C.updateMin updateFVal) b_critbit
+        , bench "map" $ whnf (Map.updateMin updateFVal) b_map
+        ]
+      , bgroup "updateMax" $ [
+          bench "critbit" $ whnf (C.updateMax updateFVal) b_critbit
+        , bench "map" $ whnf (Map.updateMax updateFVal) b_map
+        ]
+      , bgroup "updateMinWithKey" $ [
+          bench "critbit" $ whnf (C.updateMinWithKey updateFKey) b_critbit
+        , bench "map" $ whnf (Map.updateMinWithKey updateFKey) b_map
+        ]
+      , bgroup "updateMaxWithKey" $ [
+          bench "critbit" $ whnf (C.updateMaxWithKey updateFKey) b_critbit
+        , bench "map" $ whnf (Map.updateMaxWithKey updateFKey) b_map
         ]
     ]
     , bgroup "text" [
