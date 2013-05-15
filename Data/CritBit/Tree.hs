@@ -67,7 +67,7 @@ module Data.CritBit.Tree
     , map
     -- , mapWithKey
     -- , traverseWithKey
-    -- , mapAccum
+    , mapAccum
     , mapAccumWithKey
     -- , mapAccumRWithKey
     -- , mapKeys
@@ -682,6 +682,19 @@ insert = insertWithKey (\_ v _ -> v)
 insertWith :: CritBitKey k => (v -> v -> v) -> k -> v -> CritBit k v -> CritBit k v
 insertWith f = insertWithKey (\_ v v' -> f v v')
 {-# INLINABLE insertWith #-}
+
+-- | /O(n)/. The function 'mapAccum' threads an accumulating
+-- argument through the map in ascending order of keys.
+--
+-- > let f a b = (a ++ (show b), (show b) ++ "X")
+-- > mapAccum f "Everything: " (fromList [("a", 5), ("b", 3)]) == ("Everything: 53", fromList [("a", "5X"), ("b", "3X")])
+mapAccum :: (CritBitKey k) 
+         => (a -> v -> (a, w)) 
+         -> a 
+         -> CritBit k v 
+         -> (a, CritBit k w)
+mapAccum f = mapAccumWithKey (\a _ v -> f a v)
+{-# INLINE mapAccum #-}
 
 -- | /O(n)/. The function 'mapAccumWithKey' threads an accumulating
 -- argument through the map in ascending order of keys.
