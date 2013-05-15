@@ -196,7 +196,7 @@ main = do
             bench "critbit" $ whnf (C.insertWithKey f key 1) b_critbit_1
           , bench "map" $ whnf (Map.insertWithKey f key 1) b_map_1
           ]
-        ] 
+        ]
       , bgroup "updateWithKey" $
         let f k v = Just (v + fromIntegral (C.byteCount k)) in [
           bgroup "present" [
@@ -228,6 +228,10 @@ main = do
       , bgroup "keys" $ function nf C.keys Map.keys H.keys Trie.keys
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
+      , bgroup "mapKeys" $ let f k = B.pack (show k ++ "test") in [
+          bench "critbit" $ nf (C.mapKeys f) b_critbit
+        , bench "map" $ nf (Map.mapKeys f) b_map
+        ]
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
