@@ -103,6 +103,11 @@ t_unionL _ (KV kv0) (KV kv1) =
     Map.toList (Map.fromList kv0 `Map.union` Map.fromList kv1) ==
     C.toList (C.fromList kv0 `C.unionL` C.fromList kv1)
 
+t_unionWith :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_unionWith _ (KV kv0) (KV kv1) =
+    Map.toList (Map.unionWith (-) (Map.fromList kv0) (Map.fromList kv1)) ==
+    C.toList (C.unionWith (-) (C.fromList kv0) (C.fromList kv1))
+
 t_unionWithKey :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
 t_unionWithKey _ (KV kv0) (KV kv1) =
     Map.toList (Map.unionWithKey f (Map.fromList kv0) (Map.fromList kv1)) ==
@@ -283,6 +288,7 @@ propertiesFor t = [
   , testProperty "t_updateWithKey_present" $ t_updateWithKey_present t
   , testProperty "t_updateWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_unionL" $ t_unionL t
+  , testProperty "t_unionWith" $ t_unionWith t
   , testProperty "t_unionWithKey" $ t_unionWithKey t
   , testProperty "t_foldl" $ t_foldl t
   , testProperty "t_foldlWithKey" $ t_foldlWithKey t
