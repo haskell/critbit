@@ -437,11 +437,11 @@ keys m = foldrWithKey f [] m
   where f k _ ks = k : ks
 
 unionL :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
-unionL a b = foldlWithKey' (\m k v -> insert k v m) b a
+unionL a b = unionWithKey (\_ x _ -> x) a b
 {-# INLINABLE unionL #-}
 
 unionR :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
-unionR a b = foldlWithKey' (\m k v -> insert k v m) a b
+unionR a b = unionWithKey (\_ x _ -> x) b a
 {-# INLINABLE unionR #-}
 
 union :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
