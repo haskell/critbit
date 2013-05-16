@@ -47,7 +47,7 @@ module Data.CritBit.Tree
     , union
     , unionWith
     , unionWithKey
-    -- , unions
+    , unions
     -- , unionsWith
     , unionL
     , unionR
@@ -464,6 +464,9 @@ unionWith f a b = unionWithKey (const f) a b
 -- > unionWithKey f l r == fromList [("A",5),("C",7),("a",5),("b",3)]
 unionWithKey :: (CritBitKey k) => (k -> v -> v -> v) -> CritBit k v -> CritBit k v -> CritBit k v
 unionWithKey f a b = foldlWithKey' (\m k v -> insertWithKey f k v m) b a
+
+unions :: (CritBitKey k) => [CritBit k v] -> CritBit k v
+unions cs = List.foldl' union empty cs
 
 -- | /O(n)/. Apply a function to all values.
 --
