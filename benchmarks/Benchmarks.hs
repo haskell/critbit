@@ -230,8 +230,8 @@ main = do
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       , bgroup "unionWithKey" $ let f _ a b = a + b in [
-            bench "critbit" $ whnf (C.unionWithKey f b_critbit_13) b_critbit_23
-          , bench "map" $ whnf (Map.unionWithKey f b_map_13) b_map_23
+          bench "critbit" $ whnf (C.unionWithKey f b_critbit_13) b_critbit_23
+        , bench "map" $ whnf (Map.unionWithKey f b_map_13) b_map_23
         ]
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
