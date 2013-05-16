@@ -6,7 +6,9 @@ module Properties
 import Control.Applicative ((<$>))
 import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
+import Data.Foldable (foldMap)
 import Data.List (unfoldr)
+import Data.Monoid (Sum(..))
 import Data.Text (Text)
 import Data.Word (Word8)
 import Test.Framework (Test, testGroup)
@@ -262,6 +264,12 @@ t_insertWithKey_missing _ k v (KV kvs) = Map.toList m == C.toList c
     m = Map.insertWithKey f k v $ Map.fromList kvs
     c =   C.insertWithKey f k v $   C.fromList kvs
 
+t_foldMap :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldMap _ (KV kvs) = foldMap Sum c == foldMap Sum m
+  where
+    c = C.fromList kvs
+    m = Map.fromList kvs
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -306,6 +314,7 @@ propertiesFor t = [
   , testProperty "t_insertWith_missing" $ t_insertWith_missing t
   , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
+  , testProperty "t_foldMap" $ t_foldMap t
   ]
 
 properties :: [Test]
