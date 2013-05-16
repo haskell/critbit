@@ -127,6 +127,13 @@ t_unions _ kvs0 =
   where
     kvs = map fromKV kvs0
 
+t_unionsWith :: (CritBitKey k, Ord k) => k -> [KV k] -> Bool
+t_unionsWith _ kvs0 =
+    Map.toList (Map.unionsWith (-) (map Map.fromList kvs)) ==
+    C.toList (C.unionsWith (-) (map C.fromList kvs))
+  where
+    kvs = map fromKV kvs0
+
 t_foldl :: (CritBitKey k) => k -> CritBit k V -> Bool
 t_foldl _ m = C.foldl (+) 0 m == C.foldr (+) 0 m
 
@@ -304,6 +311,7 @@ propertiesFor t = [
   , testProperty "t_unionWith" $ t_unionWith t
   , testProperty "t_unionWithKey" $ t_unionWithKey t
   , testProperty "t_unions" $ t_unions t
+  , testProperty "t_unionsWith" $ t_unionsWith t
   , testProperty "t_foldl" $ t_foldl t
   , testProperty "t_foldlWithKey" $ t_foldlWithKey t
   , testProperty "t_foldl'" $ t_foldl' t

@@ -241,6 +241,10 @@ main = do
           bench "critbit" $ whnf C.unions [b_critbit_13, b_critbit_23]
         , bench "map" $ whnf Map.unions [b_map_13, b_map_23]
         ]
+      , bgroup "unionsWith" [
+          bench "critbit" $ whnf (C.unionsWith (+)) [b_critbit_13, b_critbit_23]
+        , bench "map" $ whnf (Map.unionsWith (+)) [b_map_13, b_map_23]
+        ]
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
       , bgroup "filter" $ let p  = (< 128)
