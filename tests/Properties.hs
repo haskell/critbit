@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Properties
     where
@@ -10,6 +10,7 @@ import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
 import Data.Foldable (foldMap)
 import Data.Functor.Identity (Identity(..))
 import Data.List (unfoldr)
+import Data.Map (Map)
 import Data.Monoid (Sum(..))
 import Data.Text (Text)
 import Data.Word (Word8)
@@ -139,21 +140,20 @@ t_map _ (KV kvs) = mappedC == mappedM
           mappedC = C.toList . C.map fun $ C.fromList kvs
           mappedM = Map.toList . Map.map fun $ Map.fromList kvs
 
-t_mapAccumRWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_mapAccumRWithKey _ (KV kvs) = mappedC == mappedM
+type M m a k v w = ((a -> k -> v -> (a, w)) -> a -> m k v -> (a, m k w))
+
+mapAccumWithKey :: (w ~ String, v ~ V, a ~ Int, Ord k, CritBitKey k) =>
+                   M CritBit a k v w -> M Map a k v w -> k -> KV k -> Bool
+mapAccumWithKey critbitF mapF _ (KV kvs) = mappedC == mappedM
   where fun i _ v = (i + 1, show $ v + 3)
-        mappedC = second C.toList . C.mapAccumRWithKey fun (0 :: Int) $
-                  (C.fromList kvs)
-        mappedM = second Map.toList . Map.mapAccumRWithKey fun (0 :: Int) $
-                  (Map.fromList kvs)
+        mappedC = second C.toList . critbitF fun 0 $ (C.fromList kvs)
+        mappedM = second Map.toList . mapF fun 0 $ (Map.fromList kvs)
+
+t_mapAccumRWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapAccumRWithKey = mapAccumWithKey C.mapAccumRWithKey Map.mapAccumRWithKey
 
 t_mapAccumWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_mapAccumWithKey _ (KV kvs) = mappedC == mappedM
-  where fun i _ v = (i + 1, show $ v + 3)
-        mappedC = second C.toList . C.mapAccumWithKey fun (0 :: Int) $
-                  (C.fromList kvs)
-        mappedM = second Map.toList . Map.mapAccumWithKey fun (0 :: Int) $
-                  (Map.fromList kvs)
+t_mapAccumWithKey = mapAccumWithKey C.mapAccumWithKey Map.mapAccumWithKey
 
 t_toAscList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_toAscList _ (KV kvs) = C.toAscList (C.fromList kvs)
@@ -367,7 +367,7 @@ blist = C.fromList . flip zip [0..]
 tlist :: [Text] -> CritBit Text Word8
 tlist = C.fromList . flip zip [0..]
 
-mlist :: [ByteString] -> Map.Map ByteString Word8
+mlist :: [ByteString] -> Map ByteString Word8
 mlist = Map.fromList . flip zip [0..]
 
 qc :: Testable prop => Int -> prop -> IO ()
