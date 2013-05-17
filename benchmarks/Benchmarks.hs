@@ -75,6 +75,9 @@ chartres = do
         putStrLn $ show prob ++ " " ++ show (fromIntegral mismatches / nxs)
   mapM_ go [0..100]
 
+mapFKey :: (Num v, C.CritBitKey k) => k -> v -> v
+mapFKey _ x = x + 1
+
 updateFKey :: Num v => k -> v -> Maybe v
 updateFKey _ v = Just $ v + 1
 
@@ -228,6 +231,10 @@ main = do
       , bgroup "keys" $ function nf C.keys Map.keys H.keys Trie.keys
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
+      , bgroup "mapWithKey" $ [
+          bench "critbit" $ whnf (C.mapWithKey mapFKey) b_critbit         
+        , bench "map" $ whnf (Map.mapWithKey mapFKey) b_map
+        ]
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
