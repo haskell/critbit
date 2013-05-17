@@ -8,9 +8,11 @@ import Control.Monad (when)
 import Control.Monad.Trans (liftIO)
 import Criterion.Main (bench, bgroup, defaultMain, nf, whnf)
 import Criterion.Types (Pure)
+import Data.Foldable (foldMap)
 import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..), hashByteArray)
 import Data.Maybe (fromMaybe)
+import Data.Monoid (Sum(..))
 import Data.Text.Array (aBA)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Internal (Text(..))
@@ -315,6 +317,18 @@ main = do
       , bgroup "updateMaxWithKey" $ [
           bench "critbit" $ whnf (C.updateMaxWithKey updateFKey) b_critbit
         , bench "map" $ whnf (Map.updateMaxWithKey updateFKey) b_map
+        ]
+      , bgroup "foldMap" $ [
+          bench "critbit" $ let c_foldmap :: (C.CritBitKey k, Num v) 
+                                          => C.CritBit k v 
+                                          -> Sum v
+                                c_foldmap = foldMap Sum
+                            in whnf c_foldmap b_critbit
+        , bench "map" $ let m_foldmap :: (Eq k, Num v)
+                                      => Map.Map k v
+                                      -> Sum v
+                            m_foldmap = foldMap Sum
+                        in whnf m_foldmap b_map
         ]
     ]
     , bgroup "text" [
