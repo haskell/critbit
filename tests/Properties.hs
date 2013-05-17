@@ -12,6 +12,7 @@ import Data.Functor.Identity (Identity(..))
 import Data.List (unfoldr)
 import Data.Map (Map)
 import Data.Monoid (Sum(..))
+import Data.String (IsString, fromString)
 import Data.Text (Text)
 import Data.Word (Word8)
 import Test.Framework (Test, testGroup)
@@ -148,6 +149,14 @@ mapAccumWithKey critbitF mapF _ (KV kvs) = mappedC == mappedM
   where fun i _ v = (i + 1, show $ v + 3)
         mappedC = second C.toList . critbitF fun 0 $ (C.fromList kvs)
         mappedM = second Map.toList . mapF fun 0 $ (Map.fromList kvs)
+
+t_mapKeys :: (CritBitKey k, Ord k, IsString k, Show k) => k -> KV k -> Bool
+t_mapKeys _ (KV kvs) = mappedC == mappedM
+  where
+    f :: (CritBitKey k, Ord k, IsString k, Show k) => k -> k
+    f       = fromString . (++ "test") . show
+    mappedC = C.toList . C.mapKeys f $ C.fromList kvs
+    mappedM = Map.toList . Map.mapKeys f $ Map.fromList kvs
 
 t_mapAccumRWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_mapAccumRWithKey = mapAccumWithKey C.mapAccumRWithKey Map.mapAccumRWithKey
@@ -324,6 +333,7 @@ propertiesFor t = [
   , testProperty "t_keys" $ t_keys t
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapWithKey" $ t_mapWithKey t
+  , testProperty "t_mapKeys" $ t_map t
   , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t
   , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t
   , testProperty "t_toAscList" $ t_toAscList t
