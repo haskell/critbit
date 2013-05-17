@@ -39,7 +39,7 @@ module Data.CritBit.Tree
     -- , adjustWithKey
     , update
     , updateWithKey
-    -- , updateLookupWithKey
+    , updateLookupWithKey
     -- , alter
 
     -- * Combination
@@ -237,7 +237,6 @@ delete = updateWithKey (\_k _v -> Nothing)
 -- at @k@ (if it is in the map). If (@f x@) is 'Nothing', the element is
 -- deleted. If it is (@'Just' y@), the key @k@ is bound to the new value @y@.
 --
---
 -- > let f x = if x == 5 then Just 50 else Nothing
 -- > update f "a" (fromList [("b",3), ("a",5)]) == fromList [("a", 50), ("b",3)]
 -- > update f "c" (fromList [("b",3), ("a",5)]) == fromList [("a", 50), ("b",3)]
@@ -245,6 +244,36 @@ delete = updateWithKey (\_k _v -> Nothing)
 update :: (CritBitKey k) => (v -> Maybe v) -> k -> CritBit k v -> CritBit k v
 update f = updateWithKey (const f)
 {-# INLINABLE update #-}
+
+-- | /O(log n)/. Lookup and update; see also 'updateWithKey'.
+-- This function returns the changed value if it is updated, or
+-- the original value if the entry is deleted.
+--
+-- > let f k x = if x == 5 then Just (x + fromEnum (k < "d")) else Nothing
+-- > updateLookupWithKey f "a" (fromList [("b",3), ("a",5)]) == (Just 6, fromList [("a", 6), ("b",3)])
+-- > updateLookupWithKey f "c" (fromList [("a",5), ("b",3)]) == (Nothing, fromList [("a",5), ("b",3)])
+-- > updateLookupWithKey f "b" (fromList [("a",5), ("b",3)]) == (Just 3, singleton "a" 5)
+updateLookupWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k
+                       -> CritBit k v -> (Maybe v, CritBit k v)
+-- The update algorithm is from Data.CritBit.Core.updateWithKey,
+-- reimplemented here to avoid separate lookup and update steps.
+updateLookupWithKey f k t@(CritBit root) = go root CritBit
+  where
+    go i@(Internal left right _ _) cont
+      | direction k i == 0 = go left $ \new ->
+                             case new of
+                               Empty -> cont right
+                               l     -> cont $! i { ileft = l }
+      | otherwise          = go right $ \new ->
+                             case new of
+                               Empty -> cont left
+                               r     -> cont $! i { iright = r }
+    go (Leaf lk lv) cont
+      | k == lk = case f k lv of
+                    Just lv' -> (Just lv', cont (Leaf lk lv'))
+                    Nothing  -> (Just lv, cont Empty)
+    go _ _    = (Nothing, t)
+{-# INLINABLE updateLookupWithKey #-}
 
 -- | /O(log n)/. Returns the value associated with the given key, or
 -- the given default value if the key is not in the map.

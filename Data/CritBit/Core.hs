@@ -104,6 +104,10 @@ updateWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k -> CritBit k v
 --
 -- (If you want a good little exercise, rewrite this function without
 -- using continuations, and benchmark the two versions.)
+--
+-- Note that this algorithm is reused in
+-- Data.CritBit.Tree.updateLookupWithKey, so consider copying any
+-- improvements made here to that function.
 updateWithKey f k t@(CritBit root) = go root CritBit
   where
     go i@(Internal left right _ _) cont

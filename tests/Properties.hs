@@ -126,6 +126,32 @@ t_update_present = t_update_general C.insert
 t_update_missing :: (CritBitKey k) => k -> V -> CB k -> Bool
 t_update_missing = t_update_general (\k _v m -> C.delete k m)
 
+t_updateLookupWithKey_general :: (CritBitKey k)
+                              => (k -> V -> CritBit k V -> CritBit k V)
+                              -> k -> V -> CB k -> Bool
+t_updateLookupWithKey_general h k0 v0 (CB m0) =
+    C.updateLookupWithKey f k0 m1 == naiveUpdateLookupWithKey f k0 m1
+  where
+    m1 = h k0 v0 m0
+    naiveUpdateLookupWithKey g k m =
+      case C.lookup k m of
+        Just v  -> case g k v of
+                     Just v' -> (Just v', C.insert k v' m)
+                     Nothing -> (Just v, C.delete k m)
+        Nothing -> (Nothing, m)
+    f k x
+      | even (fromIntegral x :: Int) =
+        Just (x + fromIntegral (C.byteCount k))
+      | otherwise = Nothing
+
+t_updateLookupWithKey_present :: (CritBitKey k) => k -> V -> CB k -> Bool
+t_updateLookupWithKey_present =
+  t_updateLookupWithKey_general C.insert
+
+t_updateLookupWithKey_missing :: (CritBitKey k) => k -> V -> CB k -> Bool
+t_updateLookupWithKey_missing =
+  t_updateLookupWithKey_general (\k _v m -> C.delete k m)
+
 t_unionL :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
 t_unionL _ (KV kv0) (KV kv1) =
     Map.toList (Map.fromList kv0 `Map.union` Map.fromList kv1) ==
@@ -348,6 +374,8 @@ propertiesFor t = [
   , testProperty "t_updateWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_update_present" $ t_update_present t
   , testProperty "t_update_missing" $ t_update_missing t
+  , testProperty "t_updateLookupWithKey_present" $ t_updateWithKey_present t
+  , testProperty "t_updateLookupWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_unionL" $ t_unionL t
   , testProperty "t_foldl" $ t_foldl t
   , testProperty "t_foldlWithKey" $ t_foldlWithKey t
