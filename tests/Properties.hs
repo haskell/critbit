@@ -76,8 +76,8 @@ t_delete_present _ (KV kvs) k v =
     c = C.insert k v $ C.fromList kvs
     m = Map.insert k v $ Map.fromList kvs
 
-t_updateWithKey_general :: (CritBitKey k) 
-                        => (k -> V -> CritBit k V -> CritBit k V) 
+t_updateWithKey_general :: (CritBitKey k)
+                        => (k -> V -> CritBit k V -> CritBit k V)
                         -> k -> V -> CB k -> Bool
 t_updateWithKey_general h k0 v0 (CB m0) =
     C.updateWithKey f k0 m1 == naiveUpdateWithKey f k0 m1
@@ -143,6 +143,14 @@ t_mapAccumRWithKey _ (KV kvs) = mappedC == mappedM
         mappedC = second C.toList . C.mapAccumRWithKey fun (0 :: Int) $
                   (C.fromList kvs)
         mappedM = second Map.toList . Map.mapAccumRWithKey fun (0 :: Int) $
+                  (Map.fromList kvs)
+
+t_mapAccumWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapAccumWithKey _ (KV kvs) = mappedC == mappedM
+  where fun i _ v = (i + 1, show $ v + 3)
+        mappedC = second C.toList . C.mapAccumWithKey fun (0 :: Int) $
+                  (C.fromList kvs)
+        mappedM = second Map.toList . Map.mapAccumWithKey fun (0 :: Int) $
                   (Map.fromList kvs)
 
 t_toAscList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
@@ -211,7 +219,7 @@ t_minViewWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_minViewWithKey _ (KV kvs) =
   unfoldr C.minViewWithKey (C.fromList kvs) ==
   unfoldr Map.minViewWithKey (Map.fromList kvs)
-  
+
 t_maxViewWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_maxViewWithKey _ (KV kvs) =
   unfoldr C.maxViewWithKey (C.fromList kvs) ==
@@ -281,9 +289,9 @@ t_mapWithKey _ (KV kvs) = mappedC == mappedM
 t_traverseWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_traverseWithKey _ (KV kvs) = mappedC == mappedM
   where fun _   = Identity . show . (+3)
-        mappedC = C.toList . runIdentity . C.traverseWithKey fun $ 
+        mappedC = C.toList . runIdentity . C.traverseWithKey fun $
                   (C.fromList kvs)
-        mappedM = Map.toList . runIdentity . Map.traverseWithKey fun $ 
+        mappedM = Map.toList . runIdentity . Map.traverseWithKey fun $
                   (Map.fromList kvs)
 
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
@@ -308,7 +316,8 @@ propertiesFor t = [
   , testProperty "t_keys" $ t_keys t
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapWithKey" $ t_mapWithKey t
-  , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t 
+  , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t
+  , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t
   , testProperty "t_toAscList" $ t_toAscList t
   , testProperty "t_toDescList" $ t_toDescList t
   , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
@@ -354,4 +363,3 @@ mlist = Map.fromList . flip zip [0..]
 
 qc :: Testable prop => Int -> prop -> IO ()
 qc n = quickCheckWith stdArgs { maxSuccess = n }
-

@@ -79,6 +79,9 @@ chartres = do
 mapFKey :: (Num v, C.CritBitKey k) => k -> v -> v
 mapFKey _ x = x + 1
 
+mapAccumFKey :: (C.CritBitKey k, Num v) => Int -> k -> v -> (Int, v)
+mapAccumFKey a _ v = (a + 1, v + 1)
+
 updateFKey :: Num v => k -> v -> Maybe v
 updateFKey _ v = Just $ v + 1
 
@@ -200,7 +203,7 @@ main = do
             bench "critbit" $ whnf (C.insertWithKey f key 1) b_critbit_1
           , bench "map" $ whnf (Map.insertWithKey f key 1) b_map_1
           ]
-        ] 
+        ]
       , bgroup "updateWithKey" $
         let f k v = Just (v + fromIntegral (C.byteCount k)) in [
           bgroup "present" [
@@ -233,8 +236,16 @@ main = do
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
       , bgroup "mapWithKey" $ [
-          bench "critbit" $ whnf (C.mapWithKey mapFKey) b_critbit         
+          bench "critbit" $ whnf (C.mapWithKey mapFKey) b_critbit
         , bench "map" $ whnf (Map.mapWithKey mapFKey) b_map
+        ]
+      , bgroup "mapAccumWithKey" $ [
+          bench "critbit" $ whnf (C.mapAccumWithKey mapAccumFKey 0) b_critbit
+        , bench "map" $ whnf (Map.mapAccumWithKey mapAccumFKey 0) b_map
+        ]
+      , bgroup "mapAccumRWithKey" $ [
+          bench "critbit" $ whnf (C.mapAccumRWithKey mapAccumFKey 0) b_critbit
+        , bench "map" $ whnf (Map.mapAccumRWithKey mapAccumFKey 0) b_map
         ]
       , bgroup "union" $ twoMaps C.unionR Map.union H.union Trie.unionR
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
@@ -292,8 +303,8 @@ main = do
         , bench "map" $ whnf (Map.updateMax updateFVal) b_map
         ]
       , bgroup "traverseWithKey" $ let f _ = Identity . (+3)
-                                   in function nf 
-                                        (runIdentity . C.traverseWithKey f) 
+                                   in function nf
+                                        (runIdentity . C.traverseWithKey f)
                                         (runIdentity . Map.traverseWithKey f)
                                         (runIdentity . H.traverseWithKey f)
                                         (fmap f)

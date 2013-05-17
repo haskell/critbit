@@ -67,8 +67,8 @@ module Data.CritBit.Tree
     , map
     , mapWithKey
     , traverseWithKey
-    -- , mapAccum
-    -- , mapAccumWithKey
+    , mapAccum
+    , mapAccumWithKey
     , mapAccumRWithKey
     -- , mapKeys
     -- , mapKeysWith
@@ -639,8 +639,8 @@ updateMaxWithKey f m = updateExtremity goRight f m
 {-# INLINABLE updateMaxWithKey #-}
 
 updateExtremity :: ((Node k v -> Node k v) -> Node k v -> Node k v)
-                -> (k -> v -> Maybe v) 
-                -> CritBit k v 
+                -> (k -> v -> Maybe v)
+                -> CritBit k v
                 -> CritBit k v
 updateExtremity dir maybeUpdate (CritBit root) = CritBit $ go root
   where
@@ -714,9 +714,9 @@ mapAccumRWithKey f start (CritBit root) = second CritBit (go start root)
 -- > let f key value = (show key) ++ ":" ++ (show value)
 -- > traverseWithKey (\k v -> if odd v then Just (f k v) else Nothing) (fromList [("a", 3), ("b", 5)]) == Just (fromList [("a", "a:3"), ("b", "b:5")])
 -- > traverseWithKey (\k v -> if odd v then Just (f k v) else Nothing) (fromList [("c", 2)])           == Nothing
-traverseWithKey :: (CritBitKey k, Applicative t) 
-                => (k -> v -> t w) 
-                -> CritBit k v 
+traverseWithKey :: (CritBitKey k, Applicative t)
+                => (k -> v -> t w)
+                -> CritBit k v
                 -> t (CritBit k w)
 traverseWithKey f (CritBit root) = fmap CritBit (go root)
   where
@@ -725,3 +725,36 @@ traverseWithKey f (CritBit root) = fmap CritBit (go root)
     go (Leaf k v)           = (Leaf k) <$> f k v
     go Empty                = pure Empty
 {-# INLINABLE traverseWithKey #-}
+
+-- | /O(n)/. The function 'mapAccum' threads an accumulating
+-- argument through the map in ascending order of keys.
+--
+-- > let f a b = (a ++ (show b), (show b) ++ "X")
+-- > mapAccum f "Everything: " (fromList [("a", 5), ("b", 3)]) == ("Everything: 53", fromList [("a", "5X"), ("b", "3X")])
+mapAccum :: (CritBitKey k)
+         => (a -> v -> (a, w))
+         -> a
+         -> CritBit k v
+         -> (a, CritBit k w)
+mapAccum f = mapAccumWithKey (\a _ v -> f a v)
+{-# INLINE mapAccum #-}
+
+-- | /O(n)/. The function 'mapAccumWithKey' threads an accumulating
+-- argument through the map in ascending order of keys.
+--
+-- > let f a k b = (a ++ " " ++ (show k) ++ "-" ++ (show b), (show b) ++ "X")
+-- > mapAccumWithKey f "Everything: " (fromList [("a", 5), ("b", 3)]) == ("Everything: a-5 b-3", fromList [("a", "5X"), ("b", "3X")])
+mapAccumWithKey :: (CritBitKey k)
+                => (a -> k -> v -> (a, w))
+                -> a
+                -> CritBit k v
+                -> (a, CritBit k w)
+mapAccumWithKey f start (CritBit root) = second CritBit (go start root)
+  where
+    go a i@(Internal l r _ _) = let (a0, l')  = go a l
+                                    (a1, r')  = go a0 r
+                                in (a1, i { ileft = l', iright = r' })
+
+    go a (Leaf k v)           = let (a0, w) = f a k v in (a0, Leaf k w)
+    go a Empty                = (a, Empty)
+{-# INLINABLE mapAccumWithKey #-}
