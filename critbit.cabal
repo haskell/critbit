@@ -72,7 +72,8 @@ test-suite tests
     QuickCheck >= 2.4,
     test-framework >= 0.4,
     test-framework-quickcheck2 >= 0.2,
-    text
+    text,
+    transformers >=0.3
 
 benchmark benchmarks
   default-language: Haskell2010
@@ -94,7 +95,8 @@ benchmark benchmarks
     mwc-random,
     text,
     unordered-containers,
-    vector
+    vector,
+    transformers >=0.3
 
 source-repository head
   type:     git

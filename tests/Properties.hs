@@ -6,6 +6,7 @@ module Properties
 import Control.Applicative ((<$>))
 import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
+import Data.Functor.Identity (Identity(..))
 import Data.List (unfoldr)
 import Data.Text (Text)
 import Data.Word (Word8)
@@ -268,6 +269,14 @@ t_mapWithKey _ (KV kvs) = mappedC == mappedM
         mappedC = C.toList . C.mapWithKey fun $ (C.fromList kvs)
         mappedM = Map.toList . Map.mapWithKey fun $ (Map.fromList kvs)
 
+t_traverseWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_traverseWithKey _ (KV kvs) = mappedC == mappedM
+  where fun _   = Identity . show . (+3)
+        mappedC = C.toList . runIdentity . C.traverseWithKey fun $ 
+                  (C.fromList kvs)
+        mappedM = Map.toList . runIdentity . Map.traverseWithKey fun $ 
+                  (Map.fromList kvs)
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -313,6 +322,7 @@ propertiesFor t = [
   , testProperty "t_insertWith_missing" $ t_insertWith_missing t
   , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
+  , testProperty "t_traverseWithKey" $ t_traverseWithKey t
   ]
 
 properties :: [Test]

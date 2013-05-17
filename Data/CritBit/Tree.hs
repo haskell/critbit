@@ -66,7 +66,7 @@ module Data.CritBit.Tree
     -- ** Map
     , map
     , mapWithKey
-    -- , traverseWithKey
+    , traverseWithKey
     -- , mapAccum
     -- , mapAccumWithKey
     -- , mapAccumRWithKey
@@ -144,7 +144,7 @@ module Data.CritBit.Tree
     , maxViewWithKey
     ) where
 
-import Control.Applicative ((*>), (<|>), pure, liftA2)
+import Control.Applicative (Applicative(..), (<$>), (*>), (<|>), pure, liftA2)
 import Control.Monad (guard)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
@@ -693,3 +693,22 @@ mapWithKey f (CritBit root) = CritBit (go root)
     go (Leaf k v)           = Leaf k (f k v)
     go  Empty               = Empty
 {-# INLINABLE mapWithKey #-}
+
+-- | /O(n)/.
+-- That is, behaves exactly like a regular 'traverse' except that the traversing
+-- function also has access to the key associated with a value.
+--
+-- > let f key value = (show key) ++ ":" ++ (show value)
+-- > traverseWithKey (\k v -> if odd v then Just (f k v) else Nothing) (fromList [("a", 3), ("b", 5)]) == Just (fromList [("a", "a:3"), ("b", "b:5")])
+-- > traverseWithKey (\k v -> if odd v then Just (f k v) else Nothing) (fromList [("c", 2)])           == Nothing
+traverseWithKey :: (CritBitKey k, Applicative t) 
+                => (k -> v -> t w) 
+                -> CritBit k v 
+                -> t (CritBit k w)
+traverseWithKey f (CritBit root) = fmap CritBit (go root)
+  where
+    go i@(Internal l r _ _) = let constr l' r' = i { ileft = l', iright = r' }
+                              in constr <$> go l <*> go r
+    go (Leaf k v)           = (Leaf k) <$> f k v
+    go Empty                = pure Empty
+{-# INLINABLE traverseWithKey #-}
