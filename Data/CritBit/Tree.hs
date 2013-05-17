@@ -212,8 +212,8 @@ notMember k m = lookupWith True (const False) k m
 -- >   lookup country countryCurrency
 -- >
 -- > main = do
--- >   putStrLn $ "John's currency: " ++ (show (employeeCurrency "John"))
--- >   putStrLn $ "Pete's currency: " ++ (show (employeeCurrency "Pete"))
+-- >   putStrLn $ "John's currency: " ++ show (employeeCurrency "John")
+-- >   putStrLn $ "Pete's currency: " ++ show (employeeCurrency "Pete")
 --
 -- The output of this program:
 --
@@ -297,7 +297,7 @@ fromList = List.foldl' (flip (uncurry insert)) empty
 
 -- | /O(1)/. A map with a single element.
 --
--- > singleton "a" 1        == fromList [("a", 1)]
+-- > singleton "a" 1        == fromList [("a",1)]
 singleton :: k -> v -> CritBit k v
 singleton k v = CritBit (Leaf k v)
 {-# INLINE singleton #-}
@@ -390,7 +390,7 @@ foldr' f z m = foldrWithKeyWith seq (\_ v a -> f v a) z m
 --
 -- > keys map = foldrWithKey (\k x ks -> k:ks) [] map
 --
--- > let f k a result = result ++ "(" ++ (show k) ++ ":" ++ a ++ ")"
+-- > let f k a result = result ++ "(" ++ show k ++ ":" ++ a ++ ")"
 -- > foldrWithKey f "Map: " (fromList [("a",5), ("b",3)]) == "Map: (a:5)(b:3)"
 foldrWithKey :: (k -> v -> a -> a) -> a -> CritBit k v -> a
 foldrWithKey f z m = foldrWithKeyWith (\_ b -> b) f z m
@@ -683,10 +683,10 @@ insertWith :: CritBitKey k => (v -> v -> v) -> k -> v -> CritBit k v -> CritBit 
 insertWith f = insertWithKey (\_ v v' -> f v v')
 {-# INLINABLE insertWith #-}
 
--- | /O(n). Apply a function to all values.
+-- | /O(n)/. Apply a function to all values.
 --
--- >  let f key x = (show key) ++ ":" ++ (show x)
--- >  mapWithKey f (fromList [("a", 5), ("b", 3)]) == fromList [("a", "a:5"), ("b", "b:3")]
+-- >  let f key x = show key ++ ":" ++ show x
+-- >  mapWithKey f (fromList [("a",5), ("b",3)]) == fromList [("a","a:5"), ("b","b:3")]
 mapWithKey :: (CritBitKey k) => (k -> v -> w) -> CritBit k v -> CritBit k w
 mapWithKey f (CritBit root) = CritBit (go root)
   where
@@ -697,7 +697,8 @@ mapWithKey f (CritBit root) = CritBit (go root)
 
 -- | /O(n)/. The function 'mapAccumRWithKey' threads an accumulating
 -- argument through the map in descending order of keys.
-mapAccumRWithKey :: (CritBitKey k) => (a -> k -> v -> (a, w)) -> a -> CritBit k v -> (a, CritBit k w)
+mapAccumRWithKey :: (CritBitKey k) => (a -> k -> v -> (a, w)) -> a
+                 -> CritBit k v -> (a, CritBit k w)
 mapAccumRWithKey f start (CritBit root) = second CritBit (go start root)
   where
     go a i@(Internal l r _ _) = let (a0, r')  = go a r
@@ -707,12 +708,13 @@ mapAccumRWithKey f start (CritBit root) = second CritBit (go start root)
     go a (Leaf k v)           = let (a0, w) = f a k v in (a0, Leaf k w)
     go a Empty                = (a, Empty)
 {-# INLINABLE mapAccumRWithKey #-}
--- | /O(n)/.
--- That is, behaves exactly like a regular 'traverse' except that the traversing
--- function also has access to the key associated with a value.
+
+-- | /O(n)/. That is, behaves exactly like a regular 'traverse' except
+-- that the traversing function also has access to the key associated
+-- with a value.
 --
--- > let f key value = (show key) ++ ":" ++ (show value)
--- > traverseWithKey (\k v -> if odd v then Just (f k v) else Nothing) (fromList [("a", 3), ("b", 5)]) == Just (fromList [("a", "a:3"), ("b", "b:5")])
+-- > let f key value = show key ++ ":" ++ show value
+-- > traverseWithKey (\k v -> if odd v then Just (f k v) else Nothing) (fromList [("a",3), ("b",5)]) == Just (fromList [("a","a:3"), ("b","b:5")])
 -- > traverseWithKey (\k v -> if odd v then Just (f k v) else Nothing) (fromList [("c", 2)])           == Nothing
 traverseWithKey :: (CritBitKey k, Applicative t)
                 => (k -> v -> t w)
@@ -729,8 +731,8 @@ traverseWithKey f (CritBit root) = fmap CritBit (go root)
 -- | /O(n)/. The function 'mapAccum' threads an accumulating
 -- argument through the map in ascending order of keys.
 --
--- > let f a b = (a ++ (show b), (show b) ++ "X")
--- > mapAccum f "Everything: " (fromList [("a", 5), ("b", 3)]) == ("Everything: 53", fromList [("a", "5X"), ("b", "3X")])
+-- > let f a b = (a ++ show b, show b ++ "X")
+-- > mapAccum f "Everything: " (fromList [("a",5), ("b",3)]) == ("Everything: 53", fromList [("a","5X"), ("b","3X")])
 mapAccum :: (CritBitKey k)
          => (a -> v -> (a, w))
          -> a
@@ -742,8 +744,8 @@ mapAccum f = mapAccumWithKey (\a _ v -> f a v)
 -- | /O(n)/. The function 'mapAccumWithKey' threads an accumulating
 -- argument through the map in ascending order of keys.
 --
--- > let f a k b = (a ++ " " ++ (show k) ++ "-" ++ (show b), (show b) ++ "X")
--- > mapAccumWithKey f "Everything: " (fromList [("a", 5), ("b", 3)]) == ("Everything: a-5 b-3", fromList [("a", "5X"), ("b", "3X")])
+-- > let f a k b = (a ++ " " ++ show k ++ "-" ++ show b, show b ++ "X")
+-- > mapAccumWithKey f "Everything: " (fromList [("a",5), ("b",3)]) == ("Everything: a-5 b-3", fromList [("a","5X"), ("b","3X")])
 mapAccumWithKey :: (CritBitKey k)
                 => (a -> k -> v -> (a, w))
                 -> a
