@@ -410,22 +410,22 @@ t_split_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_split_general k = isoWith (C.toList *** C.toList) (Map.toList *** Map.toList)
                             (C.split k) (Map.split k) k
 
-t_split_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_split_present k v (KV kvs) = t_split_general k (KV ((k,v):kvs))
+t_split_present :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
+t_split_present _ k v (KV kvs) = t_split_general k (KV ((k,v):kvs))
 
-t_split_missing :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_split_missing k (KV kvs) = t_split_general k (KV (filter ((/=k) . fst) kvs))
+t_split_missing :: (CritBitKey k, Ord k) => k -> k -> KV k -> Bool
+t_split_missing _ k (KV kvs) = t_split_general k (KV (filter ((/=k) . fst) kvs))
 
 unpack3 :: (m -> a) -> (m, b, m) -> (a, b, a)
 unpack3 f (a, k, b) = (f a, k, f b)
 
-t_splitLookup_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_splitLookup_present k v (KV kvs) =
+t_splitLookup_present :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
+t_splitLookup_present _ k v (KV kvs) =
     isoWith (unpack3 C.toList) (unpack3 Map.toList)
             (C.splitLookup k) (Map.splitLookup k) k (KV ((k,v):kvs))
 
-t_splitLookup_missing :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_splitLookup_missing k (KV kvs) =
+t_splitLookup_missing :: (CritBitKey k, Ord k) => k -> k -> KV k -> Bool
+t_splitLookup_missing _ k (KV kvs) =
     isoWith (unpack3 C.toList) (unpack3 Map.toList)
             (C.splitLookup k) (Map.splitLookup k) k
             (KV (filter ((/=k) . fst) kvs))
@@ -682,8 +682,8 @@ propertiesFor t = [
   , testProperty "t_filter" $ t_filter t
   , testProperty "t_split_present" $ t_split_present t
   , testProperty "t_split_missing" $ t_split_missing t
-  , testProperty "t_splitLookup_present" $ t_split_present t
-  , testProperty "t_splitLookup_missing" $ t_split_missing t
+  , testProperty "t_splitLookup_present" $ t_splitLookup_present t
+  , testProperty "t_splitLookup_missing" $ t_splitLookup_missing t
   , testProperty "t_isSubmapOf_ambiguous" $ t_isSubmapOfBy_ambiguous t
   , testProperty "t_isSubmapOfBy_true" $ t_isSubmapOfBy_true t
   , testProperty "t_isSubmapOfBy_ambiguous" $ t_isSubmapOfBy_ambiguous t

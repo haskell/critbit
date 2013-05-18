@@ -1074,9 +1074,9 @@ mapEitherWithKey f (CritBit root) = (CritBit *** CritBit) $ go root
     go Empty      = (Empty, Empty)
 {-# INLINABLE mapEitherWithKey #-}
 
--- | /O(log n)/. The expression (@'split' k map@) is a pair
+-- | /O(k)/. The expression (@'split' k map@) is a pair
 -- @(map1,map2)@ where the keys in @map1@ are smaller than @k@ and the
--- keys in @map2@ larger than @k@.  Any key equal to @k@ is found in
+-- keys in @map2@ larger than @k@. Any key equal to @k@ is found in
 -- neither @map1@ nor @map2@.
 --
 -- > split "a" (fromList [("b",1), ("d",2)]) == (empty, fromList [("b",1), ("d",2)])
@@ -1085,26 +1085,11 @@ mapEitherWithKey f (CritBit root) = (CritBit *** CritBit) $ go root
 -- > split "d" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, empty)
 -- > split "e" (fromList [("b",1), ("d",2)]) == (fromList [("b",1), ("d",2)], empty)
 split :: (CritBitKey k) => k -> CritBit k v -> (CritBit k v, CritBit k v)
--- Note that this is nontrivially faster than an implementation
--- in terms of 'splitLookup'.
-split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
-  where
-    go i@(Internal left right _ _)
-      | direction k i == 0 = case go left of
-                               (lt,Empty) -> (lt, right)
-                               (lt,l)     -> (lt, i { ileft = l })
-      | otherwise          = case go right of
-                               (Empty,gt) -> (left, gt)
-                               (r,gt)     -> (i { iright = r }, gt)
-    go (Leaf lk lv) =
-      case byteCompare lk k of
-        LT -> (Leaf lk lv, Empty)
-        GT -> (Empty, Leaf lk lv)
-        EQ -> (Empty, Empty)
-    go _ = (Empty,Empty)
+split k m = splitLookupGen (CritBit Empty, CritBit Empty) packTuple k m
+  where packTuple _ _ lt gt = (CritBit lt, CritBit gt)
 {-# INLINABLE split #-}
 
--- | /O(log n)/. The expression (@'splitLookup' k map@) splits a map just
+-- | /O(k)/. The expression (@'splitLookup' k map@) splits a map just
 -- like 'split' but also returns @'lookup' k map@.
 --
 -- > splitLookup "a" (fromList [("b",1), ("d",2)]) == (empty, Nothing, fromList [("b",1), ("d",2)])
@@ -1112,25 +1097,53 @@ split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
 -- > splitLookup "c" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Nothing, singleton "d" 2)
 -- > splitLookup "d" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Just 2, empty)
 -- > splitLookup "e" (fromList [("b",1), ("d",2)]) == (fromList [("b",1), ("d",2)], Nothing, empty)
-splitLookup :: (CritBitKey k) => k -> CritBit k v
-               -> (CritBit k v, Maybe v, CritBit k v)
-splitLookup k (CritBit root) =
-  (\(ln,res,rn) -> (CritBit ln, res, CritBit rn)) $ go root
-  where
-    go i@(Internal left right _ _)
-      | direction k i == 0 = case go left of
-                               (lt,res,Empty) -> (lt, res, right)
-                               (lt,res,l)     -> (lt, res, i { ileft = l })
-      | otherwise          = case go right of
-                               (Empty,res,gt) -> (left, res, gt)
-                               (r,res,gt)     -> (i { iright = r }, res, gt)
-    go (Leaf lk lv) =
-      case byteCompare lk k of
-        LT -> (Leaf lk lv, Nothing, Empty)
-        GT -> (Empty, Nothing, Leaf lk lv)
-        EQ -> (Empty, Just lv, Empty)
-    go _ = (Empty, Nothing, Empty)
+splitLookup :: (CritBitKey k)
+            => k -> CritBit k v
+            -> (CritBit k v, Maybe v, CritBit k v)
+splitLookup k m = splitLookupGen emptyCont packTriple k m
+  where 
+    emptyCont = (CritBit Empty, Nothing, CritBit Empty)
+    packTriple v comp lt gt =
+      case comp of
+        EQ -> (CritBit lt, Just v, CritBit gt)
+        _  -> (CritBit lt, Nothing, CritBit gt)
 {-# INLINABLE splitLookup #-}
+
+splitLookupGen :: (CritBitKey k)
+               => r
+               -> (v -> Ordering -> Node k v -> Node k v -> r)
+               -> k -> CritBit k v -> r
+splitLookupGen emptyCont succCont k (CritBit root) = go root
+  where
+    go li@(Internal {..})
+      | direction k li  == 0 = go ileft
+      | otherwise            = go iright
+    go (Leaf lk v) = rewalk root (succCont v comp)
+      where
+        comp = byteCompare k lk           
+        finish i cont =
+          case comp of
+            EQ -> cont Empty Empty
+            GT -> cont i Empty
+            LT -> cont Empty i
+
+        rewalk i@(Internal {..}) cont
+          | n < ibyte                      = finish i cont
+          | n == ibyte && nob < iotherBits = finish i cont
+          | direction k i == 0 = rewalk ileft contl
+          | otherwise          = rewalk iright contr
+            where
+              contl lt Empty = cont lt iright
+              contl lt gt    = cont lt $! (i { ileft = gt })
+
+              contr Empty gt = cont ileft gt
+              contr lt0 gt   = lt `seq` cont lt gt
+                where lt = i { iright = lt0 }
+        rewalk lf cont = finish lf cont
+
+        (n,nob, _) = followPrefixes k lk
+    go _ = emptyCont
+{-# INLINE splitLookupGen #-}
 
 -- | /O(n+m)/. This function is defined as
 --   (@'isSubmapOf' = 'isSubmapOfBy' (==)@).
