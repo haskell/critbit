@@ -118,8 +118,8 @@ module Data.CritBit.Tree
     -- , mapEither
     -- , mapEitherWithKey
 
-    -- , split
-    -- , splitLookup
+    , split
+    , splitLookup
 
     -- * Submap
     -- , isSubmapOf
@@ -774,3 +774,65 @@ mapAccumWithKey f start (CritBit root) = second CritBit (go start root)
     go a (Leaf k v)           = let (a0, w) = f a k v in (a0, Leaf k w)
     go a Empty                = (a, Empty)
 {-# INLINABLE mapAccumWithKey #-}
+
+-- | /O(log n)/. The expression (@'split' k map@) is a pair @(map1,map2)@ where
+-- the keys in @map1@ are smaller than @k@ and the keys in @map2@ larger than @k@.
+-- Any key equal to @k@ is found in neither @map1@ nor @map2@.
+--
+-- > splitLookup "1" (fromList [("a",5), ("b",3)]) == (empty, fromList [("a",5), ("b",3)])
+-- > splitLookup "b" (fromList [("a",5), ("b",3)]) == (fromList [("a",5)], empty)
+-- > splitLookup "b" (fromList [("a",5), ("c",3)]) == (fromList [("a",5)], fromList [("c",3)])
+-- > splitLookup "a" (fromList [("a",5), ("b",3)]) == (empty, fromList [("b",3])
+-- > splitLookup "c" (fromList [("a",5), ("b",3)]) == (fromList [("a",5), ("b",3)], empty)
+split :: (CritBitKey k, Ord k)
+      => k
+      -> CritBit k v
+      -> (CritBit k v, CritBit k v)
+split = ((\(l, _, r) -> (r,l)) .). splitLookup
+{-# INLINABLE split #-}
+
+-- | /O(log n)/. The expression (@'splitLookup' k map@) splits a map just
+-- like 'split' but also returns @'lookup' k map@.
+--
+-- > splitLookup "1" (fromList [("a",5), ("b",3)]) == (empty, Nothing, fromList [("a",5), ("b",3)])
+-- > splitLookup "b" (fromList [("a",5), ("b",3)]) == (fromList [("a",5)], Just 3, empty)
+-- > splitLookup "b" (fromList [("a",5), ("c",3)]) == (fromList [("a",5)], Nothing, fromList [("c",3)])
+-- > splitLookup "a" (fromList [("a",5), ("b",3)]) == (empty, Just 5, fromList [("b",3])
+-- > splitLookup "c" (fromList [("a",5), ("b",3)]) == (fromList [("a",5), ("b",3)], Nothing, empty)
+splitLookup :: (CritBitKey k, Ord k)
+            => k
+            -> CritBit k v
+            -> (CritBit k v, Maybe v, CritBit k v)
+splitLookup k (CritBit root) = go root
+  where
+    go li@(Internal l r _ _)
+      | direction k li  == 0 = go l
+      | otherwise            = go r
+    go (Leaf lk _) = rewalk root CritBit CritBit
+      where
+        (n,mask,c) = followPrefixes k lk
+       
+        finish lf@(Leaf fk v) lt gt =
+              case compare k fk of
+                EQ -> (lt Empty, Just v, gt Empty)
+                GT -> (lt lf, Nothing, gt Empty)
+                LT -> (lt Empty, Nothing, gt lf)
+        finish nd lt gt
+          | calcDirection mask c == 0 = (lt nd, Nothing, gt Empty)
+          | otherwise                 = (lt Empty, Nothing, gt nd) 
+
+        rewalk i@(Internal left right b m) lt0 gt0
+          | n < b              = finish i lt0 gt0
+          | n == b && mask < m = finish i lt0 gt0
+          | direction k i == 0 = rewalk left lt0 gt1
+          | otherwise          = rewalk right lt1 gt0
+            where
+              gt1 new = case new of
+                          Empty -> gt0 right
+                          node  -> gt0 $! i { ileft = node }
+              lt1 new = case new of
+                          Empty -> lt0 left
+                          node  -> lt0 $! i { iright = node }
+        rewalk lf lt gt = finish lf lt gt
+    go _ = (CritBit Empty, Nothing, CritBit Empty)
+{-# INLINABLE splitLookup #-}

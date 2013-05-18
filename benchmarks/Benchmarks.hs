@@ -334,6 +334,14 @@ main = do
                             m_foldmap = foldMap Sum
                         in whnf m_foldmap b_map
         ]
+     , bgroup "splitLookup" $ [
+         bench "critbit" $ whnf (C.splitLookup key) b_critbit
+       , bench "map" $ whnf (Map.splitLookup key) b_map
+      ]
+     , bgroup "split" $ [
+        bench "critbit" $ whnf (C.split key) b_critbit
+      , bench "map" $ whnf (Map.split key) b_map
+      ]
     ]
     , bgroup "text" [
         bgroup "fromList" [
