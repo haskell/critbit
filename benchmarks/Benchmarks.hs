@@ -334,6 +334,15 @@ main = do
                             m_foldmap = foldMap Sum
                         in whnf m_foldmap b_map
         ]
+      , bgroup "alter" $ let altF (Just v) = 
+                                  if odd v 
+                                    then Just (v+1) 
+                                    else Nothing
+                             altF Nothing  = Just 1
+                          in [
+          bench "critbit" $  whnf (C.alter altF key) b_critbit
+        , bench "map" $ whnf (Map.alter altF key) b_map
+        ]
     ]
     , bgroup "text" [
         bgroup "fromList" [
