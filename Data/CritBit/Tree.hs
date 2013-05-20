@@ -21,7 +21,7 @@ module Data.CritBit.Tree
     , lookup
     , findWithDefault
     , lookupGT
-    -- , lookupGE
+    , lookupGE
 
     -- * Construction
     , empty
@@ -304,6 +304,19 @@ lookupGT k m = lookupOrd f k m
                      LT -> Just kv
                      _  -> Nothing
 {-# INLINABLE lookupGT #-}
+
+-- | /O(log n)/. Find smallest key greater or equal to the given one and return
+-- the corresponding (key, value) pair.
+--
+-- > lookupGE "a" (fromList [("a",3), ("b",5)]) == Just ("a",3)
+-- > lookupGE "b" (fromList [("a",3), ("c",5)]) == Just ("c",5)
+-- > lookupGE "c" (fromList [("a",3), ("b",5)]) == Nothing
+lookupGE :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
+lookupGE k m = lookupOrd f k m
+  where f ord kv = case ord of
+                     GT -> Nothing
+                     _  -> Just kv
+{-# INLINABLE lookupGE #-}
 
 lookupOrd :: (CritBitKey k)
           => (Ordering -> (k,v) -> Maybe (k,v))
