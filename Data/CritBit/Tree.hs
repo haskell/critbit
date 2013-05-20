@@ -22,6 +22,7 @@ module Data.CritBit.Tree
     , findWithDefault
     , lookupLT
     , lookupGT
+    , lookupLE
     , lookupGE
 
     -- * Construction
@@ -330,6 +331,19 @@ lookupLT k m = lookupOrd f k m
                      GT -> Just kv
                      _  -> Nothing
 {-# INLINABLE lookupLT #-}
+
+-- | /O(log n)/. Find largest key smaller or equal to the given one and return
+-- the corresponding (key, value) pair.
+--
+-- lookupLE ""  (fromList [("a",3), ("b",5)]) == Nothing
+-- lookupLE "b" (fromList [("a",3), ("c",5)]) == Just ("a",3)
+-- lookupLE "b" (fromList [("a",3), ("b",5)]) == Just ("b",5)
+lookupLE :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
+lookupLE k m = lookupOrd f k m
+  where f ord kv = case ord of
+                     LT -> Nothing
+                     _  -> Just kv
+{-# INLINABLE lookupLE #-}
 
 lookupOrd :: (CritBitKey k)
           => (Ordering -> (k,v) -> Maybe (k,v))
