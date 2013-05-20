@@ -20,6 +20,7 @@ module Data.CritBit.Tree
     , notMember
     , lookup
     , findWithDefault
+    , lookupLT
     , lookupGT
     , lookupGE
 
@@ -317,6 +318,18 @@ lookupGE k m = lookupOrd f k m
                      GT -> Nothing
                      _  -> Just kv
 {-# INLINABLE lookupGE #-}
+
+-- | /O(log n)/. Find largest key smaller than the given one and return the
+-- corresponding (key, value) pair.
+--
+-- > lookupLT "a" (fromList [("a",3), ("b",5)]) == Nothing
+-- > lookupLT "b" (fromList [("a",3), ("c",5)]) == Just ("a",3)
+lookupLT :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
+lookupLT k m = lookupOrd f k m
+  where f ord kv = case ord of
+                     GT -> Just kv
+                     _  -> Nothing
+{-# INLINABLE lookupLT #-}
 
 lookupOrd :: (CritBitKey k)
           => (Ordering -> (k,v) -> Maybe (k,v))

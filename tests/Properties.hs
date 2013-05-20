@@ -89,6 +89,10 @@ t_lookupGT _ k (KV kvs) =
 t_lookupGE :: (Ord k, CritBitKey k) => k -> k -> KV k -> Bool
 t_lookupGE _ k (KV kvs) =
     C.lookupGE k (C.fromList kvs) == Map.lookupGE k (Map.fromList kvs)
+
+t_lookupLT :: (Ord k, CritBitKey k) => k -> k -> KV k -> Bool
+t_lookupLT _ k (KV kvs) =
+    C.lookupLT k (C.fromList kvs) == Map.lookupLT k (Map.fromList kvs)
 #endif
 
 -- Test that the behaviour of a CritBit function is the same as that
@@ -489,6 +493,7 @@ propertiesFor t = [
 #if MIN_VERSION_containers(0,5,0)
   , testProperty "t_lookupGT" $ t_lookupGT t
   , testProperty "t_lookupGE" $ t_lookupGE t
+  , testProperty "t_lookupLT" $ t_lookupLT t
 #endif
   , testProperty "t_delete_present" $ t_delete_present t
   , testProperty "t_adjust_present" $ t_updateWithKey_present t
