@@ -308,12 +308,14 @@ main = do
           bench "critbit" $ whnf (C.updateMax updateFVal) b_critbit
         , bench "map" $ whnf (Map.updateMax updateFVal) b_map
         ]
-      , bgroup "traverseWithKey" $ let f _ = Identity . (+3)
-                                   in function nf
-                                        (runIdentity . C.traverseWithKey f)
-                                        (runIdentity . Map.traverseWithKey f)
-                                        (runIdentity . H.traverseWithKey f)
-                                        (fmap f)
+      , bgroup "traverseWithKey" $ let f _ = Identity . (+3) in [
+          bench "critbit" $ nf (runIdentity . C.traverseWithKey f) b_critbit
+#if MIN_VERSION_containers(0,5,0)
+        , bench "map" $ nf (runIdentity . Map.traverseWithKey f) b_map
+#endif
+        , bench "hashmap" $ nf (runIdentity . H.traverseWithKey f) b_hashmap
+        , bench "trie" $ nf (fmap f) b_trie
+        ]
       , bgroup "updateMinWithKey" $ [
           bench "critbit" $ whnf (C.updateMinWithKey updateFKey) b_critbit
         , bench "map" $ whnf (Map.updateMinWithKey updateFKey) b_map
