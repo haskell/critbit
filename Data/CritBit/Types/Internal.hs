@@ -14,10 +14,8 @@ module Data.CritBit.Types.Internal
     , Node(..)
     , foldlWithKey
     , foldlWithKey'
-    , foldlWithKeyWith
     , foldrWithKey
     , foldrWithKey'
-    , foldrWithKeyWith
     , toList
     ) where
 

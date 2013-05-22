@@ -331,7 +331,7 @@ foldl f z m = foldlWithKeyWith (\_ b -> b) (\a _ v -> f a v) z m
 -- function is evaluated before using the result in the next
 -- application. This function is strict in the starting value.
 foldl' :: (a -> v -> a) -> a -> CritBit k v -> a
-foldl' f z m = foldlWithKeyWith seq (\a _ v -> f a v) z m
+foldl' f z m = foldlWithKey' (\a _ v -> f a v) z m
 {-# INLINABLE foldl' #-}
 
 -- | /O(n)/. Fold the values in the map using the given
@@ -349,7 +349,7 @@ foldr f z m = foldrWithKeyWith (\_ b -> b) (\_ v a -> f v a) z m
 -- function is evaluated before using the result in the next
 -- application. This function is strict in the starting value.
 foldr' :: (v -> a -> a) -> a -> CritBit k v -> a
-foldr' f z m = foldrWithKeyWith seq (\_ v a -> f v a) z m
+foldr' f z m = foldrWithKey' (\_ v a -> f v a) z m
 {-# INLINABLE foldr' #-}
 
 -- | /O(n)/. Return all the elements of the map in ascending order of
