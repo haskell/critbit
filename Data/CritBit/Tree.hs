@@ -844,18 +844,18 @@ alter f k (CritBit root) = go root
       where
         (n,nob,c)  = followPrefixes k lk
 
-        rewalk i@(Internal left right byte mask) cont
-          | byte > n                = finish i cont
-          | byte == n && mask > nob = finish i cont
-          | direction k i == 0      = rewalk left $ \ new ->
-                                      case new of
-                                        Empty -> cont right
-                                        l     -> cont $! i { ileft = l }
-          | otherwise               = rewalk right $ \ new ->
-                                      case new of
-                                        Empty -> cont left
-                                        r     -> cont $! i { iright = r }
-        rewalk i cont               = finish i cont
+        rewalk i@(Internal left right byte otherBits) cont
+          | byte > n           = finish i cont
+          | byte == n && otherBits > nob = finish i cont
+          | direction k i == 0 = rewalk left $ \new ->
+                                 case new of
+                                   Empty -> cont right
+                                   l     -> cont $! i { ileft = l }
+          | otherwise          = rewalk right $ \new ->
+                                 case new of
+                                   Empty -> cont left
+                                   r     -> cont $! i { iright = r }
+        rewalk i cont          = finish i cont
 
         finish (Leaf nk v) cont
           | k == nk = maybe (cont Empty) (cont . Leaf nk) $ f (Just v)
@@ -864,5 +864,5 @@ alter f k (CritBit root) = go root
           | otherwise = maybe (cont i) (cont . insL i . Leaf k) $ f Nothing
             where
               dir        = calcDirection nob c
-              insL t l   = Internal l t n nob 
+              insL t l   = Internal l t n nob
               insR t r   = Internal t r n nob
