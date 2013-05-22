@@ -96,8 +96,8 @@ module Data.CritBit.Tree
     -- ** Lists
     , toList
     , fromList
-    -- , fromListWith
-    -- , fromListWithKey
+    , fromListWith
+    , fromListWithKey
 
     -- ** Ordered lists
     , toAscList
@@ -343,6 +343,31 @@ byteCompare a b = go 0
 fromList :: (CritBitKey k) => [(k, v)] -> CritBit k v
 fromList = List.foldl' (flip (uncurry insert)) empty
 {-# INLINABLE fromList #-}
+
+-- | /O(n*log n)/. Build a map from a list of key\/value pairs
+-- with a combining function. See also 'fromAscListWith'.
+--
+-- > fromListWith (+) [("a",5), ("b",5), ("b",3), ("a",3), ("a",5)] ==
+-- >                        fromList [("a",13), ("b",8)]
+-- > fromListWith (+) [] == empty
+fromListWith :: (CritBitKey k) => (v -> v -> v) -> [(k,v)] -> CritBit k v
+fromListWith f xs
+  = fromListWithKey (\_ x y -> f x y) xs
+{-# INLINABLE fromListWith #-}
+
+-- | /O(n*log n)/. Build a map from a list of key\/value pairs
+-- with a combining function. See also 'fromAscListWithKey'.
+--
+-- > let f key a1 a2 = byteCount key + a1 + a2
+-- > fromListWithKey f [("a",5), ("b",5), ("b",3), ("a",3), ("a",5)] ==
+-- >                        fromList [("a",16), ("b",10)]
+-- > fromListWithKey f [] == empty
+fromListWithKey :: (CritBitKey k) => (k -> v -> v -> v) -> [(k,v)] -> CritBit k v
+fromListWithKey f xs
+  = List.foldl' ins empty xs
+  where
+    ins t (k,x) = insertWithKey f k x t
+{-# INLINABLE fromListWithKey #-}
 
 -- | /O(1)/. A map with a single element.
 --
