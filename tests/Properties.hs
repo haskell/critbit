@@ -368,6 +368,12 @@ t_traverseWithKey _ (KV kvs) = mappedC == mappedM
                   (C.fromList kvs)
         mappedM = Map.toList . runIdentity . Map.traverseWithKey fun $
                   (Map.fromList kvs)
+t_splitLookup :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_splitLookup k (KV kvs) = tl C.toList slC == tl Map.toList slM
+  where
+     tl f (l,v,g) = (f l, v,f g)
+     slC = C.splitLookup k $ C.fromList kvs
+     slM  = Map.splitLookup k $ Map.fromList kvs
 
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
@@ -425,6 +431,7 @@ propertiesFor t = [
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   , testProperty "t_traverseWithKey" $ t_traverseWithKey t
   , testProperty "t_foldMap" $ t_foldMap t
+  , testProperty "t_splitLookup" $ t_splitLookup t
   ]
 
 properties :: [Test]
