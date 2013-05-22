@@ -167,8 +167,9 @@ t_unionsWith _ (Small kvs0) =
   where
     kvs = map fromKV kvs0
 
-t_foldl :: (CritBitKey k) => k -> CritBit k V -> Bool
-t_foldl _ m = C.foldl (+) 0 m == C.foldr (+) 0 m
+t_foldl :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldl _ (KV kvs) = C.foldl   (-) 0 (C.fromList   kvs) ==
+                     Map.foldl (-) 0 (Map.fromList kvs)
 
 t_foldlWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_foldlWithKey _ (KV kvs) =
