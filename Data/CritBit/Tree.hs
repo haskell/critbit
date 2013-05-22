@@ -145,7 +145,7 @@ module Data.CritBit.Tree
     ) where
 
 import Control.Applicative (Applicative(..), (<$>), (*>), (<|>), pure, liftA2)
-import Control.Arrow (second)
+import Control.Arrow (second, (***))
 import Control.Monad (guard)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
@@ -559,7 +559,7 @@ mapMaybeWithKey f (CritBit root) = CritBit $ go root
 -- >     == (empty, fromList [("x",1), ("b",3), ("a",5), ("z",7)])
 mapEitherWithKey :: (k -> v -> Either v1 v2)
                  -> CritBit k v -> (CritBit k v1, CritBit k v2)
-mapEitherWithKey f (CritBit root) = (\(x,y) -> (CritBit x, CritBit y)) $ go root
+mapEitherWithKey f (CritBit root) = (CritBit *** CritBit) $ go root
   where
     go i@(Internal l r _ _) = (merge m1 m3, merge m2 m4)
       where
