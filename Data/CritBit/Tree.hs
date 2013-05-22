@@ -35,7 +35,7 @@ module Data.CritBit.Tree
 
     -- * Deletion
     , delete
-    -- , adjust
+    , adjust
     , adjustWithKey
     -- , update
     , updateWithKey
@@ -232,6 +232,17 @@ lookup k m = lookupWith Nothing Just k m
 delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
 delete = updateWithKey (\_k _v -> Nothing)
 {-# INLINABLE delete #-}
+
+-- | /O(log n)/ Update a value at a specific key with the result of the
+-- provided function. When the key is not a member of the map, the original
+-- map is returned.
+-- let f k x = x + 1
+-- > adjustWithKey f "a" (fromList [("b",3), ("a",5)]) == fromList [("a", 6), ("b",3)]
+-- > adjustWithKey f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
+-- > adjustWithKey f "c" empty                         == empty
+adjust :: (CritBitKey k) => (v -> v) -> k -> CritBit k v -> CritBit k v
+adjust f = updateWithKey (\_ v -> Just (f v))
+{-# INLINABLE adjust #-}
 
 -- | /O(log n)/. Adjust a value at a specific key. When the key is not
 -- a member of the map, the original map is returned.
