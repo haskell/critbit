@@ -444,7 +444,7 @@ propertiesFor t = [
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   , testProperty "t_traverseWithKey" $ t_traverseWithKey t
   , testProperty "t_foldMap" $ t_foldMap t
-  , testProperty "t_alter" $ t_alter t 
+  , testProperty "t_alter" $ t_alter t
   , testProperty "t_alter_delete" $ t_alter_delete t
   ]
 
