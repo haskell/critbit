@@ -11,6 +11,7 @@ import Data.Foldable (foldMap)
 import Data.Functor.Identity (Identity(..))
 import Data.List (unfoldr)
 import Data.Map (Map)
+import Data.Maybe (isJust, fromJust)
 import Data.Monoid (Sum(..))
 import Data.String (IsString, fromString)
 import Data.Text (Text)
@@ -103,6 +104,15 @@ t_updateWithKey_present = t_updateWithKey_general C.insert
 
 t_updateWithKey_missing :: (CritBitKey k) => k -> V -> CB k -> Bool
 t_updateWithKey_missing = t_updateWithKey_general (\k _v m -> C.delete k m)
+
+t_mapMaybeWithKey :: (CritBitKey k) => k -> CB k -> Bool
+t_mapMaybeWithKey _ (CB m) = C.mapMaybeWithKey f m ==
+    C.map fromJust (C.filter isJust (C.mapWithKey f m))
+  where
+    f k x
+      | even (fromIntegral x :: Int) =
+        Just (x + fromIntegral (C.byteCount k))
+      | otherwise = Nothing
 
 t_unionL :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
 t_unionL _ (KV kv0) (KV kv1) =
@@ -324,6 +334,7 @@ propertiesFor t = [
   , testProperty "t_delete_present" $ t_delete_present t
   , testProperty "t_updateWithKey_present" $ t_updateWithKey_present t
   , testProperty "t_updateWithKey_missing" $ t_updateWithKey_missing t
+  , testProperty "t_mapMaybeWithKey" $ t_mapMaybeWithKey t
   , testProperty "t_unionL" $ t_unionL t
   , testProperty "t_foldl" $ t_foldl t
   , testProperty "t_foldlWithKey" $ t_foldlWithKey t

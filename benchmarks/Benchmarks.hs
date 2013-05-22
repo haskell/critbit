@@ -260,6 +260,14 @@ main = do
                               p' = \e -> if p e then Just e else Nothing
                           in  function nf (C.filter p) (Map.filter p)
                                           (H.filter p) (Trie.filterMap p')
+      , bgroup "mapMaybeWithKey" $
+        let f k v | even (fromIntegral v :: Int) =
+                    Just (v + fromIntegral (C.byteCount k))
+                  | otherwise = Nothing
+        in [
+          bench "critbit" $ whnf (C.mapMaybeWithKey f) b_critbit
+        , bench "map" $ whnf (Map.mapMaybeWithKey f) b_map
+        ]
       , bgroup "findMin" $ [
           bench "critbit" $ whnf (C.findMin) b_critbit
         , bench "map" $ whnf (Map.findMin) b_map

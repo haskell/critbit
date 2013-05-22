@@ -114,7 +114,7 @@ module Data.CritBit.Tree
     -- , partitionWithKey
 
     -- , mapMaybe
-    -- , mapMaybeWithKey
+    , mapMaybeWithKey
     -- , mapEither
     -- , mapEitherWithKey
 
@@ -505,6 +505,23 @@ filterWithKey p (CritBit root)    = CritBit $ fromMaybe Empty (go root)
         go l@(Leaf k v)           = guard (p k v) *> pure l
         go Empty                  = Nothing
 {-# INLINABLE filterWithKey #-}
+
+-- | /O(n)/. Map keys\/values and collect the 'Just' results.
+--
+-- > let f k v = if k == "a" then Just ("k,v: " ++ show k ++ "," ++ show v) else Nothing
+-- > mapMaybeWithKey f (fromList [("a",5), ("b",3)]) == singleton "a" "k,v: \"a\",3"
+mapMaybeWithKey :: (k -> v -> Maybe v') -> CritBit k v -> CritBit k v'
+mapMaybeWithKey f (CritBit root) = CritBit $ go root
+  where
+    go i@(Internal l r _ _) =
+      case (go l, go r) of
+        (m, Empty) -> m
+        (Empty, m) -> m
+        (m1,   m2) -> i { ileft = m1, iright = m2 }
+    go (Leaf k v) = case f k v of
+                      Nothing -> Empty
+                      Just v' -> Leaf k v'
+    go Empty      = Empty
 
 -- | /O(log n)/. The minimal key of the map. Calls 'error' if the map
 -- is empty.
