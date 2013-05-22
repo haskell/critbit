@@ -45,10 +45,10 @@ module Data.CritBit.Tree
     -- * Combination
     -- ** Union
     , union
-    -- , unionWith
-    -- , unionWithKey
-    -- , unions
-    -- , unionsWith
+    , unionWith
+    , unionWithKey
+    , unions
+    , unionsWith
     , unionL
     , unionR
 
@@ -438,16 +438,39 @@ keys m = foldrWithKey f [] m
   where f k _ ks = k : ks
 
 unionL :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
-unionL a b = foldlWithKey' (\m k v -> insert k v m) b a
+unionL a b = unionWithKey (\_ x _ -> x) a b
 {-# INLINABLE unionL #-}
 
 unionR :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
-unionR a b = foldlWithKey' (\m k v -> insert k v m) a b
+unionR a b = unionWithKey (\_ x _ -> x) b a
 {-# INLINABLE unionR #-}
 
 union :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
 union a b = unionL a b
 {-# INLINE union #-}
+
+-- | Union with a combining function.
+--
+-- > let l = fromList [("a", 5), ("b", 3)]
+-- > let r = fromList [("A", 5), ("b", 7)]
+-- > unionWith (+) l r == fromList [("A",5),("a",5),("b",10)]
+unionWith :: (CritBitKey k) => (v -> v -> v) -> CritBit k v -> CritBit k v -> CritBit k v
+unionWith f a b = unionWithKey (const f) a b
+
+-- | Union with a combining function.
+--
+-- > let f key new_value old_value = byteCount key + new_value + old_value
+-- > let l = fromList [("a", 5), ("b", 3)]
+-- > let r = fromList [("A", 5), ("C", 7)]
+-- > unionWithKey f l r == fromList [("A",5),("C",7),("a",5),("b",3)]
+unionWithKey :: (CritBitKey k) => (k -> v -> v -> v) -> CritBit k v -> CritBit k v -> CritBit k v
+unionWithKey f a b = foldlWithKey' (\m k v -> insertWithKey f k v m) b a
+
+unions :: (CritBitKey k) => [CritBit k v] -> CritBit k v
+unions cs = List.foldl' union empty cs
+
+unionsWith :: (CritBitKey k) => (v -> v -> v) -> [CritBit k v] -> CritBit k v
+unionsWith f cs = List.foldl' (unionWith f) empty cs
 
 -- | /O(n)/. Apply a function to all values.
 --
