@@ -149,6 +149,7 @@ import Control.Arrow (second)
 import Control.Monad (guard)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
+import qualified Data.Foldable as Foldable
 import Data.Maybe (fromMaybe)
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.List as List
@@ -324,8 +325,8 @@ size (CritBit root) = go root
 --
 -- > foldl (+) 0 (fromList [("a",5), ("bbb",3)]) == 8
 foldl :: (a -> v -> a) -> a -> CritBit k v -> a
-foldl f z m = foldlWithKeyWith (\_ b -> b) (\a _ v -> f a v) z m
-{-# INLINABLE foldl #-}
+foldl f z m = Foldable.foldl f z m
+{-# INLINE foldl #-}
 
 -- | /O(n)/. A strict version of 'foldl'. Each application of the
 -- function is evaluated before using the result in the next
@@ -342,8 +343,8 @@ foldl' f z m = foldlWithKey' (\a _ v -> f a v) z m
 --
 -- > elems map = foldr (:) [] map
 foldr :: (v -> a -> a) -> a -> CritBit k v -> a
-foldr f z m = foldrWithKeyWith (\_ b -> b) (\_ v a -> f v a) z m
-{-# INLINABLE foldr #-}
+foldr f z m = Foldable.foldr f z m
+{-# INLINE foldr #-}
 
 -- | /O(n)/. A strict version of 'foldr'. Each application of the
 -- function is evaluated before using the result in the next
