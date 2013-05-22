@@ -359,8 +359,8 @@ foldr' f z m = foldrWithKey' (\_ v a -> f v a) z m
 -- > elems (fromList [("b",5), ("a",3)]) == [3,5]
 -- > elems empty == []
 elems :: CritBit k v -> [v]
-elems m = foldrWithKey f [] m
-  where f _ v vs = v : vs
+elems m = foldr (:) [] m
+{-# INLINE elems #-}
 
 -- | /O(n)/. An alias for 'toAscList'. Return all key/value pairs in the map in
 -- ascending order.
