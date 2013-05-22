@@ -299,7 +299,7 @@ fromList = List.foldl' (flip (uncurry insert)) empty
 --
 -- > fromListWith (++) [(5,"a"), (5,"b"), (3,"b"), (3,"a"), (5,"a")] == fromList [(3, "ab"), (5, "aba")]
 -- > fromListWith (++) [] == empty
-fromListWith :: Ord k => (v -> v -> v) -> [(k,v)] -> CritBit k v
+fromListWith :: (CritBitKey k) => (v -> v -> v) -> [(k,v)] -> CritBit k v
 fromListWith f xs
   = fromListWithKey (\_ x y -> f x y) xs
 {-# INLINABLE fromListWith #-}
@@ -309,7 +309,7 @@ fromListWith f xs
 -- > let f k a1 a2 = (show k) ++ a1 ++ a2
 -- > fromListWithKey f [(5,"a"), (5,"b"), (3,"b"), (3,"a"), (5,"a")] == fromList [(3, "3ab"), (5, "5a5ba")]
 -- > fromListWithKey f [] == empty
-fromListWithKey :: Ord k => (k -> v -> v -> v) -> [(k,v)] -> CritBit k v
+fromListWithKey :: (CritBitKey k) => (k -> v -> v -> v) -> [(k,v)] -> CritBit k v
 fromListWithKey f xs
   = foldlStrict ins empty xs -- why not use a List.foldl' ???
   where
