@@ -858,11 +858,8 @@ alter f k (CritBit root) = go root
         rewalk i cont          = finish i cont
 
         finish (Leaf nk v) cont
-          | k == nk = maybe (cont Empty) (cont . Leaf nk) $ f (Just v)
-        finish i cont
-          | dir == 0  = maybe (cont i) (cont . insR i . Leaf k) $ f Nothing
-          | otherwise = maybe (cont i) (cont . insL i . Leaf k) $ f Nothing
-            where
-              dir        = calcDirection nob c
-              insL t l   = Internal l t n nob
-              insR t r   = Internal t r n nob
+          | k == nk   = maybe (cont Empty) (cont . Leaf nk) $ f (Just v)
+        finish i cont = maybe (cont i) (cont . ins . Leaf k) $ f Nothing
+            where ins leaf
+                    | calcDirection nob c == 0 = Internal i leaf n nob
+                    | otherwise                = Internal leaf i n nob
