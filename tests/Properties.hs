@@ -153,15 +153,15 @@ t_unionWithKey _ (KV kv0) (KV kv1) =
   where
     f key v1 v2 = fromIntegral (C.byteCount key) + v1 - v2
 
-t_unions :: (CritBitKey k, Ord k) => k -> [KV k] -> Bool
-t_unions _ kvs0 =
+t_unions :: (CritBitKey k, Ord k) => k -> Small [KV k] -> Bool
+t_unions _ (Small kvs0) =
     Map.toList (Map.unions (map Map.fromList kvs)) ==
     C.toList (C.unions (map C.fromList kvs))
   where
     kvs = map fromKV kvs0
 
-t_unionsWith :: (CritBitKey k, Ord k) => k -> [KV k] -> Bool
-t_unionsWith _ kvs0 =
+t_unionsWith :: (CritBitKey k, Ord k) => k -> Small [KV k] -> Bool
+t_unionsWith _ (Small kvs0) =
     Map.toList (Map.unionsWith (-) (map Map.fromList kvs)) ==
     C.toList (C.unionsWith (-) (map C.fromList kvs))
   where
