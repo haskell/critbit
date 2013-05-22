@@ -828,38 +828,37 @@ mapAccumWithKey f start (CritBit root) = second CritBit (go start root)
 -- > let f _ = Just 1
 -- > alter f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("c",1)]
 -- > alter f "a" (fromList [(5,"a"), (3,"b")]) == fromList [("a",1), ("b",3)]
-alter :: (CritBitKey k, Ord k)
+alter :: (CritBitKey k)
       => (Maybe v -> Maybe v)
       -> k
       -> CritBit k v
       -> CritBit k v
 {-# INLINABLE alter #-}
-alter f k (CritBit root) = go root
+alter f !k (CritBit root) = CritBit . go $ root
   where
-    go Empty = maybe empty (CritBit . Leaf k) $ f Nothing
-    go nd@(Internal l r _ _)
-      | direction k nd == 0 = go l
+    go i@(Internal l r _ _)
+      | direction k i == 0 = go l
       | otherwise           = go r
-    go (Leaf lk _)          = rewalk root CritBit
+    go (Leaf lk _)          = rewalk root
       where
         (n,nob,c)  = followPrefixes k lk
+        dir        = calcDirection nob c
 
-        rewalk i@(Internal left right byte otherBits) cont
-          | byte > n           = finish i cont
-          | byte == n && otherBits > nob = finish i cont
-          | direction k i == 0 = rewalk left $ \new ->
-                                 case new of
-                                   Empty -> cont right
-                                   l     -> cont $! i { ileft = l }
-          | otherwise          = rewalk right $ \new ->
-                                 case new of
-                                   Empty -> cont left
-                                   r     -> cont $! i { iright = r }
-        rewalk i cont          = finish i cont
+        rewalk i@(Internal left right byte otherBits)
+          | byte > n                     = finish i
+          | byte == n && otherBits > nob = finish i
+          | direction k i == 0 = case rewalk left of
+                                   Empty -> right
+                                   nd    -> i { ileft  = nd }
+          | otherwise          = case rewalk right of
+                                   Empty -> left
+                                   nd    -> i { iright = nd }
+        rewalk i               = finish i
 
-        finish (Leaf nk v) cont
-          | k == nk   = maybe (cont Empty) (cont . Leaf nk) $ f (Just v)
-        finish i cont = maybe (cont i) (cont . ins . Leaf k) $ f Nothing
+        finish (Leaf _ v)
+          | k == lk   = maybe Empty (Leaf k) . f $ Just v
+        finish i      = maybe i (ins . Leaf k) . f $ Nothing
             where ins leaf
-                    | calcDirection nob c == 0 = Internal i leaf n nob
-                    | otherwise                = Internal leaf i n nob
+                    | dir == 0  = Internal i leaf n nob
+                    | otherwise = Internal leaf i n nob
+    go _ = maybe Empty (Leaf k) $ f Nothing
