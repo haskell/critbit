@@ -119,6 +119,37 @@ t_unionL _ (KV kv0) (KV kv1) =
     Map.toList (Map.fromList kv0 `Map.union` Map.fromList kv1) ==
     C.toList (C.fromList kv0 `C.unionL` C.fromList kv1)
 
+t_unionR :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_unionR _ (KV kv0) (KV kv1) =
+    Map.toList (Map.fromList kv1 `Map.union` Map.fromList kv0) ==
+    C.toList (C.fromList kv0 `C.unionR` C.fromList kv1)
+
+t_unionWith :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_unionWith _ (KV kv0) (KV kv1) =
+    Map.toList (Map.unionWith (-) (Map.fromList kv0) (Map.fromList kv1)) ==
+    C.toList (C.unionWith (-) (C.fromList kv0) (C.fromList kv1))
+
+t_unionWithKey :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_unionWithKey _ (KV kv0) (KV kv1) =
+    Map.toList (Map.unionWithKey f (Map.fromList kv0) (Map.fromList kv1)) ==
+    C.toList (C.unionWithKey f (C.fromList kv0) (C.fromList kv1))
+  where
+    f key v1 v2 = fromIntegral (C.byteCount key) + v1 - v2
+
+t_unions :: (CritBitKey k, Ord k) => k -> [KV k] -> Bool
+t_unions _ kvs0 =
+    Map.toList (Map.unions (map Map.fromList kvs)) ==
+    C.toList (C.unions (map C.fromList kvs))
+  where
+    kvs = map fromKV kvs0
+
+t_unionsWith :: (CritBitKey k, Ord k) => k -> [KV k] -> Bool
+t_unionsWith _ kvs0 =
+    Map.toList (Map.unionsWith (-) (map Map.fromList kvs)) ==
+    C.toList (C.unionsWith (-) (map C.fromList kvs))
+  where
+    kvs = map fromKV kvs0
+
 t_foldl :: (CritBitKey k) => k -> CritBit k V -> Bool
 t_foldl _ m = C.foldl (+) 0 m == C.foldr (+) 0 m
 
@@ -336,6 +367,11 @@ propertiesFor t = [
   , testProperty "t_updateWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_mapMaybeWithKey" $ t_mapMaybeWithKey t
   , testProperty "t_unionL" $ t_unionL t
+  , testProperty "t_unionR" $ t_unionR t
+  , testProperty "t_unionWith" $ t_unionWith t
+  , testProperty "t_unionWithKey" $ t_unionWithKey t
+  , testProperty "t_unions" $ t_unions t
+  , testProperty "t_unionsWith" $ t_unionsWith t
   , testProperty "t_foldl" $ t_foldl t
   , testProperty "t_foldlWithKey" $ t_foldlWithKey t
   , testProperty "t_foldl'" $ t_foldl' t
