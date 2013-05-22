@@ -66,6 +66,9 @@ instance Functor (Node k) where
     fmap _ Empty                = Empty
 
 instance Foldable (Node k) where
+    foldl f z m = foldlWithKey (\a _ v -> f a v) z (CritBit m)
+    foldr f z m = foldrWithKey (\_ v a -> f v a) z (CritBit m)
+
     foldMap f (Internal l r _ _) = mappend (foldMap f l) (foldMap f r)
     foldMap f (Leaf _ v)         = f v
     foldMap _ Empty              = mempty
