@@ -206,6 +206,19 @@ main = do
           , bench "map" $ whnf (Map.insertWithKey f key 1) b_map_1
           ]
         ]
+      , bgroup "adjustWithKey" $
+        let f k v = (v + fromIntegral (C.byteCount k)) in [
+          bgroup "present" [
+            bench "critbit" $ whnf   (C.adjustWithKey f key) b_critbit
+          , bench "map"     $ whnf (Map.adjustWithKey f key) b_map
+          , bench "trie"    $ whnf  (TC.adjustWithKey f key) b_trie
+          ]
+        , bgroup "missing" [
+            bench "critbit" $ whnf   (C.adjustWithKey f key) b_critbit_1
+          , bench "map"     $ whnf (Map.adjustWithKey f key) b_map_1
+          , bench "trie"    $ whnf  (TC.adjustWithKey f key) b_trie_1
+          ]
+        ]
       , bgroup "updateWithKey" $
         let f k v = Just (v + fromIntegral (C.byteCount k)) in [
           bgroup "present" [
