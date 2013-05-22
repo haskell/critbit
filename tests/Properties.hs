@@ -369,6 +369,25 @@ t_traverseWithKey _ (KV kvs) = mappedC == mappedM
         mappedM = Map.toList . runIdentity . Map.traverseWithKey fun $
                   (Map.fromList kvs)
 
+alter :: (CritBitKey k, Ord k)
+         => (Maybe Word8 -> Maybe Word8)
+         -> k
+         -> KV k
+         -> Bool
+alter f k (KV kvs) = alterC == alterM
+  where
+    alterC  = C.toList $ C.alter f k $ C.fromList kvs
+    alterM  = Map.toList $ Map.alter f k $ Map.fromList kvs
+
+t_alter :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_alter = alter f
+  where
+    f Nothing = Just 1
+    f j       = fmap (+ 1) j
+
+t_alter_delete :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_alter_delete = alter (const Nothing)
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -425,6 +444,8 @@ propertiesFor t = [
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   , testProperty "t_traverseWithKey" $ t_traverseWithKey t
   , testProperty "t_foldMap" $ t_foldMap t
+  , testProperty "t_alter" $ t_alter t 
+  , testProperty "t_alter_delete" $ t_alter_delete t
   ]
 
 properties :: [Test]

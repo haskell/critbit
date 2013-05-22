@@ -40,7 +40,7 @@ module Data.CritBit.Tree
     -- , update
     , updateWithKey
     -- , updateLookupWithKey
-    -- , alter
+    , alter
 
     -- * Combination
     -- ** Union
@@ -816,3 +816,53 @@ mapAccumWithKey f start (CritBit root) = second CritBit (go start root)
     go a (Leaf k v)           = let (a0, w) = f a k v in (a0, Leaf k w)
     go a Empty                = (a, Empty)
 {-# INLINABLE mapAccumWithKey #-}
+
+-- | /O(log n)/. The expression (@'alter' f k map@) alters the value @x@ at @k@, or absence thereof.
+-- 'alter' can be used to insert, delete, or update a value in a 'CritBit'.
+-- In short : @'lookup' k ('alter' f k m) = f ('lookup' k m)@.
+--
+-- > let f _ = Nothing
+-- > alter f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
+-- > alter f "a" (fromList [("a",5), ("b",3)]) == fromList [("b",3)]
+-- >
+-- > let f _ = Just 1
+-- > alter f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("c",1)]
+-- > alter f "a" (fromList [(5,"a"), (3,"b")]) == fromList [("a",1), ("b",3)]
+alter :: (CritBitKey k, Ord k)
+      => (Maybe v -> Maybe v)
+      -> k
+      -> CritBit k v
+      -> CritBit k v
+{-# INLINABLE alter #-}
+alter f k (CritBit root) = go root
+  where
+    go Empty = maybe empty (CritBit . Leaf k) $ f Nothing
+    go nd@(Internal l r _ _)
+      | direction k nd == 0 = go l
+      | otherwise           = go r
+    go (Leaf lk _)          = rewalk root CritBit
+      where
+        (n,nob,c)  = followPrefixes k lk
+
+        rewalk i@(Internal left right byte mask) cont
+          | byte > n                = finish i cont
+          | byte == n && mask > nob = finish i cont
+          | direction k i == 0      = rewalk left $ \ new ->
+                                      case new of
+                                        Empty -> cont right
+                                        l     -> cont $! i { ileft = l }
+          | otherwise               = rewalk right $ \ new ->
+                                      case new of
+                                        Empty -> cont left
+                                        r     -> cont $! i { iright = r }
+        rewalk i cont               = finish i cont
+
+        finish (Leaf nk v) cont
+          | k == nk = maybe (cont Empty) (cont . Leaf nk) $ f (Just v)
+        finish i cont
+          | dir == 0  = maybe (cont i) (cont . insR i . Leaf k) $ f Nothing
+          | otherwise = maybe (cont i) (cont . insL i . Leaf k) $ f Nothing
+            where
+              dir        = calcDirection nob c
+              insL t l   = Internal l t n nob 
+              insR t r   = Internal t r n nob
