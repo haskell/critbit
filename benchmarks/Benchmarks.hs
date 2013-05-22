@@ -206,6 +206,30 @@ main = do
           , bench "map" $ whnf (Map.insertWithKey f key 1) b_map_1
           ]
         ]
+      , bgroup "adjust" $
+        let f v = (v + 10) in [
+          bgroup "present" [
+            bench "critbit" $ whnf   (C.adjust f key) b_critbit
+          , bench "map"     $ whnf (Map.adjust f key) b_map
+          ]
+        , bgroup "missing" [
+            bench "critbit" $ whnf   (C.adjust f key) b_critbit_1
+          , bench "map"     $ whnf (Map.adjust f key) b_map_1
+          ]
+        ]
+      , bgroup "adjustWithKey" $
+        let f k v = (v + fromIntegral (C.byteCount k)) in [
+          bgroup "present" [
+            bench "critbit" $ whnf   (C.adjustWithKey f key) b_critbit
+          , bench "map"     $ whnf (Map.adjustWithKey f key) b_map
+          , bench "trie"    $ whnf  (TC.adjustWithKey f key) b_trie
+          ]
+        , bgroup "missing" [
+            bench "critbit" $ whnf   (C.adjustWithKey f key) b_critbit_1
+          , bench "map"     $ whnf (Map.adjustWithKey f key) b_map_1
+          , bench "trie"    $ whnf  (TC.adjustWithKey f key) b_trie_1
+          ]
+        ]
       , bgroup "updateWithKey" $
         let f k v = Just (v + fromIntegral (C.byteCount k)) in [
           bgroup "present" [
@@ -347,8 +371,8 @@ main = do
         , bench "map" $ whnf (Map.updateMaxWithKey updateFKey) b_map
         ]
       , bgroup "foldMap" $ [
-          bench "critbit" $ let c_foldmap :: (C.CritBitKey k, Num v) 
-                                          => C.CritBit k v 
+          bench "critbit" $ let c_foldmap :: (C.CritBitKey k, Num v)
+                                          => C.CritBit k v
                                           -> Sum v
                                 c_foldmap = foldMap Sum
                             in whnf c_foldmap b_critbit
@@ -358,9 +382,9 @@ main = do
                             m_foldmap = foldMap Sum
                         in whnf m_foldmap b_map
         ]
-      , bgroup "alter" $ let altF (Just v) = 
-                                  if odd v 
-                                    then Just (v+1) 
+      , bgroup "alter" $ let altF (Just v) =
+                                  if odd v
+                                    then Just (v+1)
                                     else Nothing
                              altF Nothing  = Just 1
                           in [

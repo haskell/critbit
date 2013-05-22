@@ -9,7 +9,7 @@ import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
 import Data.Foldable (foldMap)
 import Data.Functor.Identity (Identity(..))
-import Data.List (unfoldr)
+import Data.List (deleteBy, unfoldr)
 import Data.Map (Map)
 import Data.Maybe (isJust, fromJust)
 import Data.Monoid (Sum(..))
@@ -97,6 +97,36 @@ t_delete_present _ (KV kvs) k v =
   where
     c = C.insert k v $ C.fromList kvs
     m = Map.insert k v $ Map.fromList kvs
+
+t_adjust_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_adjust_general k0 (KV kvs) = m == cb
+  where f v = v + 10
+        m  = Map.toList . Map.adjust f k0 $ Map.fromList kvs
+        cb =   C.toList .   C.adjust f k0 $   C.fromList kvs
+
+t_adjust_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_adjust_present k v (KV kvs) =
+  t_adjust_general k (KV ((k,v):kvs))
+
+t_adjust_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_adjust_missing k v (KV kvs) =
+  t_adjust_general k (KV $ deleteKey (k,v) kvs)
+  where deleteKey = deleteBy (\(k0,_) (k1,_) -> k0 == k1)
+
+t_adjustWithKey_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_adjustWithKey_general k0 (KV kvs) = m == cb
+  where f k v = v + (fromIntegral $ C.byteCount k)
+        m  = Map.toList . Map.adjustWithKey f k0 $ Map.fromList kvs
+        cb =   C.toList .   C.adjustWithKey f k0 $   C.fromList kvs
+
+t_adjustWithKey_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_adjustWithKey_present k v (KV kvs) =
+  t_adjustWithKey_general k (KV ((k,v):kvs))
+
+t_adjustWithKey_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_adjustWithKey_missing k v (KV kvs) =
+  t_adjustWithKey_general k (KV $ deleteKey (k,v) kvs)
+  where deleteKey = deleteBy (\(k0,_) (k1,_) -> k0 == k1)
 
 t_updateWithKey_general :: (CritBitKey k)
                         => (k -> V -> CritBit k V -> CritBit k V)
@@ -399,6 +429,10 @@ propertiesFor t = [
   , testProperty "t_lookupGT" $ t_lookupGT t
 #endif
   , testProperty "t_delete_present" $ t_delete_present t
+  , testProperty "t_adjust_present" $ t_updateWithKey_present t
+  , testProperty "t_adjust_missing" $ t_updateWithKey_missing t
+  , testProperty "t_adjustWithKey_present" $ t_updateWithKey_present t
+  , testProperty "t_adjustWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_updateWithKey_present" $ t_updateWithKey_present t
   , testProperty "t_updateWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_mapMaybeWithKey" $ t_mapMaybeWithKey t
@@ -444,7 +478,7 @@ propertiesFor t = [
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   , testProperty "t_traverseWithKey" $ t_traverseWithKey t
   , testProperty "t_foldMap" $ t_foldMap t
-  , testProperty "t_alter" $ t_alter t 
+  , testProperty "t_alter" $ t_alter t
   , testProperty "t_alter_delete" $ t_alter_delete t
   ]
 
