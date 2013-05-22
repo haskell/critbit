@@ -96,8 +96,8 @@ module Data.CritBit.Tree
     -- ** Lists
     , toList
     , fromList
-    -- , fromListWith
-    -- , fromListWithKey
+    , fromListWith
+    , fromListWithKey
 
     -- ** Ordered lists
     , toAscList
@@ -294,6 +294,27 @@ byteCompare a b = go 0
 fromList :: (CritBitKey k) => [(k, v)] -> CritBit k v
 fromList = List.foldl' (flip (uncurry insert)) empty
 {-# INLINABLE fromList #-}
+
+-- | /O(n*log n)/. Build a map from a list of key\/value pairs with a combining function. See also 'fromAscListWith'.
+--
+-- > fromListWith (++) [(5,"a"), (5,"b"), (3,"b"), (3,"a"), (5,"a")] == fromList [(3, "ab"), (5, "aba")]
+-- > fromListWith (++) [] == empty
+fromListWith :: Ord k => (v -> v -> v) -> [(k,v)] -> CritBit k v
+fromListWith f xs
+  = fromListWithKey (\_ x y -> f x y) xs
+{-# INLINABLE fromListWith #-}
+
+-- | /O(n*log n)/. Build a map from a list of key\/value pairs with a combining function. See also 'fromAscListWithKey'.
+--
+-- > let f k a1 a2 = (show k) ++ a1 ++ a2
+-- > fromListWithKey f [(5,"a"), (5,"b"), (3,"b"), (3,"a"), (5,"a")] == fromList [(3, "3ab"), (5, "5a5ba")]
+-- > fromListWithKey f [] == empty
+fromListWithKey :: Ord k => (k -> v -> v -> v) -> [(k,v)] -> CritBit k v
+fromListWithKey f xs
+  = foldlStrict ins empty xs -- why not use a List.foldl' ???
+  where
+    ins t (k,x) = insertWithKey f k x t
+{-# INLINABLE fromListWithKey #-}
 
 -- | /O(1)/. A map with a single element.
 --
@@ -863,3 +884,14 @@ alter f k (CritBit root) = go root
             where ins leaf
                     | calcDirection nob c == 0 = Internal i leaf n nob
                     | otherwise                = Internal leaf i n nob
+
+
+{--------------------------------------------------------------------
+  Utilities
+--------------------------------------------------------------------}
+foldlStrict :: (a -> b -> a) -> a -> [b] -> a
+foldlStrict f = go
+  where
+    go z []     = z
+    go z (x:xs) = let z' = f z x in z' `seq` go z' xs
+{-# INLINE foldlStrict #-}
