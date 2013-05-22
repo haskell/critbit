@@ -19,7 +19,8 @@ import Data.Word (Word8)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary(..), Args(..), quickCheckWith, stdArgs)
-import Test.QuickCheck.Property (Testable)
+import Test.QuickCheck.Gen (Gen, resize, sized)
+import Test.QuickCheck.Property (Property, Testable, forAll)
 import qualified Data.ByteString as BB
 import qualified Data.ByteString.Char8 as B
 import qualified Data.CritBit.Map.Lazy as C
@@ -50,6 +51,22 @@ instance (CritBitKey k, Arbitrary k, Arbitrary v) =>
 
 newtype CB k = CB (CritBit k V)
     deriving (Show, Eq, Arbitrary)
+
+-- For tests that have O(n^2) running times or input sizes, resize
+-- their inputs to the square root of the originals.
+unsquare :: (Arbitrary a, Show a, Testable b) => (a -> b) -> Property
+unsquare = forAll smallArbitrary
+
+smallArbitrary :: (Arbitrary a, Show a) => Gen a
+smallArbitrary = sized $ \n -> resize (smallish n) arbitrary
+  where smallish = round . (sqrt :: Double -> Double) . fromIntegral . abs
+
+newtype Small a = Small { fromSmall :: a }
+    deriving (Eq, Ord, Show)
+
+instance (Show a, Arbitrary a) => Arbitrary (Small a) where
+    arbitrary = Small <$> smallArbitrary
+    shrink = map Small . shrink . fromSmall
 
 t_null :: (CritBitKey k) => k -> KV k -> Bool
 t_null _ (KV kvs) = C.null (C.fromList kvs) == null kvs
