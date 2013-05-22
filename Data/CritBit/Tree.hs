@@ -37,9 +37,9 @@ module Data.CritBit.Tree
     , delete
     -- , adjust
     -- , adjustWithKey
-    -- , update
+    , update
     , updateWithKey
-    -- , updateLookupWithKey
+    , updateLookupWithKey
     , alter
 
     -- * Combination
@@ -232,6 +232,32 @@ lookup k m = lookupWith Nothing Just k m
 delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
 delete = updateWithKey (\_k _v -> Nothing)
 {-# INLINABLE delete #-}
+
+-- | /O(log n)/. The expression (@'update' f k map@ updates the value @x@
+-- at @k@ (if it is in the map). If (@f x@) is 'Nothing', the element is
+-- deleted. If it is (@'Just' y@), the key @k@ is bound to the new value @y@.
+--
+-- > let f x = if x == 5 then Just 50 else Nothing
+-- > update f "a" (fromList [("b",3), ("a",5)]) == fromList [("a", 50), ("b",3)]
+-- > update f "c" (fromList [("b",3), ("a",5)]) == fromList [("a", 50), ("b",3)]
+-- > update f "b" (fromList [("b",3), ("a",5)]) == singleton "a" 5
+update :: (CritBitKey k) => (v -> Maybe v) -> k -> CritBit k v -> CritBit k v
+update f = updateWithKey (const f)
+{-# INLINABLE update #-}
+
+-- | /O(log n)/. The expression (@'updateWithKey' f k map@) updates the
+-- value @x@ at @k@ (if it is in the map). If (@f k x@) is 'Nothing',
+-- the element is deleted. If it is (@'Just' y@), the key @k@ is bound
+-- to the new value @y@.
+--
+-- > let f k x = if x == 5 then Just (x + fromEnum (k < "d")) else Nothing
+-- > updateWithKey f "a" (fromList [("b",3), ("a",5)]) == fromList [("a", 6), ("b",3)]
+-- > updateWithKey f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
+-- > updateWithKey f "b" (fromList [("a",5), ("b",3)]) == singleton "a" 5
+updateWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k -> CritBit k v
+              -> CritBit k v
+updateWithKey f k = snd . updateLookupWithKey f k
+{-# INLINABLE updateWithKey #-}
 
 -- | /O(log n)/. Returns the value associated with the given key, or
 -- the given default value if the key is not in the map.

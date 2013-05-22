@@ -219,6 +219,36 @@ main = do
           , bench "trie" $ whnf (TC.updateWithKey f key) b_trie_1
           ]
         ]
+      , bgroup "update" $
+        let f = updateFVal in [
+          bgroup "present" [
+            bench "critbit" $ whnf (C.update f key) b_critbit
+          , bench "map" $ whnf (Map.update f key) b_map
+          , bench "trie" $ whnf (TC.update f key) b_trie
+          ]
+        , bgroup "missing" [
+            bench "critbit" $ whnf (C.update f key) b_critbit_1
+          , bench "map" $ whnf (Map.update f key) b_map_1
+          , bench "trie" $ whnf (TC.update f key) b_trie_1
+          ]
+        ]
+      , bgroup "updateLookupWithKey" $
+        -- The Map implementation immediately returns a tuple with lazy values,
+        -- so we need to force it to evaluate the update.
+        let f k v = Just (v + fromIntegral (C.byteCount k)) in [
+          bgroup "present" [
+            bench "critbit" $ whnf
+              (snd . C.updateLookupWithKey f key) b_critbit
+          , bench "map" $ whnf
+              (snd . Map.updateLookupWithKey f key) b_map
+          ]
+        , bgroup "missing" [
+            bench "critbit" $ whnf
+              (snd . C.updateLookupWithKey f key) b_critbit_1
+          , bench "map" $ whnf
+              (snd . Map.updateLookupWithKey f key) b_map_1
+          ]
+        ]
       , bgroup "lookup" $ keyed C.lookup Map.lookup H.lookup Trie.lookup
 #if MIN_VERSION_containers(0,5,0)
       , bgroup "lookupGT" $ [
