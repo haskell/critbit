@@ -347,8 +347,8 @@ main = do
         , bench "map" $ whnf (Map.updateMaxWithKey updateFKey) b_map
         ]
       , bgroup "foldMap" $ [
-          bench "critbit" $ let c_foldmap :: (C.CritBitKey k, Num v) 
-                                          => C.CritBit k v 
+          bench "critbit" $ let c_foldmap :: (C.CritBitKey k, Num v)
+                                          => C.CritBit k v
                                           -> Sum v
                                 c_foldmap = foldMap Sum
                             in whnf c_foldmap b_critbit
@@ -358,9 +358,9 @@ main = do
                             m_foldmap = foldMap Sum
                         in whnf m_foldmap b_map
         ]
-      , bgroup "alter" $ let altF (Just v) = 
-                                  if odd v 
-                                    then Just (v+1) 
+      , bgroup "alter" $ let altF (Just v) =
+                                  if odd v
+                                    then Just (v+1)
                                     else Nothing
                              altF Nothing  = Just 1
                           in [
