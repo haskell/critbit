@@ -24,7 +24,7 @@ module Data.CritBit.Types.Internal
 import Control.DeepSeq (NFData(..))
 import Data.Bits ((.|.), (.&.), shiftL, shiftR)
 import Data.ByteString (ByteString)
-import Data.Foldable (Foldable, foldMap)
+import Data.Foldable hiding (toList)
 import Data.Monoid (Monoid(..))
 import Data.Text ()
 import Data.Text.Internal (Text(..))
