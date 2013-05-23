@@ -256,6 +256,18 @@ t_split_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
 t_split_missing k v kvs =
   t_split_general k (cbMissing k v kvs)
 
+t_splitLookup_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_splitLookup_present k0 v0 kvs = (lt, Just v0, gt) == C.splitLookup k0 cb
+  where cb = cbPresent k0 v0 kvs
+        lt = C.filterWithKey (\k _ -> k < k0) cb
+        gt = C.filterWithKey (\k _ -> k > k0) cb
+
+t_splitLookup_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_splitLookup_missing k0 v0 kvs = (lt, Nothing, gt) == C.splitLookup k0 cb
+  where cb = cbMissing k0 v0 kvs
+        lt = C.filterWithKey (\k _ -> k < k0) cb
+        gt = C.filterWithKey (\k _ -> k > k0) cb
+
 t_findMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_findMin _ (KV kvs)
   | null kvs  = True
@@ -446,6 +458,8 @@ propertiesFor t = [
   , testProperty "t_filter" $ t_filter t
   , testProperty "t_split_present" $ t_split_present t
   , testProperty "t_split_missing" $ t_split_missing t
+  , testProperty "t_splitLookup_present" $ t_split_present t
+  , testProperty "t_splitLookup_missing" $ t_split_missing t
   , testProperty "t_findMin" $ t_findMin t
   , testProperty "t_findMax" $ t_findMax t
   , testProperty "t_deleteMin" $ t_deleteMin t

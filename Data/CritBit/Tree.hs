@@ -118,8 +118,8 @@ module Data.CritBit.Tree
     -- , mapEither
     -- , mapEitherWithKey
 
-    -- , splitLookup
     , split
+    , splitLookup
 
     -- * Submap
     -- , isSubmapOf
@@ -576,6 +576,34 @@ split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
         EQ -> (Empty, Empty)
     go _ = (Empty,Empty)
 {-# INLINABLE split #-}
+
+-- | /O(log n)/. The expression (@'splitLookup' k map@) splits a map just
+-- like 'split' but also returns @'lookup' k map@.
+--
+-- > split "a" (fromList [("b",1), ("d",2)]) == (empty, Nothing, fromList [("b",1), ("d",2)])
+-- > split "b" (fromList [("b",1), ("d",2)]) == (empty, Just 1, singleton "d" 2)
+-- > split "c" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Nothing, singleton "d" 2)
+-- > split "d" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Just 2, empty)
+-- > split "e" (fromList [("b",1), ("d",2)]) == (fromList [("b",1), ("d",2)], Nothing, empty)
+splitLookup :: (CritBitKey k) => k -> CritBit k v
+               -> (CritBit k v, Maybe v, CritBit k v)
+splitLookup k (CritBit root) =
+  (\(ln,res,rn) -> (CritBit ln, res, CritBit rn)) $ go root
+  where
+    go i@(Internal left right _ _)
+      | direction k i == 0 = case go left of
+                               (lt,res,Empty) -> (lt, res, right)
+                               (lt,res,l)     -> (lt, res, i { ileft = l })
+      | otherwise          = case go right of
+                               (Empty,res,gt) -> (left, res, gt)
+                               (r,res,gt)     -> (i { iright = r }, res, gt)
+    go (Leaf lk lv) =
+      case byteCompare lk k of
+        LT -> ((Leaf lk lv), Nothing, Empty)
+        GT -> (Empty, Nothing, (Leaf lk lv))
+        EQ -> (Empty, Just lv, Empty)
+    go _ = (Empty, Nothing, Empty)
+{-# INLINABLE splitLookup #-}
 
 -- | /O(log n)/. The minimal key of the map. Calls 'error' if the map
 -- is empty.
