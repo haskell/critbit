@@ -297,8 +297,8 @@ fromList = List.foldl' (flip (uncurry insert)) empty
 
 -- | /O(n*log n)/. Build a map from a list of key\/value pairs with a combining function. See also 'fromAscListWith'.
 --
--- > fromListWith (++) [(5,"a"), (5,"b"), (3,"b"), (3,"a"), (5,"a")] == fromList [(3, "ab"), (5, "aba")]
--- > fromListWith (++) [] == empty
+-- > fromListWith (+) [("a",5), ("b",5), ("b",3), ("a",3), ("a",5)] == fromList [("a",13), ("b",8)]
+-- > fromListWith (+) [] == empty
 fromListWith :: (CritBitKey k) => (v -> v -> v) -> [(k,v)] -> CritBit k v
 fromListWith f xs
   = fromListWithKey (\_ x y -> f x y) xs
@@ -306,8 +306,8 @@ fromListWith f xs
 
 -- | /O(n*log n)/. Build a map from a list of key\/value pairs with a combining function. See also 'fromAscListWithKey'.
 --
--- > let f k a1 a2 = (show k) ++ a1 ++ a2
--- > fromListWithKey f [(5,"a"), (5,"b"), (3,"b"), (3,"a"), (5,"a")] == fromList [(3, "3ab"), (5, "5a5ba")]
+-- > let f k a1 a2 = (length k) + a1 + a2
+-- > fromListWithKey f [("a",5), ("b",5), ("b",3), ("a",3), ("a",5)] == fromList [("a",16), ("b",10)]
 -- > fromListWithKey f [] == empty
 fromListWithKey :: (CritBitKey k) => (k -> v -> v -> v) -> [(k,v)] -> CritBit k v
 fromListWithKey f xs

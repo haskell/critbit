@@ -93,22 +93,23 @@ t_fromList_size _ (KV kvs) =
 
 t_fromListWith_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromListWith_toList _ (KV kvs) =
-    Map.toList (Map.fromListWith (++) kvsDup) == C.toList (C.fromListWith (++) kvsDup)
+    Map.toList (Map.fromListWith (+) kvsDup) == C.toList (C.fromListWith (+) kvsDup)
     where kvsDup = concatMap (replicate 2) kvs
 
 t_fromListWith_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromListWith_size _ (KV kvs) =
-    Map.size (Map.fromListWith (++) kvsDup) == C.size (C.fromListWith (++) kvsDup)
+    Map.size (Map.fromListWith (+) kvsDup) == C.size (C.fromListWith (+) kvsDup)
     where kvsDup = concatMap (replicate 2) kvs
 
 t_fromListWithKey_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromListWithKey_toList _ (KV kvs) =
-    Map.toList (Map.fromListWithKey (++) kvsDup) == C.toList (C.fromListWithKey (++) kvsDup)
+    Map.toList (Map.fromListWithKey f kvsDup) == C.toList (C.fromListWithKey f kvsDup)
     where kvsDup = concatMap (replicate 2) kvs
+          f k a1 a2 = (length k) + a1 + a2
 
 t_fromListWithKey_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromListWithKey_size _ (KV kvs) =
-    Map.size (Map.fromListWithKey (++) kvsDup) == C.size (C.fromListWithKey (++) kvsDup)
+    Map.size (Map.fromListWithKey (\_ x y -> x+y) kvsDup) == C.size (C.fromListWithKey (\_ x y -> x+y) kvsDup)
     where kvsDup = concatMap (replicate 2) kvs
 
 t_delete_present :: (CritBitKey k, Ord k) => k -> KV k -> k -> V -> Bool
@@ -412,9 +413,9 @@ propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
   , testProperty "t_fromList_size" $ t_fromList_size t
-    testProperty "t_fromListWith_toList" $ t_fromListWith_toList t
+  , testProperty "t_fromListWith_toList" $ t_fromListWith_toList t
   , testProperty "t_fromListWith_size" $ t_fromListWith_size t
-    testProperty "t_fromListWithKey_toList" $ t_fromListWithKey_toList t
+  , testProperty "t_fromListWithKey_toList" $ t_fromListWithKey_toList t
   , testProperty "t_fromListWithKey_size" $ t_fromListWithKey_size t
   , testProperty "t_null" $ t_null t
   , testProperty "t_lookup_present" $ t_lookup_present t
