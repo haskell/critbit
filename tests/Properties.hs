@@ -412,6 +412,10 @@ propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
   , testProperty "t_fromList_size" $ t_fromList_size t
+    testProperty "t_fromListWith_toList" $ t_fromListWith_toList t
+  , testProperty "t_fromListWith_size" $ t_fromListWith_size t
+    testProperty "t_fromListWithKey_toList" $ t_fromListWithKey_toList t
+  , testProperty "t_fromListWithKey_size" $ t_fromListWithKey_size t
   , testProperty "t_null" $ t_null t
   , testProperty "t_lookup_present" $ t_lookup_present t
   , testProperty "t_lookup_missing" $ t_lookup_missing t
