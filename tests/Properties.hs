@@ -9,7 +9,7 @@ import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
 import Data.Foldable (foldMap)
 import Data.Functor.Identity (Identity(..))
-import Data.List (unfoldr)
+import Data.List (deleteBy, unfoldr)
 import Data.Map (Map)
 import Data.Maybe (isJust, fromJust)
 import Data.Monoid (Sum(..))
@@ -236,6 +236,38 @@ t_filter _ (KV kvs) = filteredC == filteredM
         filteredC = C.toList $ C.filter p (C.fromList kvs)
         filteredM = Map.toList $ Map.filter p (Map.fromList kvs)
 
+cbPresent :: (CritBitKey k) => k -> V -> KV k -> CritBit k V
+cbPresent k v (KV kvs) = C.fromList $ (k,v):kvs
+
+cbMissing :: (CritBitKey k, Ord k) => k -> V -> KV k -> CritBit k V
+cbMissing k v (KV kvs) = C.fromList $ deleteKey (k,v) kvs
+  where deleteKey = deleteBy (\(k0,_) (k1,_) -> k0 == k1)
+
+t_split_general :: (CritBitKey k, Ord k) => k -> CritBit k V -> Bool
+t_split_general k0 cb = (lt, gt) == C.split k0 cb
+  where lt = C.filterWithKey (\k _ -> k < k0) cb
+        gt = C.filterWithKey (\k _ -> k > k0) cb
+
+t_split_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_split_present k v kvs =
+  t_split_general k (cbPresent k v kvs)
+
+t_split_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_split_missing k v kvs =
+  t_split_general k (cbMissing k v kvs)
+
+t_splitLookup_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_splitLookup_present k0 v0 kvs = (lt, Just v0, gt) == C.splitLookup k0 cb
+  where cb = cbPresent k0 v0 kvs
+        lt = C.filterWithKey (\k _ -> k < k0) cb
+        gt = C.filterWithKey (\k _ -> k > k0) cb
+
+t_splitLookup_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_splitLookup_missing k0 v0 kvs = (lt, Nothing, gt) == C.splitLookup k0 cb
+  where cb = cbMissing k0 v0 kvs
+        lt = C.filterWithKey (\k _ -> k < k0) cb
+        gt = C.filterWithKey (\k _ -> k > k0) cb
+
 t_findMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_findMin _ (KV kvs)
   | null kvs  = True
@@ -424,6 +456,10 @@ propertiesFor t = [
   , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   , testProperty "t_filter" $ t_filter t
+  , testProperty "t_split_present" $ t_split_present t
+  , testProperty "t_split_missing" $ t_split_missing t
+  , testProperty "t_splitLookup_present" $ t_split_present t
+  , testProperty "t_splitLookup_missing" $ t_split_missing t
   , testProperty "t_findMin" $ t_findMin t
   , testProperty "t_findMax" $ t_findMax t
   , testProperty "t_deleteMin" $ t_deleteMin t
@@ -444,7 +480,7 @@ propertiesFor t = [
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   , testProperty "t_traverseWithKey" $ t_traverseWithKey t
   , testProperty "t_foldMap" $ t_foldMap t
-  , testProperty "t_alter" $ t_alter t 
+  , testProperty "t_alter" $ t_alter t
   , testProperty "t_alter_delete" $ t_alter_delete t
   ]
 
