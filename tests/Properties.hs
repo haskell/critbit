@@ -91,6 +91,26 @@ t_fromList_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromList_size _ (KV kvs) =
     Map.size (Map.fromList kvs) == C.size (C.fromList kvs)
 
+t_fromListWith_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWith_toList _ (KV kvs) =
+    Map.toList (Map.fromListWith (++) kvsDup) == C.toList (C.fromListWith (++) kvsDup)
+    where kvsDup = concatMap (replicate 2) kvs
+
+t_fromListWith_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWith_size _ (KV kvs) =
+    Map.size (Map.fromListWith (++) kvsDup) == C.size (C.fromListWith (++) kvsDup)
+    where kvsDup = concatMap (replicate 2) kvs
+
+t_fromListWithKey_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWithKey_toList _ (KV kvs) =
+    Map.toList (Map.fromListWithKey (++) kvsDup) == C.toList (C.fromListWithKey (++) kvsDup)
+    where kvsDup = concatMap (replicate 2) kvs
+
+t_fromListWithKey_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWithKey_size _ (KV kvs) =
+    Map.size (Map.fromListWithKey (++) kvsDup) == C.size (C.fromListWithKey (++) kvsDup)
+    where kvsDup = concatMap (replicate 2) kvs
+
 t_delete_present :: (CritBitKey k, Ord k) => k -> KV k -> k -> V -> Bool
 t_delete_present _ (KV kvs) k v =
     C.toList (C.delete k c) == Map.toList (Map.delete k m)
