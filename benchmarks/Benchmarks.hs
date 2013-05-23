@@ -284,6 +284,12 @@ main = do
           bench "critbit" $ whnf (C.mapMaybeWithKey f) b_critbit
         , bench "map" $ whnf (Map.mapMaybeWithKey f) b_map
         ]
+      , bgroup "split" $
+        let forceTuple (a,b) = a `seq` b `seq` (a,b)
+        in [
+          bench "critbit" $ whnf (forceTuple . C.split key) b_critbit
+        , bench "map" $ whnf (forceTuple . Map.split key) b_map
+        ]
       , bgroup "findMin" $ [
           bench "critbit" $ whnf (C.findMin) b_critbit
         , bench "map" $ whnf (Map.findMin) b_map
