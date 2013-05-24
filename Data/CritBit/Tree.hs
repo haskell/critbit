@@ -110,7 +110,7 @@ module Data.CritBit.Tree
     -- * Filter
     , filter
     , filterWithKey
-    -- , partition
+    , partition
     , partitionWithKey
 
     -- , mapMaybe
@@ -1168,3 +1168,17 @@ partitionWithKey f (CritBit root) = CritBit *** CritBit $ go root
         join l r     = i { ileft = l, iright = r }
     go _ = (Empty,Empty)
 {-# INLINABLE partitionWithKey #-}
+
+-- | /O(n)/. Partition the map according to a predicate. The first
+-- map contains all elements that satisfy the predicate, the second all
+-- elements that fail the predicate. See also 'split'.
+--
+-- > partition (> 4) (fromList [("a",5), ("b",3)]) == (fromList [("a",5)], fromList [("b",3)])
+-- > partition (< 6) (fromList [("a",5), ("b",3)]) == (fromList [("a",5), ("b",3)], empty)
+-- > partition (> 6) (fromList [("a",5), ("b",3)]) == (empty, fromList [("a",5), ("b",3)])
+partition :: (CritBitKey k)
+          => (v -> Bool)
+          -> CritBit k v
+          -> (CritBit k v, CritBit k v)
+partition f m = partitionWithKey (\_ v -> f v) m
+{-# INLINABLE partition #-}

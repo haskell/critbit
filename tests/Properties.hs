@@ -505,6 +505,13 @@ t_partitionWithKey _ (KV kvs) = partCrit == partMap
     partCrit = fixup C.toList . C.partitionWithKey predicate . C.fromList $ kvs
     partMap  = fixup Map.toList . Map.partitionWithKey predicate . Map.fromList $ kvs
 
+t_partition :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_partition _ (KV kvs) = partCrit == partMap
+  where
+    fixup f (a,b) = (f a, f b)
+    partCrit = fixup C.toList . C.partition odd . C.fromList $ kvs
+    partMap  = fixup Map.toList . Map.partition odd . Map.fromList $ kvs
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
@@ -584,6 +591,7 @@ propertiesFor t = [
   , testProperty "t_foldMap" $ t_foldMap t
   , testProperty "t_alter" $ t_alter t
   , testProperty "t_alter_delete" $ t_alter_delete t
+  , testProperty "t_partition" $ t_partition t
   , testProperty "t_partitionWithKey" $ t_partitionWithKey t
   ]
 
