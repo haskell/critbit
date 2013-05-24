@@ -470,6 +470,12 @@ main = do
           bench "critbit" $  whnf (C.alter altF key) b_critbit
         , bench "map" $ whnf (Map.alter altF key) b_map
         ]
+     , bgroup "partitionWithKey" $ let predicate k _ = odd $ C.byteCount k
+                                       forceTuple (a,b) = a `seq` b `seq` (a,b)
+                                   in [
+          bench "critbit" $ whnf (forceTuple . C.partitionWithKey predicate) b_critbit
+        , bench "map" $ whnf (forceTuple . Map.partitionWithKey predicate) b_map
+     ]
     ]
     , bgroup "text" [
         bgroup "fromList" [

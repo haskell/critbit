@@ -111,7 +111,7 @@ module Data.CritBit.Tree
     , filter
     , filterWithKey
     -- , partition
-    -- , partitionWithKey
+    , partitionWithKey
 
     -- , mapMaybe
     , mapMaybeWithKey
@@ -1141,3 +1141,30 @@ alter f !k (CritBit root) = CritBit . go $ root
                     | dir == 0  = Internal i leaf n nob
                     | otherwise = Internal leaf i n nob
     go _ = maybe Empty (Leaf k) $ f Nothing
+
+-- | /O(n)/. Partition the map according to a predicate. The first
+-- map contains all elements that satisfy the predicate, the second all
+-- elements that fail the predicate. See also 'split'.
+--
+-- > partitionWithKey (\ k _ -> k < "b") (fromList [("a",5), ("b",3)]) == (fromList [("a",5)], fromList [("b",3)])
+-- > partitionWithKey (\ k _ -> k < "c") (fromList [(5,"a"), (3,"b")]) == (fromList [("a",5), ("b",3)], empty)
+-- > partitionWithKey (\ k _ -> k > "c") (fromList [(5,"a"), (3,"b")]) == (empty, fromList [("a",5), ("b",3)])
+partitionWithKey :: (CritBitKey k)
+                 => (k -> v -> Bool)
+                 -> CritBit k v
+                 -> (CritBit k v, CritBit k v)
+partitionWithKey f (CritBit root) = CritBit *** CritBit $ go root
+  where
+    go l@(Leaf k v)
+      | f k v     = (l,Empty)
+      | otherwise = (Empty,l)
+    go i@(Internal left right _ _) = (join l1 r1, join l2 r2)
+      where
+        (!l1,!l2) = go left
+        (!r1,!r2) = go right
+        
+        join Empty r = r
+        join l Empty = l
+        join l r     = i { ileft = l, iright = r }
+    go _ = (Empty,Empty)
+{-# INLINABLE partitionWithKey #-}
