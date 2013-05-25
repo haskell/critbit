@@ -6,7 +6,7 @@ module Properties
 import Control.Applicative ((<$>))
 import Control.Arrow (second)
 import Data.ByteString (ByteString)
-import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
+import Data.CritBit.Map.Lazy (CritBitKey, CritBit, byteCount)
 import Data.Foldable (foldMap)
 import Data.Functor.Identity (Identity(..))
 import Data.List (unfoldr)
@@ -105,13 +105,13 @@ t_fromListWithKey_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromListWithKey_toList _ (KV kvs) =
     Map.toList (Map.fromListWithKey f kvsDup) == C.toList (C.fromListWithKey f kvsDup)
     where kvsDup = concatMap (replicate 2) kvs
-          f k a1 a2 = toEnum (length k) + a1 + a2
+          f key a1 a2 = toEnum (byteCount key) + a1 + a2
 
 t_fromListWithKey_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromListWithKey_size _ (KV kvs) =
     Map.size (Map.fromListWithKey f kvsDup) == C.size (C.fromListWithKey f kvsDup)
     where kvsDup = concatMap (replicate 2) kvs
-          f k a1 a2 = toEnum (length k) + a1 + a2
+          f key a1 a2 = toEnum (byteCount key) + a1 + a2
 
 t_delete_present :: (CritBitKey k, Ord k) => k -> KV k -> k -> V -> Bool
 t_delete_present _ (KV kvs) k v =

@@ -309,7 +309,7 @@ fromListWith f xs
 -- | /O(n*log n)/. Build a map from a list of key\/value pairs
 -- with a combining function. See also 'fromAscListWithKey'.
 --
--- > let f k a1 a2 = (length k) + a1 + a2
+-- > let f key a1 a2 = byteCount key + a1 + a2
 -- > fromListWithKey f [("a",5), ("b",5), ("b",3), ("a",3), ("a",5)] ==
 -- >                        fromList [("a",16), ("b",10)]
 -- > fromListWithKey f [] == empty
