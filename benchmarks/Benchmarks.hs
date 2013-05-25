@@ -225,6 +225,10 @@ main = do
           bench "critbit" $ whnf (C.lookupGT key) b_critbit
         , bench "map" $ whnf (Map.lookupGT key) b_map
         ]
+      , bgroup "lookupGE" $ [
+          bench "critbit" $ whnf (C.lookupGE key) b_critbit
+        , bench "map" $ whnf (Map.lookupGE key) b_map
+        ]
 #endif
       , bgroup "member" $ keyed C.member Map.member H.member Trie.member
       , bgroup "foldlWithKey'" $ let f a _ b = a + b
