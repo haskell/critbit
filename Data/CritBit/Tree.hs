@@ -315,7 +315,7 @@ fromListWith f xs
 -- > fromListWithKey f [] == empty
 fromListWithKey :: (CritBitKey k) => (k -> v -> v -> v) -> [(k,v)] -> CritBit k v
 fromListWithKey f xs
-  = foldlStrict ins empty xs -- why not use a List.foldl' ???
+  = List.foldl' ins empty xs
   where
     ins t (k,x) = insertWithKey f k x t
 {-# INLINABLE fromListWithKey #-}
@@ -888,14 +888,3 @@ alter f k (CritBit root) = go root
             where ins leaf
                     | calcDirection nob c == 0 = Internal i leaf n nob
                     | otherwise                = Internal leaf i n nob
-
-
-{--------------------------------------------------------------------
-  Utilities
---------------------------------------------------------------------}
-foldlStrict :: (a -> b -> a) -> a -> [b] -> a
-foldlStrict f = go
-  where
-    go z []     = z
-    go z (x:xs) = let z' = f z x in z' `seq` go z' xs
-{-# INLINE foldlStrict #-}
