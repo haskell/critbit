@@ -135,6 +135,52 @@ t_adjustWithKey_missing :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_adjustWithKey_missing k (KV kvs) =
   t_adjustWithKey_general k (KV $ filter ((/=k) . fst) kvs)
 
+naiveUpdateLookupWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k
+                         -> CritBit k v -> (Maybe v, CritBit k v)
+naiveUpdateLookupWithKey g k m =
+  case C.lookup k m of
+    Just v  -> case g k v of
+      Just v' -> (Just v', C.insert k v' m)
+      Nothing -> (Just v, C.delete k m)
+    Nothing -> (Nothing, m)
+
+t_updateLookupWithKey_general :: (CritBitKey k)
+                              => (k -> V -> CritBit k V -> CritBit k V)
+                              -> k -> V -> CB k -> Bool
+t_updateLookupWithKey_general h k0 v0 (CB m0) =
+    C.updateLookupWithKey f k0 m1 == naiveUpdateLookupWithKey f k0 m1
+  where
+    m1 = h k0 v0 m0
+    f k x
+      | even (fromIntegral x :: Int) =
+        Just (x + fromIntegral (C.byteCount k))
+      | otherwise = Nothing
+
+t_updateLookupWithKey_present :: (CritBitKey k) => k -> V -> CB k -> Bool
+t_updateLookupWithKey_present =
+  t_updateLookupWithKey_general C.insert
+
+t_updateLookupWithKey_missing :: (CritBitKey k) => k -> V -> CB k -> Bool
+t_updateLookupWithKey_missing =
+  t_updateLookupWithKey_general (\k _v m -> C.delete k m)
+
+t_update_general :: (CritBitKey k)
+                 => (k -> V -> CritBit k V -> CritBit k V)
+                 -> k -> V -> CB k -> Bool
+t_update_general h k0 v0 (CB m0) = C.update f k0 m1 == naiveUpdate f k0 m1
+  where
+    m1 = h k0 v0 m0
+    naiveUpdate g k = snd . naiveUpdateLookupWithKey (\_ v -> g v) k
+    f x
+      | even (fromIntegral x :: Int) = Just (x * 10)
+      | otherwise                    = Nothing
+
+t_update_present :: (CritBitKey k) => k -> V -> CB k -> Bool
+t_update_present = t_update_general C.insert
+
+t_update_missing :: (CritBitKey k) => k -> V -> CB k -> Bool
+t_update_missing = t_update_general (\k _v m -> C.delete k m)
+
 t_updateWithKey_general :: (CritBitKey k)
                         => (k -> V -> CritBit k V -> CritBit k V)
                         -> k -> V -> CB k -> Bool
@@ -142,12 +188,7 @@ t_updateWithKey_general h k0 v0 (CB m0) =
     C.updateWithKey f k0 m1 == naiveUpdateWithKey f k0 m1
   where
     m1 = h k0 v0 m0
-    naiveUpdateWithKey g k m =
-      case C.lookup k m of
-        Just v  -> case g k v of
-                     Just v' -> C.insert k v' m
-                     Nothing -> C.delete k m
-        Nothing -> m
+    naiveUpdateWithKey g k = snd . naiveUpdateLookupWithKey g k
     f k x
       | even (fromIntegral x :: Int) =
         Just (x + fromIntegral (C.byteCount k))
@@ -446,6 +487,10 @@ propertiesFor t = [
   , testProperty "t_adjustWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_updateWithKey_present" $ t_updateWithKey_present t
   , testProperty "t_updateWithKey_missing" $ t_updateWithKey_missing t
+  , testProperty "t_update_present" $ t_update_present t
+  , testProperty "t_update_missing" $ t_update_missing t
+  , testProperty "t_updateLookupWithKey_present" $ t_updateWithKey_present t
+  , testProperty "t_updateLookupWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_mapMaybeWithKey" $ t_mapMaybeWithKey t
   , testProperty "t_mapEitherWithKey" $ t_mapEitherWithKey t
   , testProperty "t_unionL" $ t_unionL t
