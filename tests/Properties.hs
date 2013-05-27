@@ -280,6 +280,9 @@ t_elems = isoWith id id C.elems Map.elems
 t_keys :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_keys = isoWith id id C.keys Map.keys
 
+t_keysSet :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_keysSet = isoWith id id C.keysSet Map.keysSet
+
 t_map :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_map = C.map (+3) === Map.map (+3)
 
@@ -510,6 +513,7 @@ propertiesFor t = [
   , testProperty "t_foldlWithKey'" $ t_foldlWithKey' t
   , testProperty "t_elems" $ t_elems t
   , testProperty "t_keys" $ t_keys t
+  , testProperty "t_keysSet" $ t_keysSet t
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapWithKey" $ t_mapWithKey t
   , testProperty "t_mapKeys" $ t_map t
