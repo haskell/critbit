@@ -265,8 +265,8 @@ t_foldlWithKey = isoWith id id (C.foldlWithKey f ([], 0))
   where
     f (l,s) k v = (k:l,s+v)
 
-t_foldl' :: (CritBitKey k) => k -> CritBit k V -> Bool
-t_foldl' _ m = C.foldl' (+) 0 m == C.foldl (+) 0 m
+t_foldl' :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldl' = isoWith id id (C.foldl' (-) 0) (Map.foldl' (-) 0)
 
 t_foldlWithKey' :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_foldlWithKey' = isoWith id id (C.foldlWithKey' f ([], 0))
