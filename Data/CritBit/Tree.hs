@@ -35,11 +35,11 @@ module Data.CritBit.Tree
 
     -- * Deletion
     , delete
-    -- , adjust
-    -- , adjustWithKey
-    -- , update
+    , adjust
+    , adjustWithKey
+    , update
     , updateWithKey
-    -- , updateLookupWithKey
+    , updateLookupWithKey
     , alter
 
     -- * Combination
@@ -116,10 +116,10 @@ module Data.CritBit.Tree
     -- , mapMaybe
     , mapMaybeWithKey
     -- , mapEither
-    -- , mapEitherWithKey
+    , mapEitherWithKey
 
-    -- , split
-    -- , splitLookup
+    , split
+    , splitLookup
 
     -- * Submap
     -- , isSubmapOf
@@ -145,7 +145,7 @@ module Data.CritBit.Tree
     ) where
 
 import Control.Applicative (Applicative(..), (<$>), (*>), (<|>), pure, liftA2)
-import Control.Arrow (second)
+import Control.Arrow (second, (***))
 import Control.Monad (guard)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
@@ -232,6 +232,55 @@ lookup k m = lookupWith Nothing Just k m
 delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
 delete = updateWithKey (\_k _v -> Nothing)
 {-# INLINABLE delete #-}
+
+-- | /O(log n)/. The expression (@'update' f k map@ updates the value @x@
+-- at @k@ (if it is in the map). If (@f x@) is 'Nothing', the element is
+-- deleted. If it is (@'Just' y@), the key @k@ is bound to the new value @y@.
+--
+-- > let f x = if x == 5 then Just 50 else Nothing
+-- > update f "a" (fromList [("b",3), ("a",5)]) == fromList [("a", 50), ("b",3)]
+-- > update f "c" (fromList [("b",3), ("a",5)]) == fromList [("a", 50), ("b",3)]
+-- > update f "b" (fromList [("b",3), ("a",5)]) == singleton "a" 5
+update :: (CritBitKey k) => (v -> Maybe v) -> k -> CritBit k v -> CritBit k v
+update f = updateWithKey (const f)
+{-# INLINABLE update #-}
+
+-- | /O(log n)/. The expression (@'updateWithKey' f k map@) updates the
+-- value @x@ at @k@ (if it is in the map). If (@f k x@) is 'Nothing',
+-- the element is deleted. If it is (@'Just' y@), the key @k@ is bound
+-- to the new value @y@.
+--
+-- > let f k x = if x == 5 then Just (x + fromEnum (k < "d")) else Nothing
+-- > updateWithKey f "a" (fromList [("b",3), ("a",5)]) == fromList [("a", 6), ("b",3)]
+-- > updateWithKey f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
+-- > updateWithKey f "b" (fromList [("a",5), ("b",3)]) == singleton "a" 5
+updateWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k -> CritBit k v
+              -> CritBit k v
+updateWithKey f k = snd . updateLookupWithKey f k
+{-# INLINABLE updateWithKey #-}
+
+-- | /O(log n)/ Update a value at a specific key with the result of the
+-- provided function. When the key is not a member of the map, the original
+-- map is returned.
+-- let f k x = x + 1
+-- > adjustWithKey f "a" (fromList [("b",3), ("a",5)]) == fromList [("a", 6), ("b",3)]
+-- > adjustWithKey f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
+-- > adjustWithKey f "c" empty                         == empty
+adjust :: (CritBitKey k) => (v -> v) -> k -> CritBit k v -> CritBit k v
+adjust f = updateWithKey (\_ v -> Just (f v))
+{-# INLINABLE adjust #-}
+
+-- | /O(log n)/. Adjust a value at a specific key. When the key is not
+-- a member of the map, the original map is returned.
+--
+-- > let f k x = x + fromEnum (k < "d")
+-- > adjustWithKey f "a" (fromList [("b",3), ("a",5)]) == fromList [("a", 6), ("b",3)]
+-- > adjustWithKey f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
+-- > adjustWithKey f "c" empty                         == empty
+adjustWithKey :: (CritBitKey k) => (k -> v -> v) -> k -> CritBit k v
+              -> CritBit k v
+adjustWithKey f = updateWithKey (\k v -> Just (f k v))
+{-# INLINABLE adjustWithKey #-}
 
 -- | /O(log n)/. Returns the value associated with the given key, or
 -- the given default value if the key is not in the map.
@@ -563,6 +612,88 @@ mapMaybeWithKey f (CritBit root) = CritBit $ go root
                       Nothing -> Empty
                       Just v' -> Leaf k v'
     go Empty      = Empty
+{-# INLINABLE mapMaybeWithKey #-}
+
+-- | /O(n)/. Map keys\/values and separate the 'Left' and 'Right' results.
+--
+-- > let f k a = if k < "c" then Left (k ++ k) else Right (a * 2)
+-- > mapEitherWithKey f (fromList [("a",5), ("b",3), ("x",1), ("z",7)])
+-- >     == (fromList [("a","aa"), ("b","bb")], fromList [("x",2), ("z",14)])
+-- >
+-- > mapEitherWithKey (\_ a -> Right a) (fromList [("a",5), ("b",3), ("x",1), ("z",7)])
+-- >     == (empty, fromList [("x",1), ("b",3), ("a",5), ("z",7)])
+mapEitherWithKey :: (k -> v -> Either v1 v2)
+                 -> CritBit k v -> (CritBit k v1, CritBit k v2)
+mapEitherWithKey f (CritBit root) = (CritBit *** CritBit) $ go root
+  where
+    go i@(Internal l r _ _) = (merge m1 m3, merge m2 m4)
+      where
+        ((m1,m2),(m3,m4)) = (go l, go r)
+        merge m Empty = m
+        merge Empty m = m
+        merge m m'    = i { ileft = m, iright = m' }
+    go (Leaf k v) = case f k v of
+                      Left  v' -> (Leaf k v', Empty)
+                      Right v' -> (Empty, Leaf k v')
+    go Empty      = (Empty, Empty)
+{-# INLINABLE mapEitherWithKey #-}
+
+-- | /O(log n)/. The expression (@'split' k map@) is a pair @(map1,map2)@ where
+-- the keys in @map1@ are smaller than @k@ and the keys in @map2@ larger than @k@.
+-- Any key equal to @k@ is found in neither @map1@ nor @map2@.
+--
+-- > split "a" (fromList [("b",1), ("d",2)]) == (empty, fromList [("b",1), ("d",2)])
+-- > split "b" (fromList [("b",1), ("d",2)]) == (empty, singleton "d" 2)
+-- > split "c" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, singleton "d" 2)
+-- > split "d" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, empty)
+-- > split "e" (fromList [("b",1), ("d",2)]) == (fromList [("b",1), ("d",2)], empty)
+split :: (CritBitKey k) => k -> CritBit k v -> (CritBit k v, CritBit k v)
+-- Note that this is nontrivially faster than an implementation
+-- in terms of 'splitLookup'.
+split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
+  where
+    go i@(Internal left right _ _)
+      | direction k i == 0 = case go left of
+                               (lt,Empty) -> (lt, right)
+                               (lt,l)     -> (lt, i { ileft = l })
+      | otherwise          = case go right of
+                               (Empty,gt) -> (left, gt)
+                               (r,gt)     -> (i { iright = r }, gt)
+    go (Leaf lk lv) =
+      case byteCompare lk k of
+        LT -> ((Leaf lk lv), Empty)
+        GT -> (Empty, (Leaf lk lv))
+        EQ -> (Empty, Empty)
+    go _ = (Empty,Empty)
+{-# INLINABLE split #-}
+
+-- | /O(log n)/. The expression (@'splitLookup' k map@) splits a map just
+-- like 'split' but also returns @'lookup' k map@.
+--
+-- > split "a" (fromList [("b",1), ("d",2)]) == (empty, Nothing, fromList [("b",1), ("d",2)])
+-- > split "b" (fromList [("b",1), ("d",2)]) == (empty, Just 1, singleton "d" 2)
+-- > split "c" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Nothing, singleton "d" 2)
+-- > split "d" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Just 2, empty)
+-- > split "e" (fromList [("b",1), ("d",2)]) == (fromList [("b",1), ("d",2)], Nothing, empty)
+splitLookup :: (CritBitKey k) => k -> CritBit k v
+               -> (CritBit k v, Maybe v, CritBit k v)
+splitLookup k (CritBit root) =
+  (\(ln,res,rn) -> (CritBit ln, res, CritBit rn)) $ go root
+  where
+    go i@(Internal left right _ _)
+      | direction k i == 0 = case go left of
+                               (lt,res,Empty) -> (lt, res, right)
+                               (lt,res,l)     -> (lt, res, i { ileft = l })
+      | otherwise          = case go right of
+                               (Empty,res,gt) -> (left, res, gt)
+                               (r,res,gt)     -> (i { iright = r }, res, gt)
+    go (Leaf lk lv) =
+      case byteCompare lk k of
+        LT -> ((Leaf lk lv), Nothing, Empty)
+        GT -> (Empty, Nothing, (Leaf lk lv))
+        EQ -> (Empty, Just lv, Empty)
+    go _ = (Empty, Nothing, Empty)
+{-# INLINABLE splitLookup #-}
 
 -- | /O(log n)/. The minimal key of the map. Calls 'error' if the map
 -- is empty.
@@ -844,38 +975,37 @@ mapAccumWithKey f start (CritBit root) = second CritBit (go start root)
 -- > let f _ = Just 1
 -- > alter f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("c",1)]
 -- > alter f "a" (fromList [(5,"a"), (3,"b")]) == fromList [("a",1), ("b",3)]
-alter :: (CritBitKey k, Ord k)
+alter :: (CritBitKey k)
       => (Maybe v -> Maybe v)
       -> k
       -> CritBit k v
       -> CritBit k v
 {-# INLINABLE alter #-}
-alter f k (CritBit root) = go root
+alter f !k (CritBit root) = CritBit . go $ root
   where
-    go Empty = maybe empty (CritBit . Leaf k) $ f Nothing
-    go nd@(Internal l r _ _)
-      | direction k nd == 0 = go l
+    go i@(Internal l r _ _)
+      | direction k i == 0 = go l
       | otherwise           = go r
-    go (Leaf lk _)          = rewalk root CritBit
+    go (Leaf lk _)          = rewalk root
       where
         (n,nob,c)  = followPrefixes k lk
+        dir        = calcDirection nob c
 
-        rewalk i@(Internal left right byte otherBits) cont
-          | byte > n           = finish i cont
-          | byte == n && otherBits > nob = finish i cont
-          | direction k i == 0 = rewalk left $ \new ->
-                                 case new of
-                                   Empty -> cont right
-                                   l     -> cont $! i { ileft = l }
-          | otherwise          = rewalk right $ \new ->
-                                 case new of
-                                   Empty -> cont left
-                                   r     -> cont $! i { iright = r }
-        rewalk i cont          = finish i cont
+        rewalk i@(Internal left right byte otherBits)
+          | byte > n                     = finish i
+          | byte == n && otherBits > nob = finish i
+          | direction k i == 0 = case rewalk left of
+                                   Empty -> right
+                                   nd    -> i { ileft  = nd }
+          | otherwise          = case rewalk right of
+                                   Empty -> left
+                                   nd    -> i { iright = nd }
+        rewalk i               = finish i
 
-        finish (Leaf nk v) cont
-          | k == nk   = maybe (cont Empty) (cont . Leaf nk) $ f (Just v)
-        finish i cont = maybe (cont i) (cont . ins . Leaf k) $ f Nothing
+        finish (Leaf _ v)
+          | k == lk   = maybe Empty (Leaf k) . f $ Just v
+        finish i      = maybe i (ins . Leaf k) . f $ Nothing
             where ins leaf
-                    | calcDirection nob c == 0 = Internal i leaf n nob
-                    | otherwise                = Internal leaf i n nob
+                    | dir == 0  = Internal i leaf n nob
+                    | otherwise = Internal leaf i n nob
+    go _ = maybe Empty (Leaf k) $ f Nothing

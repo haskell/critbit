@@ -206,6 +206,30 @@ main = do
           , bench "map" $ whnf (Map.insertWithKey f key 1) b_map_1
           ]
         ]
+      , bgroup "adjust" $
+        let f v = (v + 10) in [
+          bgroup "present" [
+            bench "critbit" $ whnf   (C.adjust f key) b_critbit
+          , bench "map"     $ whnf (Map.adjust f key) b_map
+          ]
+        , bgroup "missing" [
+            bench "critbit" $ whnf   (C.adjust f key) b_critbit_1
+          , bench "map"     $ whnf (Map.adjust f key) b_map_1
+          ]
+        ]
+      , bgroup "adjustWithKey" $
+        let f k v = (v + fromIntegral (C.byteCount k)) in [
+          bgroup "present" [
+            bench "critbit" $ whnf   (C.adjustWithKey f key) b_critbit
+          , bench "map"     $ whnf (Map.adjustWithKey f key) b_map
+          , bench "trie"    $ whnf  (TC.adjustWithKey f key) b_trie
+          ]
+        , bgroup "missing" [
+            bench "critbit" $ whnf   (C.adjustWithKey f key) b_critbit_1
+          , bench "map"     $ whnf (Map.adjustWithKey f key) b_map_1
+          , bench "trie"    $ whnf  (TC.adjustWithKey f key) b_trie_1
+          ]
+        ]
       , bgroup "updateWithKey" $
         let f k v = Just (v + fromIntegral (C.byteCount k)) in [
           bgroup "present" [
@@ -217,6 +241,36 @@ main = do
             bench "critbit" $ whnf (C.updateWithKey f key) b_critbit_1
           , bench "map" $ whnf (Map.updateWithKey f key) b_map_1
           , bench "trie" $ whnf (TC.updateWithKey f key) b_trie_1
+          ]
+        ]
+      , bgroup "update" $
+        let f = updateFVal in [
+          bgroup "present" [
+            bench "critbit" $ whnf (C.update f key) b_critbit
+          , bench "map" $ whnf (Map.update f key) b_map
+          , bench "trie" $ whnf (TC.update f key) b_trie
+          ]
+        , bgroup "missing" [
+            bench "critbit" $ whnf (C.update f key) b_critbit_1
+          , bench "map" $ whnf (Map.update f key) b_map_1
+          , bench "trie" $ whnf (TC.update f key) b_trie_1
+          ]
+        ]
+      , bgroup "updateLookupWithKey" $
+        -- The Map implementation immediately returns a tuple with lazy values,
+        -- so we need to force it to evaluate the update.
+        let f k v = Just (v + fromIntegral (C.byteCount k)) in [
+          bgroup "present" [
+            bench "critbit" $ whnf
+              (snd . C.updateLookupWithKey f key) b_critbit
+          , bench "map" $ whnf
+              (snd . Map.updateLookupWithKey f key) b_map
+          ]
+        , bgroup "missing" [
+            bench "critbit" $ whnf
+              (snd . C.updateLookupWithKey f key) b_critbit_1
+          , bench "map" $ whnf
+              (snd . Map.updateLookupWithKey f key) b_map_1
           ]
         ]
       , bgroup "lookup" $ keyed C.lookup Map.lookup H.lookup Trie.lookup
@@ -288,6 +342,26 @@ main = do
           bench "critbit" $ whnf (C.mapMaybeWithKey f) b_critbit
         , bench "map" $ whnf (Map.mapMaybeWithKey f) b_map
         ]
+      , bgroup "mapEitherWithKey" $
+        let f k v | even (fromIntegral v :: Int) =
+                    Left (v + fromIntegral (C.byteCount k))
+                  | otherwise = Right (2 * v)
+        in [
+          bench "critbit" $ nf (C.mapEitherWithKey f) b_critbit
+        , bench "map" $ nf (Map.mapEitherWithKey f) b_map
+        ]
+      , bgroup "split" $
+        let forceTuple (a,b) = a `seq` b `seq` (a,b)
+        in [
+          bench "critbit" $ whnf (forceTuple . C.split key) b_critbit
+        , bench "map" $ whnf (forceTuple . Map.split key) b_map
+        ]
+      , bgroup "splitLookup" $
+        let forceTuple (a,_,b) = a `seq` b `seq` (a,b)
+        in [
+          bench "critbit" $ whnf (forceTuple . C.splitLookup key) b_critbit
+        , bench "map" $ whnf (forceTuple . Map.splitLookup key) b_map
+        ]
       , bgroup "findMin" $ [
           bench "critbit" $ whnf (C.findMin) b_critbit
         , bench "map" $ whnf (Map.findMin) b_map
@@ -336,12 +410,14 @@ main = do
           bench "critbit" $ whnf (C.updateMax updateFVal) b_critbit
         , bench "map" $ whnf (Map.updateMax updateFVal) b_map
         ]
-      , bgroup "traverseWithKey" $ let f _ = Identity . (+3)
-                                   in function nf
-                                        (runIdentity . C.traverseWithKey f)
-                                        (runIdentity . Map.traverseWithKey f)
-                                        (runIdentity . H.traverseWithKey f)
-                                        (fmap f)
+      , bgroup "traverseWithKey" $ let f _ = Identity . (+3) in [
+          bench "critbit" $ nf (runIdentity . C.traverseWithKey f) b_critbit
+#if MIN_VERSION_containers(0,5,0)
+        , bench "map" $ nf (runIdentity . Map.traverseWithKey f) b_map
+#endif
+        , bench "hashmap" $ nf (runIdentity . H.traverseWithKey f) b_hashmap
+        , bench "trie" $ nf (fmap f) b_trie
+        ]
       , bgroup "updateMinWithKey" $ [
           bench "critbit" $ whnf (C.updateMinWithKey updateFKey) b_critbit
         , bench "map" $ whnf (Map.updateMinWithKey updateFKey) b_map
@@ -351,8 +427,8 @@ main = do
         , bench "map" $ whnf (Map.updateMaxWithKey updateFKey) b_map
         ]
       , bgroup "foldMap" $ [
-          bench "critbit" $ let c_foldmap :: (C.CritBitKey k, Num v) 
-                                          => C.CritBit k v 
+          bench "critbit" $ let c_foldmap :: (C.CritBitKey k, Num v)
+                                          => C.CritBit k v
                                           -> Sum v
                                 c_foldmap = foldMap Sum
                             in whnf c_foldmap b_critbit
@@ -362,9 +438,9 @@ main = do
                             m_foldmap = foldMap Sum
                         in whnf m_foldmap b_map
         ]
-      , bgroup "alter" $ let altF (Just v) = 
-                                  if odd v 
-                                    then Just (v+1) 
+      , bgroup "alter" $ let altF (Just v) =
+                                  if odd v
+                                    then Just (v+1)
                                     else Nothing
                              altF Nothing  = Just 1
                           in [
