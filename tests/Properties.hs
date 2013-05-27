@@ -8,9 +8,8 @@ import Control.Arrow (second, (***))
 import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
 import Data.Foldable (foldMap)
-import Data.Function (on)
 import Data.Functor.Identity (Identity(..))
-import Data.List (deleteBy, unfoldr)
+import Data.List (unfoldr)
 import Data.Map (Map)
 import Data.Monoid (Sum(..))
 import Data.String (IsString, fromString)
@@ -117,12 +116,11 @@ t_adjust_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_adjust_general k = (C.adjust (+3) k === Map.adjust (+3) k) k
 
 t_adjust_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_adjust_present k v (KV kvs) =
-  t_adjust_general k (KV ((k,v):kvs))
+t_adjust_present k v (KV kvs) = t_adjust_general k (KV ((k,v):kvs))
 
-t_adjust_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_adjust_missing k v (KV kvs) =
-  t_adjust_general k (KV $ deleteBy ((==) `on` fst) (k,v) kvs)
+t_adjust_missing :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_adjust_missing k (KV kvs) =
+    t_adjust_general k (KV $ filter ((/=k) . fst) kvs)
 
 t_adjustWithKey_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_adjustWithKey_general k0 =
@@ -133,9 +131,9 @@ t_adjustWithKey_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
 t_adjustWithKey_present k v (KV kvs) =
   t_adjustWithKey_general k (KV ((k,v):kvs))
 
-t_adjustWithKey_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_adjustWithKey_missing k v (KV kvs) =
-  t_adjustWithKey_general k (KV $ deleteBy ((==) `on` fst) (k,v) kvs)
+t_adjustWithKey_missing :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_adjustWithKey_missing k (KV kvs) =
+  t_adjustWithKey_general k (KV $ filter ((/=k) . fst) kvs)
 
 t_updateWithKey_general :: (CritBitKey k)
                         => (k -> V -> CritBit k V -> CritBit k V)
@@ -285,9 +283,8 @@ t_split_missing k (KV kvs) = t_split_general k (KV (filter ((/=k) . fst) kvs))
 cbPresent :: (CritBitKey k) => k -> V -> KV k -> CritBit k V
 cbPresent k v (KV kvs) = C.fromList $ (k,v):kvs
 
-cbMissing :: (CritBitKey k, Ord k) => k -> V -> KV k -> CritBit k V
-cbMissing k v (KV kvs) = C.fromList $ deleteKey (k,v) kvs
-  where deleteKey = deleteBy (\(k0,_) (k1,_) -> k0 == k1)
+cbMissing :: (CritBitKey k, Ord k) => k -> KV k -> CritBit k V
+cbMissing k (KV kvs) = C.fromList $ filter ((/=k) . fst) kvs
 
 t_splitLookup_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
 t_splitLookup_present k0 v0 kvs = (lt, Just v0, gt) == C.splitLookup k0 cb
@@ -295,9 +292,9 @@ t_splitLookup_present k0 v0 kvs = (lt, Just v0, gt) == C.splitLookup k0 cb
         lt = C.filterWithKey (\k _ -> k < k0) cb
         gt = C.filterWithKey (\k _ -> k > k0) cb
 
-t_splitLookup_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_splitLookup_missing k0 v0 kvs = (lt, Nothing, gt) == C.splitLookup k0 cb
-  where cb = cbMissing k0 v0 kvs
+t_splitLookup_missing :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_splitLookup_missing k0 kvs = (lt, Nothing, gt) == C.splitLookup k0 cb
+  where cb = cbMissing k0 kvs
         lt = C.filterWithKey (\k _ -> k < k0) cb
         gt = C.filterWithKey (\k _ -> k > k0) cb
 
