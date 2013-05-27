@@ -341,7 +341,9 @@ byteCompare a b = go 0
 -- > fromList [] == empty
 -- > fromList [("a",5), ("b",3), ("a",2)] == fromList [("a",2), ("b",3)]
 fromList :: (CritBitKey k) => [(k, v)] -> CritBit k v
-fromList = List.foldl' (flip (uncurry insert)) empty
+fromList = List.foldl' ins empty
+    where
+    ins t (k,x) = insert k x t
 {-# INLINABLE fromList #-}
 
 -- | /O(n*log n)/. Build a map from a list of key\/value pairs
