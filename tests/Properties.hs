@@ -271,14 +271,12 @@ t_filter = roundtrip (C.filter p) (Map.filter p)
   where p = (> (maxBound - minBound) `div` 2)
 
 t_findMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_findMin _ (KV kvs)
-  | null kvs  = True
-  | otherwise = C.findMin (C.fromList kvs) == Map.findMin (Map.fromList kvs)
+t_findMin _ (KV kvs) =
+  null kvs || C.findMin (C.fromList kvs) == Map.findMin (Map.fromList kvs)
 
 t_findMax :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_findMax _ (KV kvs)
-  | null kvs  = True
-  | otherwise = C.findMax (C.fromList kvs) == Map.findMax (Map.fromList kvs)
+t_findMax _ (KV kvs) =
+  null kvs || C.findMax (C.fromList kvs) == Map.findMax (Map.fromList kvs)
 
 t_deleteMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_deleteMin _ (KV kvs) = critDelMin == mapDelMin
