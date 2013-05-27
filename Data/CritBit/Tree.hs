@@ -90,7 +90,7 @@ module Data.CritBit.Tree
     , elems
     , keys
     , assocs
-    -- , keysSet
+    , keysSet
     -- , fromSet
 
     -- ** Lists
@@ -152,6 +152,7 @@ import Data.CritBit.Types.Internal
 import Data.Maybe (fromMaybe)
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.List as List
+import qualified Data.Set as Set
 
 -- | /O(1)/. Is the map empty?
 --
@@ -501,6 +502,14 @@ assocs m = toAscList m
 keys :: CritBit k v -> [k]
 keys m = foldrWithKey f [] m
   where f k _ ks = k : ks
+
+-- | /O(n)/. Return set of all keys of the map.
+--
+-- > keysSet (fromList [("b",5), ("a",3)]) == Data.Set.fromList ["a","b"]
+-- > keysSet empty == []
+keysSet :: CritBit k v -> Set.Set k
+keysSet m = Set.fromDistinctAscList (keys m)
+{-# INLINABLE keysSet #-}
 
 unionL :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
 unionL a b = unionWithKey (\_ x _ -> x) a b
