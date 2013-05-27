@@ -401,16 +401,11 @@ t_updateMaxWithKey =
     C.updateMaxWithKey updateFun === Map.updateMaxWithKey updateFun
 
 t_insert_present :: (CritBitKey k, Ord k) => k -> k -> V -> V -> KV k -> Bool
-t_insert_present _ k v v' (KV kvs) = Map.toList m == C.toList c
-  where
-    m = Map.insert k v $ Map.insert k v' $ Map.fromList kvs
-    c =   C.insert k v $   C.insert k v' $   C.fromList kvs
+t_insert_present k0 k v v' =
+    ((C.insert k v' . C.insert k v) === (Map.insert k v' . Map.insert k v)) k0
 
 t_insert_missing :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
-t_insert_missing _ k v (KV kvs) = Map.toList m == C.toList c
-  where
-    m = Map.insert k v $ Map.fromList kvs
-    c =   C.insert k v $   C.fromList kvs
+t_insert_missing k0 k v kvs = (C.insert k v === Map.insert k v) k0 kvs
 
 t_insertWith_present :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
 t_insertWith_present _ k v (KV kvs) = Map.toList m == C.toList c
