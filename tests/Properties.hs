@@ -346,10 +346,7 @@ t_findMax k w@(KV kvs) =
   null kvs || isoWith id id C.findMax Map.findMax k w
 
 t_deleteMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_deleteMin _ (KV kvs) = critDelMin == mapDelMin
-  where
-    critDelMin = C.toList . C.deleteMin . C.fromList $ kvs
-    mapDelMin  = Map.toList . Map.deleteMin . Map.fromList $ kvs
+t_deleteMin = C.deleteMin === Map.deleteMin
 
 t_deleteMax :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_deleteMax _ (KV kvs) = critDelMax == mapDelMax
