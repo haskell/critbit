@@ -252,13 +252,11 @@ t_unionsWith _ (Small kvs0) =
     kvs = map fromKV kvs0
 
 t_foldl :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_foldl _ (KV kvs) = C.foldl   (-) 0 (C.fromList   kvs) ==
-                     Map.foldl (-) 0 (Map.fromList kvs)
+t_foldl = isoWith id id (C.foldl (-) 0) (Map.foldl (-) 0)
 
 t_foldlWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_foldlWithKey _ (KV kvs) =
-    C.foldlWithKey f ([], 0) (C.fromList kvs) ==
-    Map.foldlWithKey f ([], 0) (Map.fromList kvs)
+t_foldlWithKey = isoWith id id (C.foldlWithKey f ([], 0))
+                               (Map.foldlWithKey f ([], 0))
   where
     f (l,s) k v = (k:l,s+v)
 
@@ -266,17 +264,16 @@ t_foldl' :: (CritBitKey k) => k -> CritBit k V -> Bool
 t_foldl' _ m = C.foldl' (+) 0 m == C.foldl (+) 0 m
 
 t_foldlWithKey' :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_foldlWithKey' _ (KV kvs) =
-    C.foldlWithKey' f ([], 0) (C.fromList kvs) ==
-    Map.foldlWithKey' f ([], 0) (Map.fromList kvs)
+t_foldlWithKey' = isoWith id id (C.foldlWithKey' f ([], 0))
+                                (Map.foldlWithKey' f ([], 0))
   where
     f (l,s) k v = (k:l,s+v)
 
 t_elems :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_elems _ (KV kvs) = C.elems (C.fromList kvs) == Map.elems (Map.fromList kvs)
+t_elems = isoWith id id C.elems Map.elems
 
 t_keys :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_keys _ (KV kvs) = C.keys (C.fromList kvs) == Map.keys (Map.fromList kvs)
+t_keys = isoWith id id C.keys Map.keys
 
 t_map :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_map = C.map (+3) === Map.map (+3)
