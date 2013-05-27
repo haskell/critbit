@@ -176,9 +176,8 @@ t_mapEitherWithKey =
       | otherwise = Right (2 * x)
 
 t_unionL :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
-t_unionL _ (KV kv0) (KV kv1) =
-    Map.toList (Map.fromList kv0 `Map.union` Map.fromList kv1) ==
-    C.toList (C.fromList kv0 `C.unionL` C.fromList kv1)
+t_unionL k (KV kvs) =
+    roundtrip (C.unionL (C.fromList kvs)) (Map.union (Map.fromList kvs)) k
 
 t_unionR :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
 t_unionR _ (KV kv0) (KV kv1) =
@@ -186,14 +185,12 @@ t_unionR _ (KV kv0) (KV kv1) =
     C.toList (C.fromList kv0 `C.unionR` C.fromList kv1)
 
 t_unionWith :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
-t_unionWith _ (KV kv0) (KV kv1) =
-    Map.toList (Map.unionWith (-) (Map.fromList kv0) (Map.fromList kv1)) ==
-    C.toList (C.unionWith (-) (C.fromList kv0) (C.fromList kv1))
+t_unionWith k (KV kvs) = roundtrip (C.unionWith (-) (C.fromList kvs))
+                                   (Map.unionWith (-) (Map.fromList kvs)) k
 
 t_unionWithKey :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
-t_unionWithKey _ (KV kv0) (KV kv1) =
-    Map.toList (Map.unionWithKey f (Map.fromList kv0) (Map.fromList kv1)) ==
-    C.toList (C.unionWithKey f (C.fromList kv0) (C.fromList kv1))
+t_unionWithKey k (KV kvs) = roundtrip (C.unionWithKey f (C.fromList kvs))
+                                      (Map.unionWithKey f (Map.fromList kvs)) k
   where
     f key v1 v2 = fromIntegral (C.byteCount key) + v1 - v2
 
@@ -334,16 +331,12 @@ updateFun _ v
   | otherwise = Just (v + 1)
 
 t_updateMinWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_updateMinWithKey _ (KV kvs) = critUpdate == mapUpdate
-  where
-    critUpdate = C.toList $ C.updateMinWithKey  updateFun $ C.fromList kvs
-    mapUpdate  = Map.toList $ Map.updateMinWithKey updateFun $ Map.fromList kvs
+t_updateMinWithKey =
+    roundtrip (C.updateMinWithKey updateFun) (Map.updateMinWithKey updateFun)
 
 t_updateMaxWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_updateMaxWithKey _ (KV kvs) = critUpdate == mapUpdate
-  where
-    critUpdate = C.toList $ C.updateMaxWithKey  updateFun $ C.fromList kvs
-    mapUpdate  = Map.toList $ Map.updateMaxWithKey updateFun $ Map.fromList kvs
+t_updateMaxWithKey =
+    roundtrip (C.updateMaxWithKey updateFun) (Map.updateMaxWithKey updateFun)
 
 t_insert_present :: (CritBitKey k, Ord k) => k -> k -> V -> V -> KV k -> Bool
 t_insert_present _ k v v' (KV kvs) = Map.toList m == C.toList c
@@ -384,10 +377,7 @@ t_insertWithKey_missing _ k v (KV kvs) = Map.toList m == C.toList c
     c =   C.insertWithKey f k v $   C.fromList kvs
 
 t_foldMap :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_foldMap _ (KV kvs) = foldMap Sum c == foldMap Sum m
-  where
-    c = C.fromList kvs
-    m = Map.fromList kvs
+t_foldMap = roundtrip0 (foldMap Sum) (foldMap Sum) id id
 
 t_mapWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_mapWithKey = roundtrip (C.mapWithKey f) (Map.mapWithKey f)
@@ -401,15 +391,9 @@ t_traverseWithKey _ (KV kvs) = mappedC == mappedM
         mappedM = Map.toList . runIdentity . Map.traverseWithKey fun $
                   (Map.fromList kvs)
 
-alter :: (CritBitKey k, Ord k)
-         => (Maybe Word8 -> Maybe Word8)
-         -> k
-         -> KV k
-         -> Bool
-alter f k (KV kvs) = alterC == alterM
-  where
-    alterC  = C.toList $ C.alter f k $ C.fromList kvs
-    alterM  = Map.toList $ Map.alter f k $ Map.fromList kvs
+alter :: (CritBitKey k, Ord k) =>
+         (Maybe Word8 -> Maybe Word8) -> k -> KV k -> Bool
+alter f k = roundtrip (C.alter f k) (Map.alter f k) k
 
 t_alter :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_alter = alter f
