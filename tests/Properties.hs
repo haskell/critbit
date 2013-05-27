@@ -117,10 +117,9 @@ t_adjust_missing k v (KV kvs) =
   t_adjust_general k (KV $ deleteBy ((==) `on` fst) (k,v) kvs)
 
 t_adjustWithKey_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_adjustWithKey_general k0 (KV kvs) = m == cb
-  where f k v = v + (fromIntegral $ C.byteCount k)
-        m  = Map.toList . Map.adjustWithKey f k0 $ Map.fromList kvs
-        cb =   C.toList .   C.adjustWithKey f k0 $   C.fromList kvs
+t_adjustWithKey_general k0 =
+    roundtrip (C.adjustWithKey f k0) (Map.adjustWithKey f k0) k0
+  where f k v = v + fromIntegral (C.byteCount k)
 
 t_adjustWithKey_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
 t_adjustWithKey_present k v (KV kvs) =
@@ -155,9 +154,7 @@ t_updateWithKey_missing :: (CritBitKey k) => k -> V -> CB k -> Bool
 t_updateWithKey_missing = t_updateWithKey_general (\k _v m -> C.delete k m)
 
 t_mapMaybeWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_mapMaybeWithKey _ (KV kvs) =
-    (C.toList . C.mapMaybeWithKey f . C.fromList $ kvs) ==
-    (Map.toList . Map.mapMaybeWithKey f . Map.fromList $ kvs)
+t_mapMaybeWithKey = roundtrip (C.mapMaybeWithKey f) (Map.mapMaybeWithKey f)
   where
     f k x
       | even (fromIntegral x :: Int) =
@@ -237,10 +234,8 @@ t_keys :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_keys _ (KV kvs) = C.keys (C.fromList kvs) == Map.keys (Map.fromList kvs)
 
 t_map :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_map _ (KV kvs) = mappedC == mappedM
-    where fun     = show . (+3)
-          mappedC = C.toList . C.map fun $ C.fromList kvs
-          mappedM = Map.toList . Map.map fun $ Map.fromList kvs
+t_map = roundtrip (C.map f) (Map.map f)
+  where f = (+3)
 
 type M m a k v w = ((a -> k -> v -> (a, w)) -> a -> m k v -> (a, m k w))
 
@@ -252,12 +247,10 @@ mapAccumWithKey critbitF mapF _ (KV kvs) = mappedC == mappedM
         mappedM = second Map.toList . mapF fun 0 $ (Map.fromList kvs)
 
 t_mapKeys :: (CritBitKey k, Ord k, IsString k, Show k) => k -> KV k -> Bool
-t_mapKeys _ (KV kvs) = mappedC == mappedM
+t_mapKeys = roundtrip (C.mapKeys f) (Map.mapKeys f)
   where
     f :: (CritBitKey k, Ord k, IsString k, Show k) => k -> k
-    f       = fromString . (++ "test") . show
-    mappedC = C.toList . C.mapKeys f $ C.fromList kvs
-    mappedM = Map.toList . Map.mapKeys f $ Map.fromList kvs
+    f = fromString . (++ "test") . show
 
 t_mapAccumRWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_mapAccumRWithKey = mapAccumWithKey C.mapAccumRWithKey Map.mapAccumRWithKey
@@ -274,10 +267,8 @@ t_toDescList _ (KV kvs) = C.toDescList (C.fromList kvs)
                          == Map.toDescList (Map.fromList kvs)
 
 t_filter :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_filter _ (KV kvs) = filteredC == filteredM
-  where p         = ( > (maxBound - minBound) `div` 2)
-        filteredC = C.toList $ C.filter p (C.fromList kvs)
-        filteredM = Map.toList $ Map.filter p (Map.fromList kvs)
+t_filter = roundtrip (C.filter p) (Map.filter p)
+  where p = (> (maxBound - minBound) `div` 2)
 
 t_findMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_findMin _ (KV kvs)
