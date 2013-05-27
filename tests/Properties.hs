@@ -90,8 +90,8 @@ roundtrip0 :: (CritBitKey k, Ord k, Eq a) =>
 roundtrip0 f g critbitf mapf _ (KV kvs) =
     (f . critbitf . C.fromList) kvs == (g . mapf . Map.fromList) kvs
 
-roundtrip :: (CritBitKey k, Ord k) =>
-             (CritBit k V -> CritBit k V) -> (Map k V -> Map k V)
+roundtrip :: (CritBitKey k, Ord k, Eq v) =>
+             (CritBit k V -> CritBit k v) -> (Map k V -> Map k v)
           -> k -> KV k -> Bool
 roundtrip = roundtrip0 C.toList Map.toList
 
@@ -390,10 +390,8 @@ t_foldMap _ (KV kvs) = foldMap Sum c == foldMap Sum m
     m = Map.fromList kvs
 
 t_mapWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_mapWithKey _ (KV kvs) = mappedC == mappedM
-  where fun _   = show . (+3)
-        mappedC = C.toList . C.mapWithKey fun $ (C.fromList kvs)
-        mappedM = Map.toList . Map.mapWithKey fun $ (Map.fromList kvs)
+t_mapWithKey = roundtrip (C.mapWithKey f) (Map.mapWithKey f)
+  where f _ = show . (+3)
 
 t_traverseWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_traverseWithKey _ (KV kvs) = mappedC == mappedM
