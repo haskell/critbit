@@ -316,6 +316,18 @@ main = do
           bench "critbit" $ nf (C.mapEitherWithKey f) b_critbit
         , bench "map" $ nf (Map.mapEitherWithKey f) b_map
         ]
+      , bgroup "split" $
+        let forceTuple (a,b) = a `seq` b `seq` (a,b)
+        in [
+          bench "critbit" $ whnf (forceTuple . C.split key) b_critbit
+        , bench "map" $ whnf (forceTuple . Map.split key) b_map
+        ]
+      , bgroup "splitLookup" $
+        let forceTuple (a,_,b) = a `seq` b `seq` (a,b)
+        in [
+          bench "critbit" $ whnf (forceTuple . C.splitLookup key) b_critbit
+        , bench "map" $ whnf (forceTuple . Map.splitLookup key) b_map
+        ]
       , bgroup "findMin" $ [
           bench "critbit" $ whnf (C.findMin) b_critbit
         , bench "map" $ whnf (Map.findMin) b_map
