@@ -308,6 +308,14 @@ main = do
           bench "critbit" $ whnf (C.mapMaybeWithKey f) b_critbit
         , bench "map" $ whnf (Map.mapMaybeWithKey f) b_map
         ]
+      , bgroup "mapEitherWithKey" $
+        let f k v | even (fromIntegral v :: Int) =
+                    Left (v + fromIntegral (C.byteCount k))
+                  | otherwise = Right (2 * v)
+        in [
+          bench "critbit" $ nf (C.mapEitherWithKey f) b_critbit
+        , bench "map" $ nf (Map.mapEitherWithKey f) b_map
+        ]
       , bgroup "findMin" $ [
           bench "critbit" $ whnf (C.findMin) b_critbit
         , bench "map" $ whnf (Map.findMin) b_map
