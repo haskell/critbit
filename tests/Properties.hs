@@ -83,19 +83,23 @@ t_lookupGT _ k (KV kvs) =
     C.lookupGT k (C.fromList kvs) == Map.lookupGT k (Map.fromList kvs)
 #endif
 
+roundtrip0 :: (CritBitKey k, Ord k, Eq a) =>
+             (c -> a) -> (m -> a)
+          -> (CritBit k V -> c) -> (Map k V -> m)
+          -> k -> KV k -> Bool
+roundtrip0 f g critbitf mapf _ (KV kvs) =
+    (f . critbitf . C.fromList) kvs == (g . mapf . Map.fromList) kvs
+
 roundtrip :: (CritBitKey k, Ord k) =>
              (CritBit k V -> CritBit k V) -> (Map k V -> Map k V)
           -> k -> KV k -> Bool
-roundtrip critbitf mapf _ (KV kvs) =
-    (C.toList . critbitf . C.fromList $ kvs) ==
-    (Map.toList . mapf . Map.fromList $ kvs)
+roundtrip = roundtrip0 C.toList Map.toList
 
 t_fromList_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromList_toList = roundtrip id id
 
 t_fromList_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_fromList_size _ (KV kvs) =
-    Map.size (Map.fromList kvs) == C.size (C.fromList kvs)
+t_fromList_size = roundtrip0 C.size Map.size id id
 
 t_delete_present :: (CritBitKey k, Ord k) => k -> KV k -> k -> V -> Bool
 t_delete_present _ (KV kvs) k v =
@@ -162,9 +166,9 @@ t_mapMaybeWithKey = roundtrip (C.mapMaybeWithKey f) (Map.mapMaybeWithKey f)
       | otherwise = Nothing
 
 t_mapEitherWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_mapEitherWithKey _ (KV kvs) =
-    ((C.toList *** C.toList) . C.mapEitherWithKey f . C.fromList $ kvs) ==
-    ((Map.toList *** Map.toList) . Map.mapEitherWithKey f . Map.fromList $ kvs)
+t_mapEitherWithKey =
+    roundtrip0 (C.toList *** C.toList) (Map.toList *** Map.toList)
+               (C.mapEitherWithKey f) (Map.mapEitherWithKey f)
   where
     f k x
       | even (fromIntegral x :: Int) =
@@ -259,24 +263,22 @@ t_mapAccumWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_mapAccumWithKey = mapAccumWithKey C.mapAccumWithKey Map.mapAccumWithKey
 
 t_toAscList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_toAscList _ (KV kvs) = C.toAscList (C.fromList kvs)
-                         == Map.toAscList (Map.fromList kvs)
+t_toAscList = roundtrip0 C.toAscList Map.toAscList id id
 
 t_toDescList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_toDescList _ (KV kvs) = C.toDescList (C.fromList kvs)
-                         == Map.toDescList (Map.fromList kvs)
+t_toDescList = roundtrip0 C.toDescList Map.toDescList id id
 
 t_filter :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_filter = roundtrip (C.filter p) (Map.filter p)
   where p = (> (maxBound - minBound) `div` 2)
 
 t_findMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_findMin _ (KV kvs) =
-  null kvs || C.findMin (C.fromList kvs) == Map.findMin (Map.fromList kvs)
+t_findMin k w@(KV kvs) =
+  null kvs || roundtrip0 id id C.findMin Map.findMin k w
 
 t_findMax :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_findMax _ (KV kvs) =
-  null kvs || C.findMax (C.fromList kvs) == Map.findMax (Map.fromList kvs)
+t_findMax k w@(KV kvs) =
+  null kvs || roundtrip0 id id C.findMax Map.findMax k w
 
 t_deleteMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_deleteMin _ (KV kvs) = critDelMin == mapDelMin
