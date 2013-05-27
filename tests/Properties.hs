@@ -4,7 +4,7 @@ module Properties
     where
 
 import Control.Applicative ((<$>))
-import Control.Arrow (second)
+import Control.Arrow (second, (***))
 import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
 import Data.Foldable (foldMap)
@@ -160,18 +160,15 @@ t_mapMaybeWithKey _ (CB m) = C.mapMaybeWithKey f m ==
         Just (x + fromIntegral (C.byteCount k))
       | otherwise = Nothing
 
-t_mapEitherWithKey :: (CritBitKey k) => k -> CB k -> Bool
-t_mapEitherWithKey _ (CB m) = C.mapEitherWithKey f m ==
-    (C.map (\(Left  x) -> x) (C.filter isLeft (C.mapWithKey f m)),
-     C.map (\(Right x) -> x) (C.filter isRight (C.mapWithKey f m)))
+t_mapEitherWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapEitherWithKey _ (KV kvs) =
+    ((C.toList *** C.toList) . C.mapEitherWithKey f . C.fromList $ kvs) ==
+    ((Map.toList *** Map.toList) . Map.mapEitherWithKey f . Map.fromList $ kvs)
   where
     f k x
       | even (fromIntegral x :: Int) =
         Left (x + fromIntegral (C.byteCount k))
       | otherwise = Right (2 * x)
-    isLeft (Left _) = True
-    isLeft _        = False
-    isRight         = not . isLeft
 
 t_unionL :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
 t_unionL _ (KV kv0) (KV kv1) =
