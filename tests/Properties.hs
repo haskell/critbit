@@ -85,6 +85,10 @@ t_lookup_missing _ k (CB m) = C.lookup k (C.delete k m) == Nothing
 t_lookupGT :: (Ord k, CritBitKey k) => k -> k -> KV k -> Bool
 t_lookupGT _ k (KV kvs) =
     C.lookupGT k (C.fromList kvs) == Map.lookupGT k (Map.fromList kvs)
+
+t_lookupGE :: (Ord k, CritBitKey k) => k -> k -> KV k -> Bool
+t_lookupGE _ k (KV kvs) =
+    C.lookupGE k (C.fromList kvs) == Map.lookupGE k (Map.fromList kvs)
 #endif
 
 -- Test that the behaviour of a CritBit function is the same as that
@@ -279,6 +283,9 @@ t_elems = isoWith id id C.elems Map.elems
 
 t_keys :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_keys = isoWith id id C.keys Map.keys
+
+t_keysSet :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_keysSet = isoWith id id C.keysSet Map.keysSet
 
 t_map :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_map = C.map (+3) === Map.map (+3)
@@ -484,6 +491,7 @@ propertiesFor t = [
   , testProperty "t_lookup_missing" $ t_lookup_missing t
 #if MIN_VERSION_containers(0,5,0)
   , testProperty "t_lookupGT" $ t_lookupGT t
+  , testProperty "t_lookupGE" $ t_lookupGE t
 #endif
   , testProperty "t_delete_present" $ t_delete_present t
   , testProperty "t_adjust_present" $ t_updateWithKey_present t
@@ -510,6 +518,7 @@ propertiesFor t = [
   , testProperty "t_foldlWithKey'" $ t_foldlWithKey' t
   , testProperty "t_elems" $ t_elems t
   , testProperty "t_keys" $ t_keys t
+  , testProperty "t_keysSet" $ t_keysSet t
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapWithKey" $ t_mapWithKey t
   , testProperty "t_mapKeys" $ t_map t

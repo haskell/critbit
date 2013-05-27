@@ -279,6 +279,10 @@ main = do
           bench "critbit" $ whnf (C.lookupGT key) b_critbit
         , bench "map" $ whnf (Map.lookupGT key) b_map
         ]
+      , bgroup "lookupGE" $ [
+          bench "critbit" $ whnf (C.lookupGE key) b_critbit
+        , bench "map" $ whnf (Map.lookupGE key) b_map
+        ]
 #endif
       , bgroup "member" $ keyed C.member Map.member H.member Trie.member
       , bgroup "foldlWithKey'" $ let f a _ b = a + b
@@ -289,6 +293,10 @@ main = do
                           (H.foldl' (+) 0) id
       , bgroup "elems" $ function nf C.elems Map.elems H.elems Trie.elems
       , bgroup "keys" $ function nf C.keys Map.keys H.keys Trie.keys
+      , bgroup "keysSet" [
+          bench "critbit" $ nf C.keysSet b_critbit
+        , bench "map" $ nf Map.keysSet b_map
+        ]
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
       , bgroup "mapWithKey" $ [
