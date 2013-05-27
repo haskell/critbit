@@ -349,10 +349,7 @@ t_deleteMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_deleteMin = C.deleteMin === Map.deleteMin
 
 t_deleteMax :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_deleteMax _ (KV kvs) = critDelMax == mapDelMax
-  where
-    critDelMax = C.toList . C.deleteMax . C.fromList $ kvs
-    mapDelMax  = Map.toList . Map.deleteMax . Map.fromList $ kvs
+t_deleteMax = C.deleteMax === Map.deleteMax
 
 deleteFindAll :: (m -> Bool) -> (m -> (a, m)) -> m -> [a]
 deleteFindAll isEmpty deleteFind m0 = unfoldr maybeDeleteFind m0
