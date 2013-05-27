@@ -8,6 +8,7 @@ import Control.Arrow (second)
 import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
 import Data.Foldable (foldMap)
+import Data.Function (on)
 import Data.Functor.Identity (Identity(..))
 import Data.List (deleteBy, unfoldr)
 import Data.Map (Map)
@@ -110,8 +111,7 @@ t_adjust_present k v (KV kvs) =
 
 t_adjust_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
 t_adjust_missing k v (KV kvs) =
-  t_adjust_general k (KV $ deleteKey (k,v) kvs)
-  where deleteKey = deleteBy (\(k0,_) (k1,_) -> k0 == k1)
+  t_adjust_general k (KV $ deleteBy ((==) `on` fst) (k,v) kvs)
 
 t_adjustWithKey_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_adjustWithKey_general k0 (KV kvs) = m == cb
@@ -125,8 +125,7 @@ t_adjustWithKey_present k v (KV kvs) =
 
 t_adjustWithKey_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
 t_adjustWithKey_missing k v (KV kvs) =
-  t_adjustWithKey_general k (KV $ deleteKey (k,v) kvs)
-  where deleteKey = deleteBy (\(k0,_) (k1,_) -> k0 == k1)
+  t_adjustWithKey_general k (KV $ deleteBy ((==) `on` fst) (k,v) kvs)
 
 t_updateWithKey_general :: (CritBitKey k)
                         => (k -> V -> CritBit k V -> CritBit k V)
