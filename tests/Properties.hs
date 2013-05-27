@@ -272,25 +272,22 @@ t_filter :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_filter = C.filter p === Map.filter p
   where p = (> (maxBound - minBound) `div` 2)
 
+t_split_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_split_general k = isoWith (C.toList *** C.toList) (Map.toList *** Map.toList)
+                            (C.split k) (Map.split k) k
+
+t_split_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_split_present k v (KV kvs) = t_split_general k (KV ((k,v):kvs))
+
+t_split_missing :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_split_missing k (KV kvs) = t_split_general k (KV (filter ((/=k) . fst) kvs))
+
 cbPresent :: (CritBitKey k) => k -> V -> KV k -> CritBit k V
 cbPresent k v (KV kvs) = C.fromList $ (k,v):kvs
 
 cbMissing :: (CritBitKey k, Ord k) => k -> V -> KV k -> CritBit k V
 cbMissing k v (KV kvs) = C.fromList $ deleteKey (k,v) kvs
   where deleteKey = deleteBy (\(k0,_) (k1,_) -> k0 == k1)
-
-t_split_general :: (CritBitKey k, Ord k) => k -> CritBit k V -> Bool
-t_split_general k0 cb = (lt, gt) == C.split k0 cb
-  where lt = C.filterWithKey (\k _ -> k < k0) cb
-        gt = C.filterWithKey (\k _ -> k > k0) cb
-
-t_split_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_split_present k v kvs =
-  t_split_general k (cbPresent k v kvs)
-
-t_split_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_split_missing k v kvs =
-  t_split_general k (cbMissing k v kvs)
 
 t_splitLookup_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
 t_splitLookup_present k0 v0 kvs = (lt, Just v0, gt) == C.splitLookup k0 cb
