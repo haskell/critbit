@@ -83,9 +83,15 @@ t_lookupGT _ k (KV kvs) =
     C.lookupGT k (C.fromList kvs) == Map.lookupGT k (Map.fromList kvs)
 #endif
 
+roundtrip :: (CritBitKey k, Ord k) =>
+             (CritBit k V -> CritBit k V) -> (Map k V -> Map k V)
+          -> k -> KV k -> Bool
+roundtrip critbitf mapf _ (KV kvs) =
+    (C.toList . critbitf . C.fromList $ kvs) ==
+    (Map.toList . mapf . Map.fromList $ kvs)
+
 t_fromList_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_fromList_toList _ (KV kvs) =
-    Map.toList (Map.fromList kvs) == C.toList (C.fromList kvs)
+t_fromList_toList = roundtrip id id
 
 t_fromList_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromList_size _ (KV kvs) =
@@ -99,10 +105,8 @@ t_delete_present _ (KV kvs) k v =
     m = Map.insert k v $ Map.fromList kvs
 
 t_adjust_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_adjust_general k0 (KV kvs) = m == cb
+t_adjust_general k = roundtrip (C.adjust f k) (Map.adjust f k) k
   where f v = v + 10
-        m  = Map.toList . Map.adjust f k0 $ Map.fromList kvs
-        cb =   C.toList .   C.adjust f k0 $   C.fromList kvs
 
 t_adjust_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
 t_adjust_present k v (KV kvs) =
