@@ -116,7 +116,7 @@ module Data.CritBit.Tree
     -- , mapMaybe
     , mapMaybeWithKey
     -- , mapEither
-    -- , mapEitherWithKey
+    , mapEitherWithKey
 
     -- , split
     -- , splitLookup
@@ -145,7 +145,7 @@ module Data.CritBit.Tree
     ) where
 
 import Control.Applicative (Applicative(..), (<$>), (*>), (<|>), pure, liftA2)
-import Control.Arrow (second)
+import Control.Arrow (second, (***))
 import Control.Monad (guard)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
@@ -570,6 +570,31 @@ mapMaybeWithKey f (CritBit root) = CritBit $ go root
                       Nothing -> Empty
                       Just v' -> Leaf k v'
     go Empty      = Empty
+{-# INLINABLE mapMaybeWithKey #-}
+
+-- | /O(n)/. Map keys\/values and separate the 'Left' and 'Right' results.
+--
+-- > let f k a = if k < "c" then Left (k ++ k) else Right (a * 2)
+-- > mapEitherWithKey f (fromList [("a",5), ("b",3), ("x",1), ("z",7)])
+-- >     == (fromList [("a","aa"), ("b","bb")], fromList [("x",2), ("z",14)])
+-- >
+-- > mapEitherWithKey (\_ a -> Right a) (fromList [("a",5), ("b",3), ("x",1), ("z",7)])
+-- >     == (empty, fromList [("x",1), ("b",3), ("a",5), ("z",7)])
+mapEitherWithKey :: (k -> v -> Either v1 v2)
+                 -> CritBit k v -> (CritBit k v1, CritBit k v2)
+mapEitherWithKey f (CritBit root) = (CritBit *** CritBit) $ go root
+  where
+    go i@(Internal l r _ _) = (merge m1 m3, merge m2 m4)
+      where
+        ((m1,m2),(m3,m4)) = (go l, go r)
+        merge m Empty = m
+        merge Empty m = m
+        merge m m'    = i { ileft = m, iright = m' }
+    go (Leaf k v) = case f k v of
+                      Left  v' -> (Leaf k v', Empty)
+                      Right v' -> (Empty, Leaf k v')
+    go Empty      = (Empty, Empty)
+{-# INLINABLE mapEitherWithKey #-}
 
 -- | /O(log n)/. The minimal key of the map. Calls 'error' if the map
 -- is empty.
