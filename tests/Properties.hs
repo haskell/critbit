@@ -12,7 +12,6 @@ import Data.Function (on)
 import Data.Functor.Identity (Identity(..))
 import Data.List (deleteBy, unfoldr)
 import Data.Map (Map)
-import Data.Maybe (isJust, fromJust)
 import Data.Monoid (Sum(..))
 import Data.String (IsString, fromString)
 import Data.Text (Text)
@@ -151,9 +150,10 @@ t_updateWithKey_present = t_updateWithKey_general C.insert
 t_updateWithKey_missing :: (CritBitKey k) => k -> V -> CB k -> Bool
 t_updateWithKey_missing = t_updateWithKey_general (\k _v m -> C.delete k m)
 
-t_mapMaybeWithKey :: (CritBitKey k) => k -> CB k -> Bool
-t_mapMaybeWithKey _ (CB m) = C.mapMaybeWithKey f m ==
-    C.map fromJust (C.filter isJust (C.mapWithKey f m))
+t_mapMaybeWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapMaybeWithKey _ (KV kvs) =
+    (C.toList . C.mapMaybeWithKey f . C.fromList $ kvs) ==
+    (Map.toList . Map.mapMaybeWithKey f . Map.fromList $ kvs)
   where
     f k x
       | even (fromIntegral x :: Int) =
