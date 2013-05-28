@@ -35,6 +35,7 @@ library
   default-language: Haskell2010
   exposed-modules:
     Data.CritBit.Map.Lazy
+    Data.CritBit.Set
   other-modules:
     Data.CritBit.Core
     Data.CritBit.Types.Internal
