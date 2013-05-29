@@ -358,6 +358,10 @@ main = do
           bench "critbit" $ whnf (forceTuple . C.splitLookup key) b_critbit
         , bench "map" $ whnf (forceTuple . Map.splitLookup key) b_map
         ]
+      , bgroup "isSubmapOfBy" $ [
+          bench "critbit" $ whnf (C.isSubmapOfBy (<=) b_critbit_1) b_critbit
+        , bench "map" $ whnf (Map.isSubmapOfBy (<=) b_map_1) b_map
+        ]
       , bgroup "findMin" $ [
           bench "critbit" $ whnf (C.findMin) b_critbit
         , bench "map" $ whnf (Map.findMin) b_map
