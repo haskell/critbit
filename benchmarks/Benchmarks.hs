@@ -366,6 +366,10 @@ main = do
           bench "critbit" $ whnf (C.isSubmapOfBy (<=) b_critbit_1) b_critbit
         , bench "map" $ whnf (Map.isSubmapOfBy (<=) b_map_1) b_map
         ]
+      , bgroup "isProperSubmapOf" $ [
+          bench "critbit" $ whnf (C.isProperSubmapOf b_critbit_1) b_critbit
+        , bench "map" $ whnf (Map.isProperSubmapOf b_map_1) b_map
+        ]
       , bgroup "isProperSubmapOfBy" $ [
           bench "critbit" $
             whnf (C.isProperSubmapOfBy (<=) b_critbit_1) b_critbit

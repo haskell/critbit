@@ -122,9 +122,9 @@ module Data.CritBit.Tree
     , splitLookup
 
     -- * Submap
-    -- , isProperSubmapOf
     , isSubmapOf
     , isSubmapOfBy
+    , isProperSubmapOf
     , isProperSubmapOfBy
 
     -- -- * Min\/Max
@@ -718,6 +718,13 @@ isSubmapOfBy f (CritBit root1) (CritBit root2) = go root1 root2
     go Empty _ = True
     go _ _ = False
 {-# INLINABLE isSubmapOfBy #-}
+
+-- | /O(m^2+mn)/ (where /m/ is the first map and /n/ the second).
+-- Is this a proper submap? (ie. a submap but not equal).
+-- Defined as (@'isProperSubmapOf' = 'isProperSubmapOfBy' (==)@).
+isProperSubmapOf :: (CritBitKey k, Eq v) => CritBit k v -> CritBit k v -> Bool
+isProperSubmapOf = isProperSubmapOfBy (==)
+{-# INLINABLE isProperSubmapOf #-}
 
 data ProperBool = NotTrue
                 | TrueImp
