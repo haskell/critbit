@@ -58,9 +58,9 @@ module Data.CritBit.Tree
     -- , differenceWithKey
 
     -- ** Intersection
-    -- , intersection
-    -- , intersectionWith
-    -- , intersectionWithKey
+    , intersection
+    , intersectionWith
+    , intersectionWithKey
 
     -- * Traversal
     -- ** Map
@@ -522,6 +522,84 @@ unions cs = List.foldl' union empty cs
 
 unionsWith :: (CritBitKey k) => (v -> v -> v) -> [CritBit k v] -> CritBit k v
 unionsWith f cs = List.foldl' (unionWith f) empty cs
+
+-- | /O(n+m)/. Intersection of two maps. 
+-- | Return data in the first map for the keys existing in both maps.
+--
+-- > let l = fromList [("a", 5), ("b", 3)]
+-- > let r = fromList [("A", 2), ("b", 7)]
+-- > intersection l r == fromList [("b", 3)]
+intersection :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
+intersection a b = intersectionWithKey (\_ x _ -> x) a b
+{-# INLINEABLE intersection #-}
+
+-- | /O(n+m)/. Intersection with a combining function.
+--
+-- > let l = fromList [("a", 5), ("b", 3)]
+-- > let r = fromList [("A", 2), ("b", 7)]
+-- > intersectionWith (+) l r == fromList [("b", 10)]
+intersectionWith :: (CritBitKey k) => (v -> v -> v)
+                 -> CritBit k v -> CritBit k v -> CritBit k v
+intersectionWith f a b = intersectionWithKey (const f) a b
+{-# INLINEABLE intersectionWith #-}
+
+-- | /O(n+m)/. Intersection with a combining function.
+--
+-- > let f key new_value old_value = length key + new_value + old_value
+-- > let l = fromList [("a", 5), ("b", 3)]
+-- > let r = fromList [("A", 2), ("b", 7)]
+-- > intersectionWithKey f l r == fromList [("b", 11)]
+intersectionWithKey :: (CritBitKey k) => (k -> v -> v -> v)
+                    -> CritBit k v -> CritBit k v -> CritBit k v
+intersectionWithKey f (CritBit lt) (CritBit rt) = CritBit $ top lt rt
+  where
+    -- Assumes that empty nodes exist only on the top level
+    top Empty _ = Empty
+    top _ Empty = Empty
+    top a b = go a (minKey a) b (minKey b)
+
+    -- Each node is followed by the minimum key in that node.
+    -- This trick assures that overall time spend by minKey in O(n+m)
+    go (Leaf ak av) _ (Leaf bk bv) _
+        | ak == bk  = Leaf ak $ f ak av bv
+        | otherwise = Empty
+    go a@(Leaf _ _) ak b@(Internal bl br _ _) bk = 
+      leaf a b bk a ak bl bk a ak br (minKey br)
+    go a@(Internal al ar _ _) ak b@(Leaf    _ _) bk =
+      leaf b a ak al ak b ak ar (minKey ar) b bk
+    go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk =
+      case compare (abyte, abits) (bbyte, bbits) of
+        LT -> switch bk a al ak b ak ar (minKey ar) b bk
+        GT -> switch ak b a ak bl bk a ak br (minKey br)
+        EQ -> link (go al ak bl bk) (go ar (minKey ar) br (minKey br))
+      where
+        link Empty b' = b'
+        link a' Empty = a'
+        link a' b' = Internal a' b' abyte abits
+    -- Assumes that empty nodes exist only on the top level
+    go _ _ _ _ = error("Data.CritBit.Tree.intersectionWithKey: Empty")
+
+    leaf (Leaf lk _) s@(Internal _ _ sbyte sbits) 
+            sk a0 a0k b0 b0k a1 a1k b1 b1k =
+        if dbyte > sbyte || dbyte == sbyte && dbits >= sbits
+        then switch lk s a0 a0k b0 b0k a1 a1k b1 b1k
+        else Empty
+      where
+        (dbyte, dbits, _) = followPrefixes lk sk
+    leaf _ _ _ _ _ _ _ _ _ _ _ = 
+        error("Data.CritBit.Tree.intersectionWithKey.leaf: unpossible")
+    {-# INLINE leaf #-}
+
+    switch k n a0 a0k b0 b0k a1 a1k b1 b1k = if direction k n == 0 
+                                             then go a0 a0k b0 b0k
+                                             else go a1 a1k b1 b1k
+    {-# INLINE switch #-}
+
+    -- minKey processes each node at most once,
+    -- including recursive calls in the implementation of leftmost
+    minKey n = leftmost (error "Empty node in tree") (\k _ -> k) n
+    {-# INLINE minKey #-}
+{-# INLINEABLE intersectionWithKey #-}
 
 -- | /O(n)/. Apply a function to all values.
 --
