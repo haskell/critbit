@@ -324,6 +324,20 @@ main = do
           bench "critbit" $ whnf (C.unionsWith (+)) [b_critbit_13, b_critbit_23]
         , bench "map" $ whnf (Map.unionsWith (+)) [b_map_13, b_map_23]
         ]
+      , bgroup "intersection" [
+          bench "critbit" $ whnf (C.intersection b_critbit_13) b_critbit_23
+        , bench "map" $ whnf (Map.intersection b_map_13) b_map_23
+        , bench "hashmap" $ whnf (H.intersection b_hashmap_13) b_hashmap_23
+        ]
+      , bgroup "intersectionWith" [
+          bench "critbit" $ whnf (C.intersectionWith (+) b_critbit_13) b_critbit_23
+        , bench "map" $ whnf (Map.intersectionWith (+) b_map_13) b_map_23
+        , bench "hashmap" $ whnf (H.intersectionWith (+) b_hashmap_13) b_hashmap_23
+        ]
+      , bgroup "intersectionWithKey" $ let f _ a b = a + b in [
+          bench "critbit" $ whnf (C.intersectionWithKey f b_critbit_13) b_critbit_23
+        , bench "map" $ whnf (Map.intersectionWithKey f b_map_13) b_map_23
+        ]
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
       , bgroup "filter" $ let p  = (< 128)

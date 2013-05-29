@@ -58,9 +58,9 @@ module Data.CritBit.Tree
     -- , differenceWithKey
 
     -- ** Intersection
-    -- , intersection
-    -- , intersectionWith
-    -- , intersectionWithKey
+    , intersection
+    , intersectionWith
+    , intersectionWithKey
 
     -- * Traversal
     -- ** Map
@@ -523,6 +523,69 @@ unions cs = List.foldl' union empty cs
 unionsWith :: (CritBitKey k) => (v -> v -> v) -> [CritBit k v] -> CritBit k v
 unionsWith f cs = List.foldl' (unionWith f) empty cs
 
+-- | Intersection of two maps. 
+-- | Return data in the first map for the keys existing in both maps.
+--
+-- > let l = fromList [("a", 5), ("b", 3)]
+-- > let r = fromList [("A", 2), ("b", 7)]
+-- > intersection l r == singleton "b" 3
+intersection :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
+intersection a b = intersectionWithKey (\_ x _ -> x) a b
+{-# INLINE intersection #-}
+
+-- | Intersection with a combining function.
+--
+-- > let l = fromList [("a", 5), ("b", 3)]
+-- > let r = fromList [("A", 2), ("b", 7)]
+-- > intersectionWith (+) l r == fromList [("b", 10)]
+intersectionWith :: (CritBitKey k) => (v -> v -> v)
+          -> CritBit k v -> CritBit k v -> CritBit k v
+intersectionWith f a b = intersectionWithKey (const f) a b
+
+-- | Union with a combining function.
+--
+-- > let f key new_value old_value = length key + new_value + old_value
+-- > let l = fromList [("a", 5), ("b", 3)]
+-- > let r = fromList [("A", 2), ("b", 7)]
+-- > intersectionWithKey f l r == fromList [("b", 11)]
+intersectionWithKey :: (CritBitKey k) => (k -> v -> v -> v)
+             -> CritBit k v -> CritBit k v -> CritBit k v
+intersectionWithKey f (CritBit l) (CritBit r) = CritBit $ go l r
+  where
+    go Empty _ = Empty
+    go _ Empty = Empty
+    go (Leaf ak av) (Leaf bk bv)
+        | ak == bk  = Leaf ak $ f ak av bv
+        | otherwise = Empty
+    go a@(Leaf ak _) b@(Internal bl br _ _) = leaf a b a bl a br
+    go a@(Internal al ar _ _) b@(Leaf bk _) = leaf b a al b ar b
+    go a@(Internal al ar abyte abits) b@(Internal bl br bbyte bbits) =
+      case compare (abyte, abits) (bbyte, bbits) of
+        LT -> switch (minKey b) a al b ar b
+        GT -> switch (minKey a) b a bl a br
+        EQ -> link (go al bl) (go ar br)
+      where
+        link Empty b = b
+        link a Empty = a
+        link a b = Internal a b abyte abits
+
+    leaf l@(Leaf lk _) s@(Internal _ _ sbyte sbits) a0 b0 a1 b1 =
+        if dbyte > sbyte || dbyte == sbyte && dbits >= sbits
+        then switch lk s a0 b0 a1 b1
+        else Empty
+      where
+        (dbyte, dbits, _) = followPrefixes lk (minKey s)
+    leaf _ _ _ _ _ _ = 
+        error("Data.CritBit.Tree.intersectionWithKey.leaf: unpossible")
+    {-# INLINE leaf #-}
+
+    switch k n a0 b0 a1 b1 = if direction k n == 0 then go a0 b0 else go a1 b1
+    {-# INLINE switch #-}
+
+    minKey n = leftmost (error "Empty node in tree") (\k _ -> k) n
+    {-# INLINE minKey #-}
+
+
 -- | /O(n)/. Apply a function to all values.
 --
 -- > map show (fromList [("b",5), ("a",3)]) == fromList [("b","5"), ("a","3")]
@@ -875,7 +938,7 @@ insertWith f = insertWithKey (\_ v v' -> f v v')
 -- >  let f key x = show key ++ ":" ++ show x
 -- >  mapWithKey f (fromList [("a",5), ("b",3)]) == fromList [("a","a:5"), ("b","b:3")]
 mapWithKey :: (CritBitKey k) => (k -> v -> w) -> CritBit k v -> CritBit k w
-mapWithKey f (CritBit root) = CritBit (go root)
+mapWithKey f (CritBit root) = CritBit $ go root
   where
     go i@(Internal l r _ _) = i { ileft = go l, iright = go r }
     go (Leaf k v)           = Leaf k (f k v)
