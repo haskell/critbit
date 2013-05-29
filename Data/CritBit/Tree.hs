@@ -523,7 +523,7 @@ unions cs = List.foldl' union empty cs
 unionsWith :: (CritBitKey k) => (v -> v -> v) -> [CritBit k v] -> CritBit k v
 unionsWith f cs = List.foldl' (unionWith f) empty cs
 
--- | Intersection of two maps. 
+-- | /O(n+m)/. Intersection of two maps. 
 -- | Return data in the first map for the keys existing in both maps.
 --
 -- > let l = fromList [("a", 5), ("b", 3)]
@@ -531,60 +531,82 @@ unionsWith f cs = List.foldl' (unionWith f) empty cs
 -- > intersection l r == singleton "b" 3
 intersection :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
 intersection a b = intersectionWithKey (\_ x _ -> x) a b
-{-# INLINE intersection #-}
+{-# INLINEABLE intersection #-}
 
--- | Intersection with a combining function.
+-- | /O(n+m)/. Intersection with a combining function.
 --
 -- > let l = fromList [("a", 5), ("b", 3)]
 -- > let r = fromList [("A", 2), ("b", 7)]
 -- > intersectionWith (+) l r == fromList [("b", 10)]
 intersectionWith :: (CritBitKey k) => (v -> v -> v)
-          -> CritBit k v -> CritBit k v -> CritBit k v
+                 -> CritBit k v -> CritBit k v -> CritBit k v
 intersectionWith f a b = intersectionWithKey (const f) a b
+{-# INLINEABLE intersectionWith #-}
 
--- | Union with a combining function.
+-- | /O(n+m)/. Union with a combining function.
 --
 -- > let f key new_value old_value = length key + new_value + old_value
 -- > let l = fromList [("a", 5), ("b", 3)]
 -- > let r = fromList [("A", 2), ("b", 7)]
 -- > intersectionWithKey f l r == fromList [("b", 11)]
 intersectionWithKey :: (CritBitKey k) => (k -> v -> v -> v)
-             -> CritBit k v -> CritBit k v -> CritBit k v
-intersectionWithKey f (CritBit l) (CritBit r) = CritBit $ go l r
+                    -> CritBit k v -> CritBit k v -> CritBit k v
+intersectionWithKey f (CritBit lt) (CritBit rt) = CritBit $ top lt rt
   where
-    go Empty _ = Empty
-    go _ Empty = Empty
-    go (Leaf ak av) (Leaf bk bv)
+    -- Assumes that empty nodes exist only on the top level
+    top Empty _ = Empty
+    top _ Empty = Empty
+    top a b = go (a, (minKey a)) (b, (minKey b))
+
+    go ((Leaf ak av), _) ((Leaf bk bv), _)
         | ak == bk  = Leaf ak $ f ak av bv
         | otherwise = Empty
-    go a@(Leaf ak _) b@(Internal bl br _ _) = leaf a b a bl a br
-    go a@(Internal al ar _ _) b@(Leaf bk _) = leaf b a al b ar b
-    go a@(Internal al ar abyte abits) b@(Internal bl br bbyte bbits) =
+    go a@((Leaf _ _), _) b@((Internal _ _ _ _), _) = 
+      leaf a b a (left b) a (right b)
+    go a@((Internal _ _ _ _), _) b@((Leaf _ _), _) =
+      leaf b a (left a) b (right a) b
+    go a@((Internal _ _ abyte abits), ak) b@((Internal _ _ bbyte bbits), bk) =
       case compare (abyte, abits) (bbyte, bbits) of
-        LT -> switch (minKey b) a al b ar b
-        GT -> switch (minKey a) b a bl a br
-        EQ -> link (go al bl) (go ar br)
+        LT -> switch bk (fst a) (left a) b (right a) b
+        GT -> switch ak (fst b) a (left b) a (right b)
+        EQ -> link (go (left a) (left b)) (go (right a) (right b))
       where
-        link Empty b = b
-        link a Empty = a
-        link a b = Internal a b abyte abits
+        link Empty b' = b'
+        link a' Empty = a'
+        link a' b' = Internal a' b' abyte abits
+    -- Assumes that empty nodes exist only on the top level
+    go _ _ = error("Data.CritBit.Tree.intersectionWithKey: Empty")
 
-    leaf l@(Leaf lk _) s@(Internal _ _ sbyte sbits) a0 b0 a1 b1 =
+    left ((Internal l _ _ _), k) = (l, k)
+    left _ = 
+        error("Data.CritBit.Tree.intersectionWithKey.left: unpossible")
+    {-# INLINE left #-}
+
+    right ((Internal _ r _ _), _) = (r, minKey r)
+    right _ = 
+        error("Data.CritBit.Tree.intersectionWithKey.right: unpossible")
+    {-# INLINE right #-}
+
+    leaf ((Leaf _ _), lmk) (s@(Internal _ _ sbyte sbits), smk) a0 b0 a1 b1 =
         if dbyte > sbyte || dbyte == sbyte && dbits >= sbits
-        then switch lk s a0 b0 a1 b1
+        then switch lmk s a0 b0 a1 b1
         else Empty
       where
-        (dbyte, dbits, _) = followPrefixes lk (minKey s)
+        (dbyte, dbits, _) = followPrefixes lmk smk
     leaf _ _ _ _ _ _ = 
         error("Data.CritBit.Tree.intersectionWithKey.leaf: unpossible")
     {-# INLINE leaf #-}
 
-    switch k n a0 b0 a1 b1 = if direction k n == 0 then go a0 b0 else go a1 b1
+    switch k n a0 b0 a1 b1 = if direction k n == 0 
+                             then go a0 b0 
+                             else go a1 b1
     {-# INLINE switch #-}
 
+    -- minKey processes each node at most once,
+    -- including recursive calls in the implementation of leftmost
     minKey n = leftmost (error "Empty node in tree") (\k _ -> k) n
     {-# INLINE minKey #-}
-
+{-# INLINEABLE intersectionWithKey #-}
 
 -- | /O(n)/. Apply a function to all values.
 --
