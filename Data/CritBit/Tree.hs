@@ -528,7 +528,7 @@ unionsWith f cs = List.foldl' (unionWith f) empty cs
 --
 -- > let l = fromList [("a", 5), ("b", 3)]
 -- > let r = fromList [("A", 2), ("b", 7)]
--- > intersection l r == singleton "b" 3
+-- > intersection l r == fromList [("b", 3)]
 intersection :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
 intersection a b = intersectionWithKey (\_ x _ -> x) a b
 {-# INLINEABLE intersection #-}
@@ -543,7 +543,7 @@ intersectionWith :: (CritBitKey k) => (v -> v -> v)
 intersectionWith f a b = intersectionWithKey (const f) a b
 {-# INLINEABLE intersectionWith #-}
 
--- | /O(n+m)/. Union with a combining function.
+-- | /O(n+m)/. Intersection with a combining function.
 --
 -- > let f key new_value old_value = length key + new_value + old_value
 -- > let l = fromList [("a", 5), ("b", 3)]
