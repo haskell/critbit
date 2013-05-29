@@ -1044,105 +1044,104 @@ splitLookup k (CritBit root) =
     go _ = (Empty, Nothing, Empty)
 {-# INLINABLE splitLookup #-}
 
--- | /O(m^2+mn)/ (where /m/ is the first map and /n/ the second).
--- This function is defined as (@'isSubmapOf' = 'isSubmapOfBy' (==)@).
---
+-- | /O(n+m)/. This function is defined as 
+--   (@'isSubmapOf' = 'isSubmapOfBy' (==)@).
 isSubmapOf :: (CritBitKey k, Eq v) => CritBit k v -> CritBit k v -> Bool
 isSubmapOf = isSubmapOfBy (==)
 {-# INLINABLE isSubmapOf #-}
 
-{- | /O(m^2+mn)/ (where /m/ is the first map and /n/ the second).
- The expression (@'isSubmapOfBy' f t1 t2@) returns 'True' if
- all keys in @t1@ are in tree @t2@, and when @f@ returns 'True' when
- applied to their respective values. For example, the following
- expressions are all 'True':
-
- > isSubmapOfBy (==) (fromList [("a",1)]) (fromList [("a",1),("b",2)])
- > isSubmapOfBy (<=) (fromList [("a",1)]) (fromList [("a",1),("b",2)])
- > isSubmapOfBy (==) (fromList [("a",1),("b",2)]) (fromList [("a",1),("b",2)])
-
- But the following are all 'False':
-
- > isSubmapOfBy (==) (fromList [("a",2)]) (fromList [("a",1),("b",2)])
- > isSubmapOfBy (<)  (fromList [("a",1)]) (fromList [("a",1),("b",2)])
- > isSubmapOfBy (==) (fromList [("a",1),("b",2)]) (fromList [("a",1)])
--}
-isSubmapOfBy :: (CritBitKey k) => (a -> b -> Bool) -> CritBit k a -> CritBit k b
-             -> Bool
-isSubmapOfBy f (CritBit root1) (CritBit root2) = go root1 root2
-  where
-    go (Internal l1 r1 _ _) i2 =
-      let ((key,v1), CritBit r1') = deleteFindMin $ CritBit r1
-          (CritBit lt,found,CritBit gt) = splitLookup key $ CritBit i2
-      in case found of
-        Nothing -> False
-        Just v2 -> f v1 v2 && go l1 lt && go r1' gt
-    go (Leaf lk1 lv1) (Leaf lk2 lv2) = lk1 == lk2 && f lv1 lv2
-    go (Leaf lk lv) i@(Internal _ _ _ _) =
-      lookupWith False (f lv) lk (CritBit i)
-    go Empty _ = True
-    go _ _ = False
+-- | /O(n+m)/. The expression (@'isSubmapOfBy' f t1 t2@) returns 'True' if
+--   all keys in @t1@ are in map @t2@, and when @f@ returns 'True' when
+--   applied to their respective values. For example, the following
+--   expressions are all 'True':
+--
+-- > isSubmapOfBy (==) (fromList [("a",1)]) (fromList [("a",1),("b",2)])
+-- > isSubmapOfBy (<=) (fromList [("a",1)]) (fromList [("a",1),("b",2)])
+-- > isSubmapOfBy (==) (fromList [("a",1),("b",2)]) (fromList [("a",1),("b",2)])
+--
+-- But the following are all 'False':
+--
+-- > isSubmapOfBy (==) (fromList [("a",2)]) (fromList [("a",1),("b",2)])
+-- > isSubmapOfBy (<)  (fromList [("a",1)]) (fromList [("a",1),("b",2)])
+-- > isSubmapOfBy (==) (fromList [("a",1),("b",2)]) (fromList [("a",1)])
+isSubmapOfBy :: (CritBitKey k) => (a -> b -> Bool) -> CritBit k a 
+             -> CritBit k b -> Bool
+isSubmapOfBy f a b = submapTypeBy f a b /= No
 {-# INLINABLE isSubmapOfBy #-}
 
--- | /O(m^2+mn)/ (where /m/ is the first map and /n/ the second).
--- Is this a proper submap? (ie. a submap but not equal).
--- Defined as (@'isProperSubmapOf' = 'isProperSubmapOfBy' (==)@).
+-- | /O(n+m)/. Is this a proper submap? (ie. a submap but not equal).
+--   Defined as (@'isProperSubmapOf' = 'isProperSubmapOfBy' (==)@).
 isProperSubmapOf :: (CritBitKey k, Eq v) => CritBit k v -> CritBit k v -> Bool
 isProperSubmapOf = isProperSubmapOfBy (==)
 {-# INLINABLE isProperSubmapOf #-}
 
-data ProperBool = NotTrue
-                | TrueImp
-                | TrueProp
-
-addPB :: ProperBool -> ProperBool -> ProperBool
-addPB NotTrue _ = NotTrue
-addPB _ NotTrue = NotTrue
-addPB TrueProp _ = TrueProp
-addPB _ TrueProp = TrueProp
-addPB _ _ = TrueImp
-
-toBool :: ProperBool -> Bool
-toBool TrueProp = True
-toBool _ = False
-
-{- | /O(m^2+mn)/ (where /m/ is the first map and /n/ the second).
- Is this a proper submap? (ie. a submap but not equal).
- The expression (@'isProperSubmapOfBy' f m1 m2@) returns 'True' when
- @m1@ and @m2@ are not equal,
- all keys in @m1@ are in @m2@, and when @f@ returns 'True' when
- applied to their respective values. For example, the following
- expressions are all 'True':
-
-  > isProperSubmapOfBy (==) (fromList [("a",1)]) (fromList [("a",1),("b",2)])
-  > isProperSubmapOfBy (<=) (fromList [("a",0)]) (fromList [("a",1),("b",2)])
-
- But the following are all 'False':
-
-  > isProperSubmapOfBy (==) (fromList [("a",1),("b",2)]) (fromList [("a",1),("b",2)])
-  > isProperSubmapOfBy (==) (fromList ["a",1),("b",2)])  (fromList [("a",1)])
-  > isProperSubmapOfBy (<)  (fromList [("a",1)])         (fromList [("a",1),("b",2)])
--}
-
+-- | /O(n+m)/. Is this a proper submap? (ie. a submap but not equal).
+--   The expression (@'isProperSubmapOfBy' f m1 m2@) returns 'True' when
+--   @m1@ and @m2@ are not equal,
+--   all keys in @m1@ are in @m2@, and when @f@ returns 'True' when
+--   applied to their respective values. For example, the following
+--   expressions are all 'True':
+--
+-- > isProperSubmapOfBy (==) (fromList [("a",1)]) (fromList [("a",1),("b",2)])
+-- > isProperSubmapOfBy (<=) (fromList [("a",0)]) (fromList [("a",1),("b",2)])
+--
+-- But the following are all 'False':
+--
+-- > isProperSubmapOfBy (==) (fromList [("a",1),("b",2)]) (fromList [("a",1),("b",2)])
+-- > isProperSubmapOfBy (==) (fromList ["a",1),("b",2)])  (fromList [("a",1)])
+-- > isProperSubmapOfBy (<)  (fromList [("a",1)])         (fromList [("a",1),("b",2)])
 isProperSubmapOfBy :: (CritBitKey k) =>
                       (a -> b -> Bool) -> CritBit k a -> CritBit k b -> Bool
-isProperSubmapOfBy f (CritBit root1) (CritBit root2) = toBool $ go root1 root2
-  where
-    go (Internal l1 r1 _ _) i2 =
-      let ((key,v1), CritBit r1') = deleteFindMin $ CritBit r1
-          (CritBit lt,found,CritBit gt) = splitLookup key $ CritBit i2
-      in case found of
-        Nothing -> NotTrue
-        Just v2 -> if f v1 v2 then go l1 lt `addPB` go r1' gt else NotTrue
-    go (Leaf lk1 lv1) (Leaf lk2 lv2) = if lk1 == lk2 && f lv1 lv2
-                                       then TrueImp else NotTrue
-    go (Leaf lk lv) i@(Internal _ _ _ _) =
-      lookupWith NotTrue (\v -> if f lv v then TrueProp else NotTrue)
-                 lk (CritBit i)
-    go Empty Empty = TrueImp
-    go Empty _ = TrueProp
-    go _ _ = NotTrue
+isProperSubmapOfBy f a b = submapTypeBy f a b == Yes
 {-# INLINABLE isProperSubmapOfBy #-}
+
+data SubmapType = No | Yes | Equal deriving (Eq, Ord)
+submapTypeBy :: (CritBitKey k) =>
+                (a -> b -> Bool) -> CritBit k a -> CritBit k b -> SubmapType
+submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
+  where
+    -- Assumes that empty nodes exist only on the top level
+    top Empty Empty = Equal
+    top Empty _ = Yes
+    top _ Empty = No
+    top a b = go a (minKey a) b (minKey b)
+    {-# INLINE top #-}
+
+    -- Each node is followed by the minimum key in that node.
+    -- This trick assures that overall time spend by minKey in O(n+m)
+    go (Leaf ak av) _ (Leaf bk bv) _
+        | ak == bk  = if f av bv then Equal else No
+        | otherwise = No
+    go a@(Leaf _ _) ak b@(Internal _ _ bbyte bbits) bk =
+        if dbyte > bbyte || dbyte == bbyte && dbits >= bbits
+        then splitB a ak b bk
+        else No
+      where
+        (dbyte, dbits, _) = followPrefixes ak bk
+    go (Internal _ _ _ _) _ (Leaf _ _) _ = No
+    go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk =
+      case compare (abyte, abits) (bbyte, bbits) of
+        LT -> No
+        GT -> splitB a ak b bk
+        EQ -> min (go al ak bl bk) (go ar (minKey ar) br (minKey br))
+    -- Assumes that empty nodes exist only on the top level
+    go _ _ _ _ = error("Data.CritBit.Tree.isSubmapOfBy.go: Empty")
+
+    splitB a ak b@(Internal bl br _ _) bk = if t == No then No else Yes
+      where
+        t = if direction ak b == 0 
+            then go a ak bl bk
+            else go a ak br (minKey br)
+                                            
+    splitB _ _ _ _ = 
+        error("Data.CritBit.Tree.isSubmapOfBy.splitB: unpossible")
+    {-# INLINE splitB #-}
+
+    minKey n = leftmost
+        (error "Data.CritBit.Tree.isSubmapOfBy.minKey: Empty") 
+        (\k _ -> k) n
+    {-# INLINE minKey #-}
+{-# INLINABLE submapTypeBy #-}
 
 -- | /O(log n)/. The minimal key of the map. Calls 'error' if the map
 -- is empty.
