@@ -446,6 +446,11 @@ t_isSubmapOfBy_ambiguous :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
 t_isSubmapOfBy_ambiguous _ kvs1 kvs2 =
   t_submap_general (C.isSubmapOfBy (<=)) (Map.isSubmapOfBy (<=)) kvs1 kvs2
 
+t_isProperSubmapOf_ambiguous :: (CritBitKey k, Ord k) =>
+                              k -> KV k -> KV k -> Bool
+t_isProperSubmapOf_ambiguous _ kvs1 kvs2 =
+  t_submap_general C.isProperSubmapOf Map.isProperSubmapOf kvs1 kvs2
+
 t_isProperSubmapOfBy_ambiguous :: (CritBitKey k, Ord k) =>
                                   k -> KV k -> KV k -> Bool
 t_isProperSubmapOfBy_ambiguous _ kvs1 kvs2 =
@@ -656,6 +661,8 @@ propertiesFor t = [
   , testProperty "t_isSubmapOf_ambiguous" $ t_isSubmapOfBy_ambiguous t
   , testProperty "t_isSubmapOfBy_true" $ t_isSubmapOfBy_true t
   , testProperty "t_isSubmapOfBy_ambiguous" $ t_isSubmapOfBy_ambiguous t
+  , testProperty "t_isProperSubmapOf_ambiguous" $
+      t_isProperSubmapOf_ambiguous t
   , testProperty "t_isProperSubmapOfBy_ambiguous" $
       t_isProperSubmapOfBy_ambiguous t
   , testProperty "t_findMin" $ t_findMin t
