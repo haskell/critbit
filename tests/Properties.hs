@@ -346,6 +346,10 @@ t_submap_general cf mf (KV kvs1) (KV kvs2) =
   cf (C.fromList kvs1) (C.fromList kvs2) ==
   mf (Map.fromList kvs1) (Map.fromList kvs2)
 
+t_isSubmap_ambiguous :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_isSubmap_ambiguous _ kvs1 kvs2 =
+  t_submap_general C.isSubmapOf Map.isSubmapOf kvs1 kvs2
+
 t_isSubmapOfBy_true :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
 t_isSubmapOfBy_true _ (KV kvs1) (KV kvs2) =
   C.isSubmapOfBy (<=) (C.fromList kvs1)
@@ -541,6 +545,7 @@ propertiesFor t = [
   , testProperty "t_split_missing" $ t_split_missing t
   , testProperty "t_splitLookup_present" $ t_split_present t
   , testProperty "t_splitLookup_missing" $ t_split_missing t
+  , testProperty "t_isSubmapOf_ambiguous" $ t_isSubmapOfBy_ambiguous t
   , testProperty "t_isSubmapOfBy_true" $ t_isSubmapOfBy_true t
   , testProperty "t_isSubmapOfBy_ambiguous" $ t_isSubmapOfBy_ambiguous t
   , testProperty "t_findMin" $ t_findMin t
