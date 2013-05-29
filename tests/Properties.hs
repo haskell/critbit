@@ -338,6 +338,39 @@ t_splitLookup_missing k (KV kvs) =
             (C.splitLookup k) (Map.splitLookup k) k
             (KV (filter ((/=k) . fst) kvs))
 
+t_submap_general :: (CritBitKey k, Ord k) =>
+                    (CritBit k V -> CritBit k V -> Bool)
+                    -> (Map k V -> Map k V -> Bool)
+                    -> KV k -> KV k -> Bool
+t_submap_general cf mf (KV kvs1) (KV kvs2) =
+  cf (C.fromList kvs1) (C.fromList kvs2) ==
+  mf (Map.fromList kvs1) (Map.fromList kvs2)
+
+t_isSubmap_ambiguous :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_isSubmap_ambiguous _ kvs1 kvs2 =
+  t_submap_general C.isSubmapOf Map.isSubmapOf kvs1 kvs2
+
+t_isSubmapOfBy_true :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_isSubmapOfBy_true _ (KV kvs1) (KV kvs2) =
+  C.isSubmapOfBy (<=) (C.fromList kvs1)
+                      (C.fromList $ kvs2 ++ (fmap (second (+1)) kvs1))
+
+t_isSubmapOfBy_ambiguous :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_isSubmapOfBy_ambiguous _ kvs1 kvs2 =
+  t_submap_general (C.isSubmapOfBy (<=)) (Map.isSubmapOfBy (<=)) kvs1 kvs2
+
+t_isProperSubmapOf_ambiguous :: (CritBitKey k, Ord k) =>
+                              k -> KV k -> KV k -> Bool
+t_isProperSubmapOf_ambiguous _ kvs1 kvs2 =
+  t_submap_general C.isProperSubmapOf Map.isProperSubmapOf kvs1 kvs2
+
+t_isProperSubmapOfBy_ambiguous :: (CritBitKey k, Ord k) =>
+                                  k -> KV k -> KV k -> Bool
+t_isProperSubmapOfBy_ambiguous _ kvs1 kvs2 =
+  t_submap_general (C.isProperSubmapOfBy (<=))
+                   (Map.isProperSubmapOfBy (<=))
+                   kvs1 kvs2
+
 t_findMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_findMin k w@(KV kvs) =
   null kvs || isoWith id id C.findMin Map.findMin k w
@@ -524,6 +557,13 @@ propertiesFor t = [
   , testProperty "t_split_missing" $ t_split_missing t
   , testProperty "t_splitLookup_present" $ t_split_present t
   , testProperty "t_splitLookup_missing" $ t_split_missing t
+  , testProperty "t_isSubmapOf_ambiguous" $ t_isSubmapOfBy_ambiguous t
+  , testProperty "t_isSubmapOfBy_true" $ t_isSubmapOfBy_true t
+  , testProperty "t_isSubmapOfBy_ambiguous" $ t_isSubmapOfBy_ambiguous t
+  , testProperty "t_isProperSubmapOf_ambiguous" $
+      t_isProperSubmapOf_ambiguous t
+  , testProperty "t_isProperSubmapOfBy_ambiguous" $
+      t_isProperSubmapOfBy_ambiguous t
   , testProperty "t_findMin" $ t_findMin t
   , testProperty "t_findMax" $ t_findMax t
   , testProperty "t_deleteMin" $ t_deleteMin t
