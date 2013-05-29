@@ -256,6 +256,44 @@ t_unionsWith _ (Small kvs0) =
   where
     kvs = map fromKV kvs0
 
+t_difference :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_difference k (KV kvs) = (C.difference (C.fromList kvs) === 
+    Map.difference (Map.fromList kvs)) k
+
+t_differenceWith :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_differenceWith k (KV kvs) = 
+    (C.differenceWith f (C.fromList kvs) ===
+        Map.differenceWith f (Map.fromList kvs)) k
+  where
+    f v1 v2 = if v1 `mod` 4 == 0
+              then Nothing
+              else Just (v1 - v2)
+
+t_differenceWithKey :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_differenceWithKey k (KV kvs) = 
+    (C.differenceWithKey f (C.fromList kvs) ===
+        Map.differenceWithKey f (Map.fromList kvs)) k
+  where
+    f key v1 v2 = if C.byteCount key == 2 
+                  then Nothing
+                  else Just (fromIntegral (C.byteCount key) + v1 - v2)
+
+t_intersection :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_intersection k (KV kvs) = (C.intersection (C.fromList kvs) === 
+    Map.intersection (Map.fromList kvs)) k
+
+t_intersectionWith :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_intersectionWith k (KV kvs) = 
+    (C.intersectionWith (-) (C.fromList kvs) ===
+        Map.intersectionWith (-) (Map.fromList kvs)) k
+
+t_intersectionWithKey :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_intersectionWithKey k (KV kvs) = 
+    (C.intersectionWithKey f (C.fromList kvs) ===
+        Map.intersectionWithKey f (Map.fromList kvs)) k
+  where
+    f key v1 v2 = fromIntegral (C.byteCount key) + v1 - v2
+
 t_foldl :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_foldl = isoWith id id (C.foldl (-) 0) (Map.foldl (-) 0)
 
@@ -504,6 +542,12 @@ propertiesFor t = [
   , testProperty "t_unionWithKey" $ t_unionWithKey t
   , testProperty "t_unions" $ t_unions t
   , testProperty "t_unionsWith" $ t_unionsWith t
+  , testProperty "t_difference" $ t_difference t
+  , testProperty "t_differenceWith" $ t_differenceWith t
+  , testProperty "t_differenceWithKey" $ t_differenceWithKey t
+  , testProperty "t_intersection" $ t_intersection t
+  , testProperty "t_intersectionWith" $ t_intersectionWith t
+  , testProperty "t_intersectionWithKey" $ t_intersectionWithKey t
   , testProperty "t_foldl" $ t_foldl t
   , testProperty "t_foldlWithKey" $ t_foldlWithKey t
   , testProperty "t_foldl'" $ t_foldl' t
