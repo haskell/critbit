@@ -626,7 +626,7 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
         GT -> splitB a ak b bk
         EQ -> link a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
     -- Assumes that empty nodes exist only on the top level
-    go _ _ _ _ = error("Data.CritBit.Tree.intersectionWithKey: Empty")
+    go _ _ _ _ = error("Data.CritBit.Tree.binarySetOpWithKey.go: Empty")
 
     leaf (Leaf lk _) (Internal _ _ sbyte sbits) sk before after =
         if dbyte > sbyte || dbyte == sbyte && dbits >= sbits
@@ -635,7 +635,7 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
       where
         (dbyte, dbits, _) = followPrefixes lk sk
     leaf _ _ _ _ _ = 
-        error("Data.CritBit.Tree.differenceWithKey.leaf: unpossible")
+        error("Data.CritBit.Tree.binarySetOpWithKey.leaf: unpossible")
     {-# INLINE leaf #-}
 
     switch k n a0 b0 a1 b1 = if direction k n == 0 
@@ -645,15 +645,19 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
 
     splitA a@(Internal al ar _ _) ak b bk =
         switch bk a (go al ak b bk) (left ar) (left al) (go ar (minKey ar) b bk)
-    splitA _ _ _ _ = error("Data.CritBit.Tree.differenceWithKey.splitA: unpossible")
+    splitA _ _ _ _ = 
+        error("Data.CritBit.Tree.binarySetOpWithKey.splitA: unpossible")
     {-# INLINE splitA #-}
 
     splitB a ak b@(Internal bl br _ _) bk =
         switch ak b (go a ak bl bk) Empty Empty (go a ak br (minKey br))
-    splitB _ _ _ _ = error("Data.CritBit.Tree.differenceWithKey.splitB: unpossible")
+    splitB _ _ _ _ = 
+        error("Data.CritBit.Tree.binarySetOpWithKey.splitB: unpossible")
     {-# INLINE splitB #-}
 
-    minKey n = leftmost (error "Data.CritBit.Tree.minKey: Empty") (\k _ -> k) n
+    minKey n = leftmost
+        (error "Data.CritBit.Tree.binarySetOpWithKey.minKey: Empty") 
+        (\k _ -> k) n
     {-# INLINE minKey #-}
 
     link _ Empty b = b
