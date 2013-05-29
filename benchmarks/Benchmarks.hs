@@ -435,6 +435,10 @@ main = do
           bench "critbit" $ whnf (forceTriple . C.splitLookup key) b_critbit
         , bench "map" $ whnf (forceTriple . Map.splitLookup key) b_map
         ]
+      , bgroup "isSubmapOf" $ [
+          bench "critbit" $ whnf (C.isSubmapOf b_critbit_1) b_critbit
+        , bench "map" $ whnf (Map.isSubmapOf b_map_1) b_map
+        ]
       , bgroup "isSubmapOfBy" $ [
           bench "critbit" $ whnf (C.isSubmapOfBy (<=) b_critbit_1) b_critbit
         , bench "map" $ whnf (Map.isSubmapOfBy (<=) b_map_1) b_map

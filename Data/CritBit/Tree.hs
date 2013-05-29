@@ -122,9 +122,9 @@ module Data.CritBit.Tree
     , splitLookup
 
     -- * Submap
-    -- , isSubmapOf
     -- , isProperSubmapOf
     -- , isProperSubmapOfBy
+    , isSubmapOf
     , isSubmapOfBy
 
     -- -- * Min\/Max
@@ -1043,6 +1043,13 @@ splitLookup k (CritBit root) =
         EQ -> (Empty, Just lv, Empty)
     go _ = (Empty, Nothing, Empty)
 {-# INLINABLE splitLookup #-}
+
+-- | /O(m^2+mn)/ (where /m/ is the first map and /n/ the second).
+-- This function is defined as (@'isSubmapOf' = 'isSubmapOfBy' (==)@).
+--
+isSubmapOf :: (CritBitKey k, Eq v) => CritBit k v -> CritBit k v -> Bool
+isSubmapOf = isSubmapOfBy (==)
+{-# INLINABLE isSubmapOf #-}
 
 {- | /O(m^2+mn)/ (where /m/ is the first map and /n/ the second).
  The expression (@'isSubmapOfBy' f t1 t2@) returns 'True' if
