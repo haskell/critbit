@@ -123,9 +123,9 @@ module Data.CritBit.Tree
 
     -- * Submap
     -- , isSubmapOf
-    -- , isSubmapOfBy
     -- , isProperSubmapOf
     -- , isProperSubmapOfBy
+    , isSubmapOfBy
 
     -- -- * Min\/Max
     , findMin
@@ -1043,6 +1043,39 @@ splitLookup k (CritBit root) =
         EQ -> (Empty, Just lv, Empty)
     go _ = (Empty, Nothing, Empty)
 {-# INLINABLE splitLookup #-}
+
+{- | /O(m^2+mn)/ (where /m/ is the first map and /n/ the second).
+ The expression (@'isSubmapOfBy' f t1 t2@) returns 'True' if
+ all keys in @t1@ are in tree @t2@, and when @f@ returns 'True' when
+ applied to their respective values. For example, the following
+ expressions are all 'True':
+
+ > isSubmapOfBy (==) (fromList [("a",1)]) (fromList [("a",1),("b",2)])
+ > isSubmapOfBy (<=) (fromList [("a",1)]) (fromList [("a",1),("b",2)])
+ > isSubmapOfBy (==) (fromList [("a",1),("b",2)]) (fromList [("a",1),("b",2)])
+
+ But the following are all 'False':
+
+ > isSubmapOfBy (==) (fromList [("a",2)]) (fromList [("a",1),("b",2)])
+ > isSubmapOfBy (<)  (fromList [("a",1)]) (fromList [("a",1),("b",2)])
+ > isSubmapOfBy (==) (fromList [("a",1),("b",2)]) (fromList [("a",1)])
+-}
+isSubmapOfBy :: (CritBitKey k) => (a -> b -> Bool) -> CritBit k a -> CritBit k b
+             -> Bool
+isSubmapOfBy f (CritBit root1) (CritBit root2) = go root1 root2
+  where
+    go (Internal l1 r1 _ _) i2 =
+      let ((key,v1), CritBit r1') = deleteFindMin $ CritBit r1
+          (CritBit lt,found,CritBit gt) = splitLookup key $ CritBit i2
+      in case found of
+        Nothing -> False
+        Just v2 -> f v1 v2 && go l1 lt && go r1' gt
+    go (Leaf lk1 lv1) (Leaf lk2 lv2) = lk1 == lk2 && f lv1 lv2
+    go (Leaf lk lv) i@(Internal _ _ _ _) =
+      lookupWith False (f lv) lk (CritBit i)
+    go Empty _ = True
+    go _ _ = False
+{-# INLINABLE isSubmapOfBy #-}
 
 -- | /O(log n)/. The minimal key of the map. Calls 'error' if the map
 -- is empty.
