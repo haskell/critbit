@@ -53,9 +53,9 @@ module Data.CritBit.Tree
     , unionR
 
     -- ** Difference
-    -- , difference
-    -- , differenceWith
-    -- , differenceWithKey
+    , difference
+    , differenceWith
+    , differenceWithKey
 
     -- ** Intersection
     -- , intersection
@@ -522,6 +522,98 @@ unions cs = List.foldl' union empty cs
 
 unionsWith :: (CritBitKey k) => (v -> v -> v) -> [CritBit k v] -> CritBit k v
 unionsWith f cs = List.foldl' (unionWith f) empty cs
+
+-- | /O(n+m)/. Difference of two maps. 
+-- | Return data in the first map not existing in the second map.
+--
+-- > let l = fromList [("a", 5), ("b", 3)]
+-- > let r = fromList [("A", 2), ("b", 7)]
+-- > difference l r == fromList [("a", 5)]
+difference :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
+difference a b = differenceWithKey (\_ _ _ -> Nothing) a b
+{-# INLINEABLE difference #-}
+
+-- | /O(n+m)/. Difference with a combining function.
+-- | When two equal keys are encountered, the combining function is applied
+-- | to the values of theese keys. If it returns 'Nothing', the element is 
+-- | discarded (proper set difference). If it returns (@'Just' y@),
+-- | the element is updated with a new value @y@. 
+--
+-- > let f av bv = if av == 3 then Just (av + bv) else Nothing
+-- > let l = fromList [(pack "a", 5), (pack "b", 3), (pack "c", 8)]
+-- > let r = fromList [(pack "a", 2), (pack "b", 7), (pack "d", 8)]
+-- > differenceWith f l r == fromList [(pack "b", 10), (pack "c", 8)]
+differenceWith :: (CritBitKey k) => (v -> v -> Maybe v)
+                 -> CritBit k v -> CritBit k v -> CritBit k v
+differenceWith f a b = differenceWithKey (const f) a b
+{-# INLINEABLE differenceWith #-}
+
+-- | /O(n+m)/. Difference with a combining function.
+-- | When two equal keys are encountered, the combining function is applied
+-- | to the key and both values. If it returns 'Nothing', the element is 
+-- | discarded (proper set difference). If it returns (@'Just' y@), 
+-- | the element is updated with a new value @y@. 
+--
+-- > let f k av bv = if k == "b" then Just (length k + av + bv) else Nothing
+-- > let l = fromList [("a", 5), ("b", 3), ("c", 8)]
+-- > let r = fromList [("a", 2), ("b", 7), ("d", 8)]
+-- > differenceWithKey f l r == fromList [("b", 11), ("c", 8)]
+differenceWithKey :: (CritBitKey k) => (k -> v -> v -> Maybe v)
+                    -> CritBit k v -> CritBit k v -> CritBit k v
+differenceWithKey f (CritBit lt) (CritBit rt) = CritBit $ top lt rt
+  where
+    -- Assumes that empty nodes exist only on the top level
+    top Empty _ = Empty
+    top a Empty = a
+    top a b = go a (minKey a) b (minKey b)
+
+    -- Each node is followed by the minimum key in that node.
+    -- This trick assures that overall time spend by minKey in O(n+m)
+    go a@(Leaf ak av) _ (Leaf bk bv) _
+        | ak == bk  = case f ak av bv of
+                        Just v  -> Leaf ak v
+                        Nothing -> Empty
+        | otherwise = a
+    go a@(Leaf _ _) ak b@(Internal bl br _ _) bk = 
+      leaf a b bk a ak bl bk Empty a ak br (minKey br) Empty a
+    go a@(Internal al ar _ _) ak b@(Leaf    _ _) bk =
+      leaf b a ak al ak b bk ar ar (minKey ar) b bk al a
+    go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk =
+      case compare (abyte, abits) (bbyte, bbits) of
+        LT -> switch bk a al ak b ak ar ar (minKey ar) b bk al
+        GT -> switch ak b a ak bl bk Empty a ak br (minKey br) Empty
+        EQ -> link a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
+    -- Assumes that empty nodes exist only on the top level
+    go _ _ _ _ = error("Data.CritBit.Tree.differenceWithKey: Empty")
+    
+    leaf (Leaf lk _) s@(Internal _ _ sbyte sbits) sk
+            a0 a0k b0 b0k c0 a1 a1k b1 b1k c1 r =
+        if dbyte > sbyte || dbyte == sbyte && dbits >= sbits
+        then switch lk s a0 a0k b0 b0k c0 a1 a1k b1 b1k c1
+        else r
+      where
+        (dbyte, dbits, _) = followPrefixes lk sk
+    leaf _ _ _ _ _ _ _ _ _ _ _ _ _ _ = 
+        error("Data.CritBit.Tree.differenceWithKey.leaf: unpossible")
+    {-# INLINE leaf #-}
+
+    switch k n a0 a0k b0 b0k c0 a1 a1k b1 b1k c1 = 
+        if direction k n == 0 
+        then link n (go a0 a0k b0 b0k) c0
+        else link n c1 (go a1 a1k b1 b1k)
+    {-# INLINE switch #-}
+
+    link _ Empty b = b
+    link _ a Empty = a
+    link (Internal _ _ byte bits) a b = Internal a b byte bits
+    link _ _ _ = error("Data.CritBit.Tree.differenceWithKey.link: unpossible")
+
+    {-# INLINE link #-}
+    -- minKey processes each node at most once,
+    -- including recursive calls in the implementation of leftmost
+    minKey n = leftmost (error "Empty node in tree") (\k _ -> k) n
+    {-# INLINE minKey #-}
+{-# INLINEABLE differenceWithKey #-}
 
 -- | /O(n)/. Apply a function to all values.
 --

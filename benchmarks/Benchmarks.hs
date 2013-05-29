@@ -324,6 +324,19 @@ main = do
           bench "critbit" $ whnf (C.unionsWith (+)) [b_critbit_13, b_critbit_23]
         , bench "map" $ whnf (Map.unionsWith (+)) [b_map_13, b_map_23]
         ]
+      , bgroup "difference" [
+          bench "critbit" $ whnf (C.difference b_critbit_13) b_critbit_23
+        , bench "map" $ whnf (Map.difference b_map_13) b_map_23
+        , bench "hashmap" $ whnf (H.difference b_hashmap_13) b_hashmap_23
+        ]
+      , bgroup "differenceWith" $ let f a b = Just (a + b) in [
+          bench "critbit" $ whnf (C.differenceWith f b_critbit_13) b_critbit_23
+        , bench "map" $ whnf (Map.differenceWith f b_map_13) b_map_23
+        ]
+      , bgroup "differenceWithKey" $ let f _ a b = Just(a + b) in [
+          bench "critbit" $ whnf (C.differenceWithKey f b_critbit_13) b_critbit_23
+        , bench "map" $ whnf (Map.differenceWithKey f b_map_13) b_map_23
+        ]
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
       , bgroup "filter" $ let p  = (< 128)
