@@ -556,50 +556,43 @@ intersectionWithKey f (CritBit lt) (CritBit rt) = CritBit $ top lt rt
     -- Assumes that empty nodes exist only on the top level
     top Empty _ = Empty
     top _ Empty = Empty
-    top a b = go (a, (minKey a)) (b, (minKey b))
+    top a b = go a (minKey a) b (minKey b)
 
-    go ((Leaf ak av), _) ((Leaf bk bv), _)
+    -- Each node is followed by the minimum key in that node.
+    -- This trick assures that overall time spend by minKey in O(n+m)
+    go (Leaf ak av) _ (Leaf bk bv) _
         | ak == bk  = Leaf ak $ f ak av bv
         | otherwise = Empty
-    go a@((Leaf _ _), _) b@((Internal _ _ _ _), _) = 
-      leaf a b a (left b) a (right b)
-    go a@((Internal _ _ _ _), _) b@((Leaf _ _), _) =
-      leaf b a (left a) b (right a) b
-    go a@((Internal _ _ abyte abits), ak) b@((Internal _ _ bbyte bbits), bk) =
+    go a@(Leaf _ _) ak b@(Internal bl br _ _) bk = 
+      leaf a b bk a ak bl bk a ak br (minKey br)
+    go a@(Internal al ar _ _) ak b@(Leaf    _ _) bk =
+      leaf b a ak al ak b ak ar (minKey ar) b bk
+    go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk =
       case compare (abyte, abits) (bbyte, bbits) of
-        LT -> switch bk (fst a) (left a) b (right a) b
-        GT -> switch ak (fst b) a (left b) a (right b)
-        EQ -> link (go (left a) (left b)) (go (right a) (right b))
+        LT -> switch bk a al ak b ak ar (minKey ar) b bk
+        GT -> switch ak b a ak bl bk a ak br (minKey br)
+        EQ -> link (go al ak bl bk) (go ar (minKey ar) br (minKey br))
       where
         link Empty b' = b'
         link a' Empty = a'
         link a' b' = Internal a' b' abyte abits
     -- Assumes that empty nodes exist only on the top level
-    go _ _ = error("Data.CritBit.Tree.intersectionWithKey: Empty")
+    go _ _ _ _ = error("Data.CritBit.Tree.intersectionWithKey: Empty")
 
-    left ((Internal l _ _ _), k) = (l, k)
-    left _ = 
-        error("Data.CritBit.Tree.intersectionWithKey.left: unpossible")
-    {-# INLINE left #-}
-
-    right ((Internal _ r _ _), _) = (r, minKey r)
-    right _ = 
-        error("Data.CritBit.Tree.intersectionWithKey.right: unpossible")
-    {-# INLINE right #-}
-
-    leaf ((Leaf _ _), lmk) (s@(Internal _ _ sbyte sbits), smk) a0 b0 a1 b1 =
+    leaf (Leaf lk _) s@(Internal _ _ sbyte sbits) 
+            sk a0 a0k b0 b0k a1 a1k b1 b1k =
         if dbyte > sbyte || dbyte == sbyte && dbits >= sbits
-        then switch lmk s a0 b0 a1 b1
+        then switch lk s a0 a0k b0 b0k a1 a1k b1 b1k
         else Empty
       where
-        (dbyte, dbits, _) = followPrefixes lmk smk
-    leaf _ _ _ _ _ _ = 
+        (dbyte, dbits, _) = followPrefixes lk sk
+    leaf _ _ _ _ _ _ _ _ _ _ _ = 
         error("Data.CritBit.Tree.intersectionWithKey.leaf: unpossible")
     {-# INLINE leaf #-}
 
-    switch k n a0 b0 a1 b1 = if direction k n == 0 
-                             then go a0 b0 
-                             else go a1 b1
+    switch k n a0 a0k b0 b0k a1 a1k b1 b1k = if direction k n == 0 
+                                             then go a0 a0k b0 b0k
+                                             else go a1 a1k b1 b1k
     {-# INLINE switch #-}
 
     -- minKey processes each node at most once,
