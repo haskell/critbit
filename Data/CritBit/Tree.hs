@@ -519,7 +519,79 @@ unionWith f a b = unionWithKey (const f) a b
 -- > unionWithKey f l r == fromList [("A",5),("C",7),("a",5),("b",3)]
 unionWithKey :: (CritBitKey k) => (k -> v -> v -> v)
              -> CritBit k v -> CritBit k v -> CritBit k v
-unionWithKey f a b = foldlWithKey' (\m k v -> insertWithKey f k v m) b a
+unionWithKey f (CritBit lt) (CritBit rt) = CritBit (top lt rt)
+  where
+    -- Assumes that empty nodes exist only on the top level
+    top Empty b = b
+    top a Empty = a
+    top a b = go a (minKey a) b (minKey b)
+
+    -- Each node is followed by the minimum key in that node.
+    -- This trick assures that overall time spend by minKey in O(n+m)
+    go a@(Leaf ak av) _ b@(Leaf bk bv) _
+        | ak == bk = Leaf ak (f ak av bv)
+        | otherwise = fork a ak b bk
+    go a@(Leaf _ _) ak b@(Internal _ _ _ _) bk =
+      leaf a b bk (splitB a ak b bk) (fork a ak b bk)
+    go a@(Internal _ _ _ _) ak b@(Leaf _ _) bk =
+      leaf b a ak (splitA a ak b bk) (fork a ak b bk)
+    go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk =
+      if (dbyte, dbits) < min (abyte, abits) (bbyte, bbits)
+      then fork a ak b bk
+      else case compare (abyte, abits) (bbyte, bbits) of
+             LT -> splitA a ak b bk
+             GT -> splitB a ak b bk
+             EQ -> link a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
+      where
+        (dbyte, dbits, _) = followPrefixes ak bk
+    -- Assumes that empty nodes exist only on the top level
+    go _ _ _ _ = error("Data.CritBit.Tree.unionWithKey.go: Empty")
+
+    leaf (Leaf lk _) (Internal _ _ sbyte sbits) sk before after =
+        if dbyte > sbyte || dbyte == sbyte && dbits >= sbits
+        then before
+        else after
+      where
+        (dbyte, dbits, _) = followPrefixes lk sk
+    leaf _ _ _ _ _ =
+        error("Data.CritBit.Tree.unionWithKey.leaf: unpossible")
+    {-# INLINE leaf #-}
+
+    switch k n a0 b0 a1 b1 = if direction k n == 0
+                             then link n a0 b0
+                             else link n a1 b1
+    {-# INLINE switch #-}
+
+    splitA a@(Internal al ar _ _) ak b bk =
+      switch bk a (go al ak b bk) ar al (go ar (minKey ar) b bk)
+    splitA _ _ _ _ =
+      error("Data.CritBit.Tree.unionWithKey.splitA: unpossible")
+    {-# INLINE splitA #-}
+
+    splitB a ak b@(Internal bl br _ _) bk =
+      switch ak b (go a ak bl bk) br bl (go a ak br (minKey br))
+    splitB _ _ _ _ =
+      error("Data.CritBit.Tree.unionWithKey.splitB: unpossible")
+    {-# INLINE splitB #-}
+
+    minKey n = leftmost
+      (error "Data.CritBit.Tree.unionWithKey.minKey: Empty")
+      (\k _ -> k) n
+    {-# INLINE minKey #-}
+
+--    link _ Empty b = b
+--    link _ a Empty = a
+    link (Internal _ _ byte bits) a b = Internal a b byte bits
+    link _ _ _ = error("Data.CritBit.Tree.unionWithKey.link: unpossible")
+    {-# INLINE link #-}
+
+    fork a ak b bk = if calcDirection nob c == 0
+                     then Internal b a n nob
+                     else Internal a b n nob
+      where
+        (n, nob, c) = followPrefixes ak bk
+    {-# INLINE fork #-}
+{-# INLINEABLE unionWithKey #-}
 
 unions :: (CritBitKey k) => [CritBit k v] -> CritBit k v
 unions cs = List.foldl' union empty cs
