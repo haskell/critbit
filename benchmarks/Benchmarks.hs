@@ -443,6 +443,12 @@ main = do
           bench "critbit" $ whnf (C.isSubmapOfBy (<=) b_critbit_1) b_critbit
         , bench "map" $ whnf (Map.isSubmapOfBy (<=) b_map_1) b_map
         ]
+      , bgroup "isProperSubmapOfBy" $ [
+          bench "critbit" $
+            whnf (C.isProperSubmapOfBy (<=) b_critbit_1) b_critbit
+        , bench "map" $
+            whnf (Map.isProperSubmapOfBy (<=) b_map_1) b_map
+        ]
       , bgroup "findMin" $ [
           bench "critbit" $ whnf (C.findMin) b_critbit
         , bench "map" $ whnf (Map.findMin) b_map
