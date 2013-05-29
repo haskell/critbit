@@ -570,45 +570,51 @@ differenceWithKey f (CritBit lt) (CritBit rt) = CritBit $ top lt rt
     -- Each node is followed by the minimum key in that node.
     -- This trick assures that overall time spend by minKey in O(n+m)
     go a@(Leaf ak av) _ (Leaf bk bv) _
-        | ak == bk  = case f ak av bv of
-                        Just v  -> Leaf ak v
-                        Nothing -> Empty
+        | ak == bk = case f ak av bv of
+                       Just v  -> Leaf ak v
+                       Nothing -> Empty
         | otherwise = a
-    go a@(Leaf _ _) ak b@(Internal bl br _ _) bk = 
-      leaf a b bk a ak bl bk Empty a ak br (minKey br) Empty a
-    go a@(Internal al ar _ _) ak b@(Leaf    _ _) bk =
-      leaf b a ak al ak b bk ar ar (minKey ar) b bk al a
+    go a@(Leaf _ _) ak b@(Internal _ _ _ _) bk = 
+      leaf a b bk (splitB a ak b bk) a
+    go a@(Internal _ _ _ _) ak b@(Leaf _ _) bk =
+      leaf b a ak (splitA a ak b bk) a
     go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk =
       case compare (abyte, abits) (bbyte, bbits) of
-        LT -> switch bk a al ak b ak ar ar (minKey ar) b bk al
-        GT -> switch ak b a ak bl bk Empty a ak br (minKey br) Empty
+        LT -> splitA a ak b bk
+        GT -> splitB a ak b bk
         EQ -> link a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
     -- Assumes that empty nodes exist only on the top level
     go _ _ _ _ = error("Data.CritBit.Tree.differenceWithKey: Empty")
     
-    leaf (Leaf lk _) s@(Internal _ _ sbyte sbits) sk
-            a0 a0k b0 b0k c0 a1 a1k b1 b1k c1 r =
+    leaf (Leaf lk _) (Internal _ _ sbyte sbits) sk before after =
         if dbyte > sbyte || dbyte == sbyte && dbits >= sbits
-        then switch lk s a0 a0k b0 b0k c0 a1 a1k b1 b1k c1
-        else r
+        then before
+        else after
       where
         (dbyte, dbits, _) = followPrefixes lk sk
-    leaf _ _ _ _ _ _ _ _ _ _ _ _ _ _ = 
+    leaf _ _ _ _ _ = 
         error("Data.CritBit.Tree.differenceWithKey.leaf: unpossible")
     {-# INLINE leaf #-}
 
-    switch k n a0 a0k b0 b0k c0 a1 a1k b1 b1k c1 = 
-        if direction k n == 0 
-        then link n (go a0 a0k b0 b0k) c0
-        else link n c1 (go a1 a1k b1 b1k)
+    switch k n a0 b0 a1 b1 = if direction k n == 0 
+                             then link n a0 b0         
+                             else link n a1 b1
     {-# INLINE switch #-}
+
+    splitA a@(Internal al ar _ _) ak b bk =
+        switch bk a (go al ak b bk) ar al (go ar (minKey ar) b bk)
+    splitA _ _ _ _ = error("Data.CritBit.Tree.differenceWithKey.splitA: unpossible")
+
+    splitB a ak b@(Internal bl br _ _) bk =
+        switch ak b (go a ak bl bk) Empty Empty (go a ak br (minKey br))
+    splitB _ _ _ _ = error("Data.CritBit.Tree.differenceWithKey.splitB: unpossible")
 
     link _ Empty b = b
     link _ a Empty = a
     link (Internal _ _ byte bits) a b = Internal a b byte bits
     link _ _ _ = error("Data.CritBit.Tree.differenceWithKey.link: unpossible")
-
     {-# INLINE link #-}
+
     -- minKey processes each node at most once,
     -- including recursive calls in the implementation of leftmost
     minKey n = leftmost (error "Empty node in tree") (\k _ -> k) n
