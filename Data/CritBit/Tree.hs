@@ -123,9 +123,9 @@ module Data.CritBit.Tree
 
     -- * Submap
     -- , isProperSubmapOf
-    -- , isProperSubmapOfBy
     , isSubmapOf
     , isSubmapOfBy
+    , isProperSubmapOfBy
 
     -- -- * Min\/Max
     , findMin
@@ -718,6 +718,59 @@ isSubmapOfBy f (CritBit root1) (CritBit root2) = go root1 root2
     go Empty _ = True
     go _ _ = False
 {-# INLINABLE isSubmapOfBy #-}
+
+data ProperBool = NotTrue
+                | TrueImp
+                | TrueProp
+
+addPB :: ProperBool -> ProperBool -> ProperBool
+addPB NotTrue _ = NotTrue
+addPB _ NotTrue = NotTrue
+addPB TrueProp _ = TrueProp
+addPB _ TrueProp = TrueProp
+addPB _ _ = TrueImp
+
+toBool :: ProperBool -> Bool
+toBool TrueProp = True
+toBool _ = False
+
+{- | /O(m^2+mn)/ (where /m/ is the first map and /n/ the second).
+ Is this a proper submap? (ie. a submap but not equal).
+ The expression (@'isProperSubmapOfBy' f m1 m2@) returns 'True' when
+ @m1@ and @m2@ are not equal,
+ all keys in @m1@ are in @m2@, and when @f@ returns 'True' when
+ applied to their respective values. For example, the following
+ expressions are all 'True':
+
+  > isProperSubmapOfBy (==) (fromList [("a",1)]) (fromList [("a",1),("b",2)])
+  > isProperSubmapOfBy (<=) (fromList [("a",0)]) (fromList [("a",1),("b",2)])
+
+ But the following are all 'False':
+
+  > isProperSubmapOfBy (==) (fromList [("a",1),("b",2)]) (fromList [("a",1),("b",2)])
+  > isProperSubmapOfBy (==) (fromList ["a",1),("b",2)])  (fromList [("a",1)])
+  > isProperSubmapOfBy (<)  (fromList [("a",1)])         (fromList [("a",1),("b",2)])
+-}
+
+isProperSubmapOfBy :: (CritBitKey k) =>
+                      (a -> b -> Bool) -> CritBit k a -> CritBit k b -> Bool
+isProperSubmapOfBy f (CritBit root1) (CritBit root2) = toBool $ go root1 root2
+  where
+    go (Internal l1 r1 _ _) i2 =
+      let ((key,v1), CritBit r1') = deleteFindMin $ CritBit r1
+          (CritBit lt,found,CritBit gt) = splitLookup key $ CritBit i2
+      in case found of
+        Nothing -> NotTrue
+        Just v2 -> if f v1 v2 then go l1 lt `addPB` go r1' gt else NotTrue
+    go (Leaf lk1 lv1) (Leaf lk2 lv2) = if lk1 == lk2 && f lv1 lv2
+                                       then TrueImp else NotTrue
+    go (Leaf lk lv) i@(Internal _ _ _ _) =
+      lookupWith NotTrue (\v -> if f lv v then TrueProp else NotTrue)
+                 lk (CritBit i)
+    go Empty Empty = TrueImp
+    go Empty _ = TrueProp
+    go _ _ = NotTrue
+{-# INLINABLE isProperSubmapOfBy #-}
 
 -- | /O(log n)/. The minimal key of the map. Calls 'error' if the map
 -- is empty.
