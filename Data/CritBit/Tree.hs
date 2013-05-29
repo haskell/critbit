@@ -953,7 +953,7 @@ insertWith f = insertWithKey (\_ v v' -> f v v')
 -- >  let f key x = show key ++ ":" ++ show x
 -- >  mapWithKey f (fromList [("a",5), ("b",3)]) == fromList [("a","a:5"), ("b","b:3")]
 mapWithKey :: (CritBitKey k) => (k -> v -> w) -> CritBit k v -> CritBit k w
-mapWithKey f (CritBit root) = CritBit $ go root
+mapWithKey f (CritBit root) = CritBit (go root)
   where
     go i@(Internal l r _ _) = i { ileft = go l, iright = go r }
     go (Leaf k v)           = Leaf k (f k v)
