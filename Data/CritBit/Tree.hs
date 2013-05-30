@@ -532,9 +532,9 @@ unionWithKey f (CritBit lt) (CritBit rt) = CritBit (top lt rt)
         | ak == bk = Leaf ak (f ak av bv)
         | otherwise = fork a ak b bk
     go a@(Leaf _ _) ak b@(Internal _ _ _ _) bk =
-      leaf a b bk (splitB a ak b bk) (fork a ak b bk)
+      leafBranch a b bk (splitB a ak b bk) (fork a ak b bk)
     go a@(Internal _ _ _ _) ak b@(Leaf _ _) bk =
-      leaf b a ak (splitA a ak b bk) (fork a ak b bk)
+      leafBranch b a ak (splitA a ak b bk) (fork a ak b bk)
     go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk =
       if (dbyte, dbits) < min (abyte, abits) (bbyte, bbits)
       then fork a ak b bk
@@ -546,21 +546,6 @@ unionWithKey f (CritBit lt) (CritBit rt) = CritBit (top lt rt)
         (dbyte, dbits, _) = followPrefixes ak bk
     -- Assumes that empty nodes exist only on the top level
     go _ _ _ _ = error("Data.CritBit.Tree.unionWithKey.go: Empty")
-
-    leaf (Leaf lk _) (Internal _ _ sbyte sbits) sk before after =
-        if dbyte > sbyte || dbyte == sbyte && dbits >= sbits
-        then before
-        else after
-      where
-        (dbyte, dbits, _) = followPrefixes lk sk
-    leaf _ _ _ _ _ =
-        error("Data.CritBit.Tree.unionWithKey.leaf: unpossible")
-    {-# INLINE leaf #-}
-
-    switch k n a0 b0 a1 b1 = if direction k n == 0
-                             then link n a0 b0
-                             else link n a1 b1
-    {-# INLINE switch #-}
 
     splitA a@(Internal al ar _ _) ak b bk =
       switch bk a (go al ak b bk) ar al (go ar (minKey ar) b bk)
@@ -574,20 +559,9 @@ unionWithKey f (CritBit lt) (CritBit rt) = CritBit (top lt rt)
       error("Data.CritBit.Tree.unionWithKey.splitB: unpossible")
     {-# INLINE splitB #-}
 
-    minKey n = leftmost
-      (error "Data.CritBit.Tree.unionWithKey.minKey: Empty")
-      (\k _ -> k) n
-    {-# INLINE minKey #-}
-
---    link _ Empty b = b
---    link _ a Empty = a
-    link (Internal _ _ byte bits) a b = Internal a b byte bits
-    link _ _ _ = error("Data.CritBit.Tree.unionWithKey.link: unpossible")
-    {-# INLINE link #-}
-
-    fork a ak b bk = if calcDirection nob c == 0
-                     then Internal b a n nob
-                     else Internal a b n nob
+    fork a ak b bk
+      | calcDirection nob c == 0 = Internal b a n nob
+      | otherwise                = Internal a b n nob
       where
         (n, nob, c) = followPrefixes ak bk
     {-# INLINE fork #-}
@@ -693,9 +667,9 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
                        Nothing -> Empty
         | otherwise = left a
     go a@(Leaf _ _) ak b@(Internal _ _ _ _) bk =
-      leaf a b bk (splitB a ak b bk) (left a)
+      leafBranch a b bk (splitB a ak b bk) (left a)
     go a@(Internal _ _ _ _) ak b@(Leaf _ _) bk =
-      leaf b a ak (splitA a ak b bk) (left a)
+      leafBranch b a ak (splitA a ak b bk) (left a)
     go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk =
       case compare (abyte, abits) (bbyte, bbits) of
         LT -> splitA a ak b bk
@@ -703,21 +677,6 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
         EQ -> link a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
     -- Assumes that empty nodes exist only on the top level
     go _ _ _ _ = error("Data.CritBit.Tree.binarySetOpWithKey.go: Empty")
-
-    leaf (Leaf lk _) (Internal _ _ sbyte sbits) sk before after =
-        if dbyte > sbyte || dbyte == sbyte && dbits >= sbits
-        then before
-        else after
-      where
-        (dbyte, dbits, _) = followPrefixes lk sk
-    leaf _ _ _ _ _ =
-        error("Data.CritBit.Tree.binarySetOpWithKey.leaf: unpossible")
-    {-# INLINE leaf #-}
-
-    switch k n a0 b0 a1 b1 = if direction k n == 0
-                             then link n a0 b0
-                             else link n a1 b1
-    {-# INLINE switch #-}
 
     splitA a@(Internal al ar _ _) ak b bk =
         switch bk a (go al ak b bk) (left ar) (left al) (go ar (minKey ar) b bk)
@@ -730,18 +689,45 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
     splitB _ _ _ _ =
         error("Data.CritBit.Tree.binarySetOpWithKey.splitB: unpossible")
     {-# INLINE splitB #-}
-
-    minKey n = leftmost
-        (error "Data.CritBit.Tree.binarySetOpWithKey.minKey: Empty")
-        (\k _ -> k) n
-    {-# INLINE minKey #-}
-
-    link _ Empty b = b
-    link _ a Empty = a
-    link (Internal _ _ byte bits) a b = Internal a b byte bits
-    link _ _ _ = error("Data.CritBit.Tree.differenceWithKey.link: unpossible")
-    {-# INLINE link #-}
 {-# INLINEABLE binarySetOpWithKey #-}
+
+-- | Detects wether branch in 'Internal' node comes 'before' or 'after'
+--   branch initiated by 'Leaf'
+leafBranch :: CritBitKey k => Node k v -> Node k v -> k -> t -> t -> t
+leafBranch (Leaf lk _) (Internal _ _ sbyte sbits) sk before after
+    | dbyte > sbyte || dbyte == sbyte && dbits >= sbits = before
+    | otherwise                                         = after
+  where
+    (dbyte, dbits, _) = followPrefixes lk sk
+leafBranch _ _ _ _ _ = error("Data.CritBit.Tree.leafBranch: unpossible")
+{-# INLINE leafBranch #-}
+
+-- | Select child to link under node 'n' by 'k'
+switch :: (CritBitKey k) => k -> Node k v -> Node k v -> Node k v
+       -> Node k v -> Node k v -> Node k v
+switch k n a0 b0 a1 b1
+  | direction k n == 0 = link n a0 b0
+  | otherwise          = link n a1 b1
+{-# INLINE switch #-}
+
+-- | Extracts minimum key from the subtree.
+minKey :: (CritBitKey k) => Node k v -> k
+minKey n = leftmost
+    (error "Data.CritBit.Tree.minKey: Empty")
+    (\k _ -> k) n
+{-# INLINE minKey #-}
+
+-- | Links childs to the parent node
+link :: (CritBitKey k)
+     => Node k v -- ^ parent
+     -> Node k v -- ^ left child
+     -> Node k v -- ^ right child
+     -> Node k v
+link _ Empty b = b
+link _ a Empty = a
+link (Internal _ _ byte bits) a b = Internal a b byte bits
+link _ _ _ = error("Data.CritBit.Tree.link: unpossible")
+{-# INLINE link #-}
 
 -- | /O(n)/. Apply a function to all values.
 --
