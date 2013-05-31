@@ -333,7 +333,7 @@ findWithDefault d k m = lookupWith d id k m
 -- > lookupGT "aa" (fromList [("a",3), ("b",5)]) == Just ("b",5)
 -- > lookupGT "b"  (fromList [("a",3), ("b",5)]) == Nothing
 lookupGT :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
-lookupGT k r = lookupOrd (LT ==) k r
+lookupGT k r = lookupOrd (GT ==) k r
 {-# INLINABLE lookupGT #-}
 
 -- | /O(k)/. Find smallest key greater than or equal to the given one and
@@ -343,7 +343,7 @@ lookupGT k r = lookupOrd (LT ==) k r
 -- > lookupGE "b"  (fromList [("a",3), ("b",5)]) == Just("b",5)
 -- > lookupGE "bb" (fromList [("a",3), ("b",5)]) == Nothing
 lookupGE :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
-lookupGE k r = lookupOrd (GT /=) k r
+lookupGE k r = lookupOrd (LT /=) k r
 {-# INLINABLE lookupGE #-}
 
 -- | /O(k)/. Find largest key smaller than the given one and
@@ -352,7 +352,7 @@ lookupGE k r = lookupOrd (GT /=) k r
 -- > lookupLT "aa" (fromList [("a",3), ("b",5)]) == Just ("a",3)
 -- > lookupLT "a"  (fromList [("a",3), ("b",5)]) == Nothing
 lookupLT :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
-lookupLT k r = lookupOrd (GT ==) k r
+lookupLT k r = lookupOrd (LT ==) k r
 {-# INLINABLE lookupLT #-}
 
 -- | /O(k)/. Find lagest key smaller than or equal to the given one and
@@ -362,12 +362,12 @@ lookupLT k r = lookupOrd (GT ==) k r
 -- > lookupGE "aa" (fromList [("aa",3), ("b",5)]) == Just("aa",5)
 -- > lookupGE "a"  (fromList [("aa",3), ("b",5)]) == Nothing
 lookupLE :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
-lookupLE k r = lookupOrd (LT /=) k r
+lookupLE k r = lookupOrd (GT /=) k r
 {-# INLINABLE lookupLE #-}
 
 -- | /O(k)/. Common part of lookupXX functions.
 lookupOrd :: (CritBitKey k) => (Ordering -> Bool) -> k -> CritBit k v -> Maybe (k, v)
-lookupOrd selector k (CritBit root) = go root
+lookupOrd accepts k (CritBit root) = go root
   where
     go Empty = Nothing
     go i@(Internal left right _ _)
@@ -376,26 +376,26 @@ lookupOrd selector k (CritBit root) = go root
     go (Leaf lk lv)        = rewalk root
       where
         finish (Leaf _ _) 
-          | selector (byteCompare k lk) = Just (lk, lv)
-          | otherwise                   = Nothing
+          | accepts (byteCompare lk k) = Just (lk, lv)
+          | otherwise                  = Nothing
         finish node
-          | calcDirection nob c == 0 = contGT node
-          | otherwise                = contLT node
+          | calcDirection nob c == 0 = ifLT node
+          | otherwise                = ifGT node
 
         rewalk i@(Internal left right byte otherBits)
           | byte > n                     = finish i
           | byte == n && otherBits > nob = finish i
-          | direction k i == 0           = rewalk left  <|> contLT right
-          | otherwise                    = rewalk right <|> contGT left
+          | direction k i == 0           = rewalk left  <|> ifGT right
+          | otherwise                    = rewalk right <|> ifLT left
         rewalk i                         = finish i
 
         (n, nob, c) = followPrefixes k lk
         pair a b = Just (a, b)
-        contLT node = cont LT  leftmost node
-        contGT node = cont GT rightmost node
-        cont v f node
-          | selector v = f Nothing pair node 
-          | otherwise  = Nothing
+        ifGT = test GT  leftmost
+        ifLT = test LT rightmost
+        test v f node
+          | accepts v = f Nothing pair node 
+          | otherwise = Nothing
 {-# INLINABLE lookupOrd #-}
 
 byteCompare :: (CritBitKey k) => k -> k -> Ordering
