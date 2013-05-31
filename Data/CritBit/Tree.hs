@@ -706,7 +706,7 @@ toDescList :: CritBit k v -> [(k,v)]
 toDescList m = foldlWithKey f [] m
   where f vs k v = (k,v):vs
 
--- | /O(?)/. Build a tree from an ascending list in ??? time.
+-- | /O(n)/. Build a tree from an ascending list in ??? time.
 -- /The precondition (input list is ascending) is not checked./
 --
 -- > fromAscList [(3,"b"), (5,"a")]          == fromList [(3, "b"), (5, "a")]
@@ -717,7 +717,7 @@ fromAscList :: (CritBitKey k) => [(k, a)] -> CritBit k a
 fromAscList = fromAscListWithKey (\_ x _ -> x)
 {-# INLINABLE fromAscList #-}
 
--- | /O(???)/. Build a tree from an ascending list in ??? time 
+-- | /O(n)/. Build a tree from an ascending list in linear time
 -- with a combining function for equal keys.
 -- /The precondition (input list is ascending) is not checked./
 --
@@ -728,7 +728,7 @@ fromAscListWith :: (CritBitKey k) => (a -> a -> a) -> [(k,a)] -> CritBit k a
 fromAscListWith f = fromAscListWithKey (\_ x y -> f x y)
 {-# INLINABLE fromAscListWith #-}
 
--- | /O(???)/. Build a map from an ascending list in ??? time with a
+-- | /O(n)/. Build a map from an ascending list in linear time with a
 -- combining function for equal keys.
 -- /The precondition (input list is ascending) is not checked./
 --
@@ -746,25 +746,90 @@ fromAscListWithKey f = fromDistinctAscList . foldEq
        | otherwise               = x : foldEq xs
 {-# INLINABLE fromAscListWithKey #-}
 
--- | /O(???)/. Build a tree from an ascending list of distinct elements in linear time.
+-- | /O(n)/. Build a tree from an ascending list of distinct elements
+-- in linear time.
 -- /The precondition is not checked./
 --
 -- > fromDistinctAscList [(3,"b"), (5,"a")] == fromList [(3, "b"), (5, "a")]
 -- > valid (fromDistinctAscList [(3,"b"), (5,"a")])          == True
 -- > valid (fromDistinctAscList [(3,"b"), (5,"a"), (5,"b")]) == False
 fromDistinctAscList :: (CritBitKey k) => [(k,a)] -> CritBit k a
-fromDistinctAscList xs = CritBit $ List.foldr (insert') Empty xs
+fromDistinctAscList [] = empty
+fromDistinctAscList xs = CritBit $ top $ toFalwk xs
+  -- This implementation based on the idea influenced by the
+  -- idea of binary search in suffix array using LCP arrays.
+  --
+  -- Unfortunately, Haskell arrays are quite infective,
+  -- so we could not implement LCP building algorithm directly.
+  --
+  -- This implementation builds a binary tree of the pairs ('FalwkTree')
+  -- and folds it to the CritBit 'Node'. When folding, common prefix
+  -- of all keys in the subtree is know, so we could skip checking
+  -- of this prefix, leading to better performance.
+  --
+  -- This algorithm runs in /O(n+K)/ time, where /K/ is the total
+  -- length of all keys minus . When many keys has equal prefixes,
+  -- the second summand is much smaller.
+  --
+  -- See also:
+  --
+  -- Manber, Udi; Myers, Gene (1990). "Suffix arrays: a new method for
+  -- on-line string searches". In Proceedings of the first annual
+  -- ACM-SIAM symposium on Discrete algorithms 90 (319): 327.
   where
-    insert' (k, v) Empty = Leaf k v
-    insert' (k, v) root  = go root
-      where
-        go i@(Internal a _ byte bits)
-          | byte < n || byte == n && bits <= nob = i { ileft = go a }
-        go node = Internal (Leaf k v) node n nob
-        {-# INLINE go #-}
+    top (FalwkLeaf (k, v)) = Leaf k v
+    top node               = build 0 node (left node) (right node)
 
-        (n, nob, _) = followPrefixes k (minKey root)
-    {-# INLINE insert' #-}
+    build _ (FalwkLeaf (k, v)) _ _ = Leaf k v
+    build z (FalwkNode a b) al br = merge (build byteO a al ar)
+                                          (build byteO b bl br)
+      where
+        ar = right a
+        bl = left  b
+        (byteO, _, _) = followPrefixesFrom z al br
+        (n, nob, _) = followPrefixesFrom byteO bl ar
+        nbb = (n, nob)
+
+        merge a'@(Internal _ r abyte abits) b'@(Internal l _ bbyte bbits)
+          | (n, nob) < min abb bbb = Internal a' b' n nob
+          | abb < bbb              = a' { iright = merge r b' }
+          | otherwise              = b' { ileft  = merge a' l }
+            where
+              abb = (abyte, abits)
+              bbb = (bbyte, bbits)
+        merge a'@(Internal _ r byte bits) b'@(Leaf{})
+          | (byte, bits) < nbb = a' { iright = merge r b' }
+          | otherwise = Internal a' b' n nob
+        merge a'@(Leaf{}) b'@(Internal l _ byte bits)
+          | (byte, bits) < nbb = b' { ileft = merge a' l }
+          | otherwise = Internal a' b' n nob
+        merge a'@(Leaf{}) b'@(Leaf{}) = Internal a' b' n nob
+        merge _ _ = error "CritBit.fromDistinctAscList.merge: unpossible"
+        {-# INLINE merge #-}
+    {-# INLINE build #-}
+
+    -- /O(n)/. Building 'Falwk' tree from list
+    toFalwk = head . until cond pairs . List.map FalwkLeaf
+      where
+        cond [_] = True
+        cond _   = False
+        {-# INLINE cond #-}
+
+        pairs []  = []
+        pairs [x] = [x]
+        pairs (a:b:ys) = FalwkNode a b : pairs ys
+        {-# INLINE pairs #-}
+    {-# INLINE toFalwk #-}
+
+    left (FalwkLeaf (k, _)) = k
+    left (FalwkNode a _ ) = left a
+    {-# INLINE left #-}
+    right (FalwkLeaf (k, _)) = k
+    right (FalwkNode _ b) = right b
+    {-# INLINE right #-}
+data FalwkTree k v = FalwkLeaf !(k, v)
+                   | FalwkNode !(FalwkTree k v) !(FalwkTree k v)
+                   deriving (Show)
 {-# INLINABLE fromDistinctAscList #-}
 
 -- | /O(n)/. Filter all values that satisfy the predicate.

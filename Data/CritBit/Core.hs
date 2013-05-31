@@ -26,6 +26,7 @@ module Data.CritBit.Core
     , calcDirection
     , direction
     , followPrefixes
+    , followPrefixesFrom
     ) where
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
@@ -145,9 +146,23 @@ followPrefixes :: (CritBitKey k) =>
                   k             -- ^ The key from "outside" the tree.
                -> k             -- ^ Key from the leaf we reached.
                -> (Int, BitMask, Word16)
+followPrefixes = followPrefixesFrom 0
 {-# INLINE followPrefixes #-}
-followPrefixes k l = go 0
+
+-- | Figure out the offset of the first different byte in two keys,
+-- starting from specified position.
+--
+-- We return some auxiliary stuff that we'll bang on to help us figure
+-- out which direction to go in to insert a new node.
+followPrefixesFrom :: (CritBitKey k) =>
+                      Int           -- ^ Positition to start from
+                   -> k             -- ^ First key.
+                   -> k             -- ^ Second key.
+                   -> (Int, BitMask, Word16)
+followPrefixesFrom position k l = go position
   where
+    -- Warning! 'fromAscListWithKey' assumes that last element of the result
+    -- argument is zero if and only if keys are equal
     go n | n == byteCount k = (n, maskLowerBits c, c)
          | n == byteCount l = (n, maskLowerBits b, 0)
          | b /= c           = (n, maskLowerBits (b `xor` c), c)
@@ -162,6 +177,7 @@ followPrefixes k l = go 0
         n2 = n1 .|. (n1 `shiftR` 4)
         n1 = n0 .|. (n0 `shiftR` 2)
         n0 = v  .|. (v  `shiftR` 1)
+{-# INLINE followPrefixesFrom #-}
 
 leftmost, rightmost :: a -> (k -> v -> a) -> Node k v -> a
 leftmost  = extremity ileft
@@ -180,4 +196,5 @@ extremity direct onEmpty onLeaf node = go node
     go i@(Internal{}) = go $ direct i
     go (Leaf k v)     = onLeaf k v
     go _              = onEmpty
+    {-# INLINE go #-}
 {-# INLINE extremity #-}

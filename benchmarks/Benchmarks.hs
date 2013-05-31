@@ -13,7 +13,6 @@ import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..), hashByteArray)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Sum(..))
-import Data.List (sort)
 import Data.Text.Array (aBA)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Internal (Text(..))
@@ -33,6 +32,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Generic.Mutable as M
 import qualified Data.Vector.Unboxed as U
+import qualified Data.List as L
 
 #if 0
 instance Hashable Text where
@@ -94,7 +94,7 @@ updateFVal v = updateFKey undefined v
 main = do
   fileName <- getEnv "WORDS" `Exc.catch` \(_::IOError) ->
               return "/usr/share/dict/words"
-  ordKeys <- sort <$> (every 5 . B.words) <$> B.readFile fileName
+  ordKeys <- L.sort <$> (every 5 . B.words) <$> B.readFile fileName
              `Exc.catch` \(err::IOError) -> do
                when (isDoesNotExistError err) $ do
                  hPutStrLn stderr
@@ -366,9 +366,16 @@ main = do
           bench "critbit" $ nf (  C.fromAscListWithKey (const (+))) b_ordKVs
         , bench "map"     $ nf (Map.fromAscListWithKey (const (+))) b_ordKVs
         ]
-      , bgroup "fromAscDistinctList" [
+      , bgroup "fromAscDistinctList_short" [
           bench "critbit" $ nf (  C.fromDistinctAscList) b_ordKVs
         , bench "map"     $ nf (Map.fromDistinctAscList) b_ordKVs
+        ]
+      , bgroup "fromAscDistinctList_long" $ let
+          prefix = B.concat $ L.map fst b_ordKVs
+          b_KVs = map (first (B.append prefix)) b_ordKVs
+        in [
+          bench "critbit" $ nf (  C.fromDistinctAscList) b_KVs
+        , bench "map"     $ nf (Map.fromDistinctAscList) b_KVs
         ]
       , bgroup "filter" $ let p  = (< 128)
                               p' = \e -> if p e then Just e else Nothing
