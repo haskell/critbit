@@ -445,17 +445,13 @@ t_insert_present k v v' =
 t_insert_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
 t_insert_missing k v kvs = (C.insert k v === Map.insert k v) k kvs
 
-t_insertWith_present :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
-t_insertWith_present _ k v (KV kvs) = Map.toList m == C.toList c
-  where
-    m = Map.insertWith (+) k v $ Map.insert k v $ Map.fromList kvs
-    c =   C.insertWith (+) k v $   C.insert k v $   C.fromList kvs
+t_insertWith_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_insertWith_present k v = ((C.insertWith (+) k v . C.insert k v) ===
+                            (Map.insertWith (+) k v . Map.insert k v)) k
 
-t_insertWith_missing :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
-t_insertWith_missing _ k v (KV kvs) = Map.toList m == C.toList c
-  where
-    m = Map.insertWith (+) k v $ Map.fromList kvs
-    c =   C.insertWith (+) k v $   C.fromList kvs
+t_insertWith_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
+t_insertWith_missing k v = ((C.insertWith (+) k v . C.delete k) ===
+                            (Map.insertWith (+) k v . Map.delete k)) k
 
 t_insertWithKey_present :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
 t_insertWithKey_present _ k v (KV kvs) = Map.toList m == C.toList c
