@@ -985,11 +985,13 @@ updateExtremity dir maybeUpdate (CritBit root) = CritBit $ go root
 {-# INLINE updateExtremity #-}
 
 goLeft, goRight :: (Node k v -> Node k v) -> Node k v -> Node k v
-goLeft f n = n { ileft = f l }
-  where l = ileft n
+goLeft f n = case f (ileft n) of
+  Empty -> iright n
+  value -> n { ileft = value }
 {-# INLINE goLeft #-}
-goRight f n = n { iright = f r }
-  where r = iright n
+goRight f n = case f (iright n) of
+  Empty -> ileft n
+  value -> n { iright = value }
 {-# INLINE goRight #-}
 
 -- | /O(log n)/. Insert a new key and value in the map.  If the key is
