@@ -940,7 +940,7 @@ first f (x,y) = (f x, y)
 -- > updateMin (\ a -> Just (a + 7)) (fromList [("a",5), ("b",3)]) == fromList [("a",12), ("b",3)]
 -- > updateMin (\ _ -> Nothing)      (fromList [("a",5), ("b",3)]) == fromList [("b",3)]
 updateMin :: (v -> Maybe v) -> CritBit k v -> CritBit k v
-updateMin f m = updateExtremity goLeft (const f) m
+updateMin f m = updateMinWithKey (const f) m
 {-# INLINABLE updateMin #-}
 
 -- | /O(log n)/. Update the value at the maximal key.
@@ -948,7 +948,7 @@ updateMin f m = updateExtremity goLeft (const f) m
 -- > updateMax (\ a -> Just (a + 7)) (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",10)]
 -- > updateMax (\ _ -> Nothing)      (fromList [("a",5), ("b",3)]) == fromList [("a",5)]
 updateMax :: (v -> Maybe v) -> CritBit k v -> CritBit k v
-updateMax f m = updateExtremity goRight (const f) m
+updateMax f m = updateMaxWithKey (const f) m
 {-# INLINABLE updateMax #-}
 
 -- | /O(log n)/. Update the value at the minimal key.
@@ -956,7 +956,13 @@ updateMax f m = updateExtremity goRight (const f) m
 -- > updateMinWithKey (\ k a -> Just (length k + a)) (fromList [("a",5), ("b",3)]) == fromList [("a",6), ("b",3)]
 -- > updateMinWithKey (\ _ _ -> Nothing)             (fromList [("a",5), ("b",3)]) == fromList [("b",3)]
 updateMinWithKey :: (k -> v -> Maybe v) -> CritBit k v -> CritBit k v
-updateMinWithKey f m = updateExtremity goLeft f m
+updateMinWithKey maybeUpdate (CritBit root) = CritBit $ go root
+  where
+    go i@(Internal left right _ _) = case go left of
+                                       Empty -> right
+                                       l     -> i { ileft = l }
+    go (Leaf lk lv) = maybe Empty (Leaf lk) $ maybeUpdate lk lv
+    go _ = Empty
 {-# INLINABLE updateMinWithKey #-}
 
 -- | /O(log n)/. Update the value at the maximal key.
@@ -964,27 +970,14 @@ updateMinWithKey f m = updateExtremity goLeft f m
 -- > updateMaxWithKey (\ k a -> Just (length k + a)) (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",4)]
 -- > updateMaxWithKey (\ _ _ -> Nothing)             (fromList [("a",5), ("b",3)]) == fromList [("a",5)]
 updateMaxWithKey :: (k -> v -> Maybe v) -> CritBit k v -> CritBit k v
-updateMaxWithKey f m = updateExtremity goRight f m
-{-# INLINABLE updateMaxWithKey #-}
-
-updateExtremity :: ((Node k v -> Node k v) -> Node k v -> Node k v)
-                -> (k -> v -> Maybe v)
-                -> CritBit k v
-                -> CritBit k v
-updateExtremity dir maybeUpdate (CritBit root) = CritBit $ go root
+updateMaxWithKey maybeUpdate (CritBit root) = CritBit $ go root
   where
-    go i@(Internal {}) = dir go i
-    go (Leaf k v0)     = maybe Empty (Leaf k) (maybeUpdate k v0)
-    go _               = root
-{-# INLINE updateExtremity #-}
-
-goLeft, goRight :: (Node k v -> Node k v) -> Node k v -> Node k v
-goLeft f n = n { ileft = f l }
-  where l = ileft n
-{-# INLINE goLeft #-}
-goRight f n = n { iright = f r }
-  where r = iright n
-{-# INLINE goRight #-}
+    go i@(Internal left right _ _) = case go right of
+                                       Empty -> left
+                                       r     -> i { iright = r }
+    go (Leaf lk lv) = maybe Empty (Leaf lk) $ maybeUpdate lk lv
+    go _ = Empty
+{-# INLINABLE updateMaxWithKey #-}
 
 -- | /O(log n)/. Insert a new key and value in the map.  If the key is
 -- already present in the map, the associated value is replaced with
