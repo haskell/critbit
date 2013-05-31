@@ -102,10 +102,10 @@ module Data.CritBit.Tree
     -- ** Ordered lists
     , toAscList
     , toDescList
-    -- , fromAscList
-    -- , fromAscListWith
-    -- , fromAscListWithKey
-    -- , fromDistinctAscList
+    , fromAscList
+    , fromAscListWith
+    , fromAscListWithKey
+    , fromDistinctAscList
 
     -- * Filter
     , filter
@@ -659,17 +659,16 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
         error("Data.CritBit.Tree.binarySetOpWithKey.splitB: unpossible")
     {-# INLINE splitB #-}
 
-    minKey n = leftmost
-        (error "Data.CritBit.Tree.binarySetOpWithKey.minKey: Empty")
-        (\k _ -> k) n
-    {-# INLINE minKey #-}
-
     link _ Empty b = b
     link _ a Empty = a
     link (Internal _ _ byte bits) a b = Internal a b byte bits
     link _ _ _ = error("Data.CritBit.Tree.differenceWithKey.link: unpossible")
     {-# INLINE link #-}
 {-# INLINEABLE binarySetOpWithKey #-}
+
+minKey :: Node k v -> k
+minKey = leftmost (error "CritBit.minKey: Empty") const
+{-# INLINE minKey #-}
 
 -- | /O(n)/. Apply a function to all values.
 --
@@ -706,6 +705,67 @@ toAscList m = foldrWithKey f [] m
 toDescList :: CritBit k v -> [(k,v)]
 toDescList m = foldlWithKey f [] m
   where f vs k v = (k,v):vs
+
+-- | /O(?)/. Build a tree from an ascending list in ??? time.
+-- /The precondition (input list is ascending) is not checked./
+--
+-- > fromAscList [(3,"b"), (5,"a")]          == fromList [(3, "b"), (5, "a")]
+-- > fromAscList [(3,"b"), (5,"a"), (5,"b")] == fromList [(3, "b"), (5, "b")]
+-- > valid (fromAscList [(3,"b"), (5,"a"), (5,"b")]) == True
+-- > valid (fromAscList [(5,"a"), (3,"b"), (5,"b")]) == False
+fromAscList :: (CritBitKey k) => [(k, a)] -> CritBit k a
+fromAscList = fromAscListWithKey (\_ x _ -> x)
+{-# INLINABLE fromAscList #-}
+
+-- | /O(???)/. Build a tree from an ascending list in ??? time 
+-- with a combining function for equal keys.
+-- /The precondition (input list is ascending) is not checked./
+--
+-- > fromAscListWith (++) [(3,"b"), (5,"a"), (5,"b")] == fromList [(3, "b"), (5, "ba")]
+-- > valid (fromAscListWith (++) [(3,"b"), (5,"a"), (5,"b")]) == True
+-- > valid (fromAscListWith (++) [(5,"a"), (3,"b"), (5,"b")]) == False
+fromAscListWith :: (CritBitKey k) => (a -> a -> a) -> [(k,a)] -> CritBit k a
+fromAscListWith f = fromAscListWithKey (\_ x y -> f x y)
+{-# INLINABLE fromAscListWith #-}
+
+-- | /O(???)/. Build a map from an ascending list in ??? time with a
+-- combining function for equal keys.
+-- /The precondition (input list is ascending) is not checked./
+--
+-- > let f k a1 a2 = (show k) ++ ":" ++ a1 ++ a2
+-- > fromAscListWithKey f [(3,"b"), (5,"a"), (5,"b"), (5,"b")] == fromList [(3, "b"), (5, "5:b5:ba")]
+-- > valid (fromAscListWithKey f [(3,"b"), (5,"a"), (5,"b"), (5,"b")]) == True
+-- > valid (fromAscListWithKey f [(5,"a"), (3,"b"), (5,"b"), (5,"b")]) == False
+fromAscListWithKey :: (CritBitKey k) => (k -> a -> a -> a) -> [(k,a)] -> CritBit k a
+fromAscListWithKey f = fromDistinctAscList . foldEq
+  where
+     foldEq [] = []
+     foldEq [x] = [x]
+     foldEq (x@(kx, vx):xs@((ky, vy):ys))
+       | byteCompare kx ky == EQ = foldEq $ (kx, f kx vy vx) : ys
+       | otherwise               = x : foldEq xs
+{-# INLINABLE fromAscListWithKey #-}
+
+-- | /O(???)/. Build a tree from an ascending list of distinct elements in linear time.
+-- /The precondition is not checked./
+--
+-- > fromDistinctAscList [(3,"b"), (5,"a")] == fromList [(3, "b"), (5, "a")]
+-- > valid (fromDistinctAscList [(3,"b"), (5,"a")])          == True
+-- > valid (fromDistinctAscList [(3,"b"), (5,"a"), (5,"b")]) == False
+fromDistinctAscList :: (CritBitKey k) => [(k,a)] -> CritBit k a
+fromDistinctAscList xs = CritBit $ List.foldr (insert') Empty xs
+  where
+    insert' (k, v) Empty = Leaf k v
+    insert' (k, v) root  = go root
+      where
+        go i@(Internal a _ byte bits)
+          | byte < n || byte == n && bits <= nob = i { ileft = go a }
+        go node = Internal (Leaf k v) node n nob
+        {-# INLINE go #-}
+
+        (n, nob, _) = followPrefixes k (minKey root)
+    {-# INLINE insert' #-}
+{-# INLINABLE fromDistinctAscList #-}
 
 -- | /O(n)/. Filter all values that satisfy the predicate.
 --
