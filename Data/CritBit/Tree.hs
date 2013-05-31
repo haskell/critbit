@@ -483,8 +483,12 @@ assocs m = toAscList m
 -- > keys (fromList [("b",5), ("a",3)]) == ["a","b"]
 -- > keys empty == []
 keys :: CritBit k v -> [k]
-keys m = foldrWithKey f [] m
-  where f k _ ks = k : ks
+keys (CritBit root) = go root []
+  where
+    go (Internal left right _ _) acc = go left $ go right acc
+    go (Leaf k _) acc = k : acc
+    go Empty acc = acc
+{-# INLINABLE keys #-}
 
 unionL :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
 unionL a b = unionWithKey (\_ x _ -> x) a b
