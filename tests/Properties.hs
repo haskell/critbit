@@ -256,11 +256,11 @@ t_unionsWith _ (Small kvs0) =
     kvs = map fromKV kvs0
 
 t_difference :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
-t_difference k (KV kvs) = (C.difference (C.fromList kvs) === 
+t_difference k (KV kvs) = (C.difference (C.fromList kvs) ===
     Map.difference (Map.fromList kvs)) k
 
 t_differenceWith :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
-t_differenceWith k (KV kvs) = 
+t_differenceWith k (KV kvs) =
     (C.differenceWith f (C.fromList kvs) ===
         Map.differenceWith f (Map.fromList kvs)) k
   where
@@ -269,25 +269,25 @@ t_differenceWith k (KV kvs) =
               else Just (v1 - v2)
 
 t_differenceWithKey :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
-t_differenceWithKey k (KV kvs) = 
+t_differenceWithKey k (KV kvs) =
     (C.differenceWithKey f (C.fromList kvs) ===
         Map.differenceWithKey f (Map.fromList kvs)) k
   where
-    f key v1 v2 = if C.byteCount key == 2 
+    f key v1 v2 = if C.byteCount key == 2
                   then Nothing
                   else Just (fromIntegral (C.byteCount key) + v1 - v2)
 
 t_intersection :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
-t_intersection k (KV kvs) = (C.intersection (C.fromList kvs) === 
+t_intersection k (KV kvs) = (C.intersection (C.fromList kvs) ===
     Map.intersection (Map.fromList kvs)) k
 
 t_intersectionWith :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
-t_intersectionWith k (KV kvs) = 
+t_intersectionWith k (KV kvs) =
     (C.intersectionWith (-) (C.fromList kvs) ===
         Map.intersectionWith (-) (Map.fromList kvs)) k
 
 t_intersectionWithKey :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
-t_intersectionWithKey k (KV kvs) = 
+t_intersectionWithKey k (KV kvs) =
     (C.intersectionWithKey f (C.fromList kvs) ===
         Map.intersectionWithKey f (Map.fromList kvs)) k
   where

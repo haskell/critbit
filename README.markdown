@@ -214,8 +214,8 @@ your pull request and deal with your commits afterwards.
 * When you add a new function, add its tests and benchmarks in the
   same commit.
 
-* Do not add trailing whitespace. Follow the same formatting and
-  naming conventions as you already see in the code around you.
+* <b>Do not add trailing whitespace</b>. Follow the same formatting
+  and naming conventions as you already see in the code around you.
 
 * Keep your maximum line length at 80 columns for everything except
   lines of example code in documentation.

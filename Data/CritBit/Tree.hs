@@ -527,7 +527,7 @@ unions cs = List.foldl' union empty cs
 unionsWith :: (CritBitKey k) => (v -> v -> v) -> [CritBit k v] -> CritBit k v
 unionsWith f cs = List.foldl' (unionWith f) empty cs
 
--- | /O(n+m)/. Difference of two maps. 
+-- | /O(n+m)/. Difference of two maps.
 -- | Return data in the first map not existing in the second map.
 --
 -- > let l = fromList [("a", 5), ("b", 3)]
@@ -539,9 +539,9 @@ difference a b = differenceWithKey (\_ _ _ -> Nothing) a b
 
 -- | /O(n+m)/. Difference with a combining function.
 -- | When two equal keys are encountered, the combining function is applied
--- | to the values of theese keys. If it returns 'Nothing', the element is 
+-- | to the values of theese keys. If it returns 'Nothing', the element is
 -- | discarded (proper set difference). If it returns (@'Just' y@),
--- | the element is updated with a new value @y@. 
+-- | the element is updated with a new value @y@.
 --
 -- > let f av bv = if av == 3 then Just (av + bv) else Nothing
 -- > let l = fromList [(pack "a", 5), (pack "b", 3), (pack "c", 8)]
@@ -554,9 +554,9 @@ differenceWith f a b = differenceWithKey (const f) a b
 
 -- | /O(n+m)/. Difference with a combining function.
 -- | When two equal keys are encountered, the combining function is applied
--- | to the key and both values. If it returns 'Nothing', the element is 
--- | discarded (proper set difference). If it returns (@'Just' y@), 
--- | the element is updated with a new value @y@. 
+-- | to the key and both values. If it returns 'Nothing', the element is
+-- | discarded (proper set difference). If it returns (@'Just' y@),
+-- | the element is updated with a new value @y@.
 --
 -- > let f k av bv = if k == "b" then Just (length k + av + bv) else Nothing
 -- > let l = fromList [("a", 5), ("b", 3), ("c", 8)]
@@ -567,7 +567,7 @@ differenceWithKey :: (CritBitKey k) => (k -> v -> v -> Maybe v)
 differenceWithKey = binarySetOpWithKey id
 {-# INLINEABLE differenceWithKey #-}
 
--- | /O(n+m)/. Intersection of two maps. 
+-- | /O(n+m)/. Intersection of two maps.
 -- | Return data in the first map for the keys existing in both maps.
 --
 -- > let l = fromList [("a", 5), ("b", 3)]
@@ -620,7 +620,7 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
                        Just v  -> Leaf ak v
                        Nothing -> Empty
         | otherwise = left a
-    go a@(Leaf _ _) ak b@(Internal _ _ _ _) bk = 
+    go a@(Leaf _ _) ak b@(Internal _ _ _ _) bk =
       leaf a b bk (splitB a ak b bk) (left a)
     go a@(Internal _ _ _ _) ak b@(Leaf _ _) bk =
       leaf b a ak (splitA a ak b bk) (left a)
@@ -638,29 +638,29 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
         else after
       where
         (dbyte, dbits, _) = followPrefixes lk sk
-    leaf _ _ _ _ _ = 
+    leaf _ _ _ _ _ =
         error("Data.CritBit.Tree.binarySetOpWithKey.leaf: unpossible")
     {-# INLINE leaf #-}
 
-    switch k n a0 b0 a1 b1 = if direction k n == 0 
-                             then link n a0 b0         
+    switch k n a0 b0 a1 b1 = if direction k n == 0
+                             then link n a0 b0
                              else link n a1 b1
     {-# INLINE switch #-}
 
     splitA a@(Internal al ar _ _) ak b bk =
         switch bk a (go al ak b bk) (left ar) (left al) (go ar (minKey ar) b bk)
-    splitA _ _ _ _ = 
+    splitA _ _ _ _ =
         error("Data.CritBit.Tree.binarySetOpWithKey.splitA: unpossible")
     {-# INLINE splitA #-}
 
     splitB a ak b@(Internal bl br _ _) bk =
         switch ak b (go a ak bl bk) Empty Empty (go a ak br (minKey br))
-    splitB _ _ _ _ = 
+    splitB _ _ _ _ =
         error("Data.CritBit.Tree.binarySetOpWithKey.splitB: unpossible")
     {-# INLINE splitB #-}
 
     minKey n = leftmost
-        (error "Data.CritBit.Tree.binarySetOpWithKey.minKey: Empty") 
+        (error "Data.CritBit.Tree.binarySetOpWithKey.minKey: Empty")
         (\k _ -> k) n
     {-# INLINE minKey #-}
 
