@@ -11,7 +11,7 @@ import Criterion.Types (Pure)
 import Data.Foldable (foldMap)
 import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..), hashByteArray)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Monoid (Sum(..))
 import Data.Text.Array (aBA)
 import Data.Text.Encoding (decodeUtf8)
@@ -402,28 +402,28 @@ main = do
         , bench "map" $ whnf (Map.deleteMax) b_map
        ]
       , bgroup "deleteFindMin" $ [
-          bench "critbit" $ whnf (C.deleteFindMin) b_critbit
-        , bench "map" $ whnf (Map.deleteFindMin) b_map
+          bench "critbit" $ whnf (snd . C.deleteFindMin) b_critbit
+        , bench "map" $ whnf (snd . Map.deleteFindMin) b_map
         ]
       , bgroup "deleteFindMax" $ [
-          bench "critbit" $ whnf (C.deleteFindMax) b_critbit
-        , bench "map" $ whnf (Map.deleteFindMax) b_map
+          bench "critbit" $ whnf (snd . C.deleteFindMax) b_critbit
+        , bench "map" $ whnf (snd . Map.deleteFindMax) b_map
         ]
       , bgroup "minView" $ [
-          bench "critbit" $ whnf C.minView b_critbit
-        , bench "map" $ whnf Map.minView b_map
+          bench "critbit" $ whnf (snd . fromJust . C.minView) b_critbit
+        , bench "map" $ whnf (snd . fromJust . Map.minView) b_map
         ]
       , bgroup "maxView" $ [
-          bench "critbit" $ whnf C.maxView b_critbit
-        , bench "map" $ whnf Map.maxView b_map
+          bench "critbit" $ whnf (snd . fromJust . C.maxView) b_critbit
+        , bench "map" $ whnf (snd . fromJust . Map.maxView) b_map
         ]
       , bgroup "minViewWithKey" $ [
-          bench "critbit" $ whnf C.minViewWithKey b_critbit
-        , bench "map" $ whnf Map.minViewWithKey b_map
+          bench "critbit" $ whnf (snd . fromJust . C.minViewWithKey) b_critbit
+        , bench "map" $ whnf (snd . fromJust . Map.minViewWithKey) b_map
         ]
       , bgroup "maxViewWithKey" $ [
-          bench "critbit" $ whnf C.minViewWithKey b_critbit
-        , bench "map" $ whnf Map.minViewWithKey b_map
+          bench "critbit" $ whnf (snd . fromJust . C.minViewWithKey) b_critbit
+        , bench "map" $ whnf (snd . fromJust . Map.minViewWithKey) b_map
         ]
       , bgroup "updateMin" $ [
           bench "critbit" $ whnf (C.updateMin updateFVal) b_critbit
