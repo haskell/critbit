@@ -854,7 +854,7 @@ findMax (CritBit root) = rightmost emptyMap (,) root
 -- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("b",3), ("c",7)]
 -- > deleteMin empty == empty
 deleteMin :: CritBit k v -> CritBit k v
-deleteMin m = updateExtremity goLeft (const (const Nothing)) m
+deleteMin m = updateMinWithKey (\_ _ -> Nothing) m
 {-# INLINABLE deleteMin #-}
 
 -- | /O(log n)/. Delete the maximal key. Returns an empty map if the
@@ -863,7 +863,7 @@ deleteMin m = updateExtremity goLeft (const (const Nothing)) m
 -- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("a",5), ("b","3")]
 -- > deleteMin empty == empty
 deleteMax :: CritBit k v -> CritBit k v
-deleteMax m = updateExtremity goRight (const (const Nothing)) m
+deleteMax m = updateMaxWithKey (\_ _ -> Nothing) m
 {-# INLINABLE deleteMax #-}
 
 -- | /O(log n)/. Delete and find the minimal element.
@@ -871,14 +871,8 @@ deleteMax m = updateExtremity goRight (const (const Nothing)) m
 -- > deleteFindMin (fromList [("a",5), ("b",3), ("c",10)]) == (("a",5), fromList[("b",3), ("c",10)])
 -- > deleteFindMin     Error: can not return the minimal element of an empty map
 deleteFindMin :: CritBit k v -> ((k, v), CritBit k v)
-deleteFindMin (CritBit root)   = let (km, r) = go root in (km, CritBit r)
-  where
-    go (Internal (Leaf k v) r _ _) = ((k, v), r)
-    go i@(Internal left _ _ _)     = (kmin, i { ileft = newLeft })
-        where (kmin, newLeft)      = go left
-    go (Leaf k v)                  = ((k, v), Empty)
-    go _ = error $ "CritBit.deleteFindMin: can not return the minimal element \
-                   \of an empty map"
+deleteFindMin = maybe (error "CritBit.deleteFindMin: cannot return the minimal \
+                             \element of an empty map") id . minViewWithKey
 {-# INLINABLE deleteFindMin #-}
 
 -- | /O(log n)/. Delete and find the maximal element.
@@ -886,14 +880,8 @@ deleteFindMin (CritBit root)   = let (km, r) = go root in (km, CritBit r)
 -- > deleteFindMax (fromList [("a",5), ("b",3), ("c",10)]) == (("c",10), fromList[("a",5), ("b",3)])
 -- > deleteFindMax     Error: can not return the maximal element of an empty map
 deleteFindMax :: CritBit k v -> ((k, v), CritBit k v)
-deleteFindMax (CritBit root) = let (km, r) = go root in (km, CritBit r)
-  where
-    go (Internal l (Leaf k v) _ _) = ((k, v), l)
-    go i@(Internal _ right _ _)    = (kmin, i { iright = newRight })
-      where (kmin, newRight)       = go right
-    go (Leaf k v)                  = ((k, v), Empty)
-    go _ = error "CritBit.deleteFindMax: can not return the maximal element \
-                  \of an empty map"
+deleteFindMax = maybe (error "CritBit.deleteFindMax: cannot return the minimal \
+                             \element of an empty map") id . maxViewWithKey
 {-# INLINABLE deleteFindMax #-}
 
 -- | /O(log n)/. Retrieves the value associated with minimal key of the
@@ -903,8 +891,7 @@ deleteFindMax (CritBit root) = let (km, r) = go root in (km, CritBit r)
 -- > minView (fromList [("a",5), ("b",3)]) == Just (5, fromList [("b",3)])
 -- > minView empty == Nothing
 minView :: CritBit k v -> Maybe (v, CritBit k v)
-minView (CritBit Empty) = Nothing
-minView m = Just $ first snd $ deleteFindMin m
+minView = fmap (first snd) . minViewWithKey
 {-# INLINABLE minView #-}
 
 -- | /O(log n)/. Retrieves the value associated with maximal key of the
@@ -913,8 +900,7 @@ minView m = Just $ first snd $ deleteFindMin m
 -- > maxView (fromList [("a",5), ("b",3)]) == Just (3, fromList [("a",5)])
 -- > maxView empty == Nothing
 maxView :: CritBit k v -> Maybe (v, CritBit k v)
-maxView (CritBit Empty) = Nothing
-maxView m = Just $ first snd $ deleteFindMax m
+maxView = fmap (first snd) . maxViewWithKey
 {-# INLINABLE maxView #-}
 
 -- | /O(log n)/. Retrieves the minimal (key,value) pair of the map, and
@@ -923,8 +909,12 @@ maxView m = Just $ first snd $ deleteFindMax m
 -- > minViewWithKey (fromList [("a",5), ("b",3)]) == Just (("a",5), fromList [("b",3)])
 -- > minViewWithKey empty == Nothing
 minViewWithKey :: CritBit k v -> Maybe ((k, v), CritBit k v)
-minViewWithKey (CritBit Empty) = Nothing
-minViewWithKey m = Just $ deleteFindMin m
+minViewWithKey (CritBit root) = go root CritBit
+  where
+    go (Internal (Leaf lk lv) right _ _) cont = Just ((lk,lv), cont right)
+    go i@(Internal left _ _ _) cont = go left $ \l -> cont $! i { ileft = l }
+    go (Leaf lk lv) _ = Just ((lk,lv),empty)
+    go _ _ = Nothing
 {-# INLINABLE minViewWithKey #-}
 
 -- | /O(log n)/. Retrieves the maximal (key,value) pair of the map, and
@@ -933,8 +923,12 @@ minViewWithKey m = Just $ deleteFindMin m
 -- > maxViewWithKey (fromList [("a",5), ("b",3)]) == Just (("b",3), fromList [("a",5)])
 -- > maxViewWithKey empty == Nothing
 maxViewWithKey :: CritBit k v -> Maybe ((k,v), CritBit k v)
-maxViewWithKey (CritBit Empty) = Nothing
-maxViewWithKey m = Just $ deleteFindMax m
+maxViewWithKey (CritBit root) = go root CritBit
+  where
+    go (Internal left (Leaf lk lv) _ _) cont = Just ((lk,lv), cont left)
+    go i@(Internal _ right _ _) cont = go right $ \r -> cont $! i { iright = r }
+    go (Leaf lk lv) _ = Just ((lk,lv),empty)
+    go _ _ = Nothing
 {-# INLINABLE maxViewWithKey #-}
 
 first :: (a -> b) -> (a,c) -> (b,c)
