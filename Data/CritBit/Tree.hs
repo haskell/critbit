@@ -152,6 +152,7 @@ import Data.CritBit.Types.Internal
 import Data.Maybe (fromMaybe)
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.List as List
+import qualified Data.Array as A
 
 -- | /O(1)/. Is the map empty?
 --
@@ -706,7 +707,7 @@ toDescList :: CritBit k v -> [(k,v)]
 toDescList m = foldlWithKey f [] m
   where f vs k v = (k,v):vs
 
--- | /O(n)/. Build a tree from an ascending list in ??? time.
+-- | /O(n)/. Build a tree from an ascending list in linear time.
 -- /The precondition (input list is ascending) is not checked./
 --
 -- > fromAscList [(3,"b"), (5,"a")]          == fromList [(3, "b"), (5, "a")]
@@ -755,21 +756,20 @@ fromAscListWithKey f = fromDistinctAscList . foldEq
 -- > valid (fromDistinctAscList [(3,"b"), (5,"a"), (5,"b")]) == False
 fromDistinctAscList :: (CritBitKey k) => [(k,a)] -> CritBit k a
 fromDistinctAscList [] = empty
-fromDistinctAscList xs = CritBit $ top $ toFalwk xs
-  -- This implementation based on the idea influenced by the
-  -- idea of binary search in suffix array using LCP arrays.
+fromDistinctAscList xs = CritBit $ build 0 0 upper
+  -- This implementation based on the idea of binary search in
+  -- suffix array using LCP array.
   --
-  -- Unfortunately, Haskell arrays are quite infective,
-  -- so we could not implement LCP building algorithm directly.
-  --
-  -- This implementation builds a binary tree of the pairs ('FalwkTree')
-  -- and folds it to the CritBit 'Node'. When folding, common prefix
-  -- of all keys in the subtree is know, so we could skip checking
-  -- of this prefix, leading to better performance.
+  -- Input list is converted to array and processed top-down.
+  -- When building tree for interval we finds the length of
+  -- the common prefix of all keys in this interval. We never
+  -- compare known common prefixes, thus reducing number of
+  -- comparisons. Than we merge trees build recursively on
+  -- halves of this interval.
   --
   -- This algorithm runs in /O(n+K)/ time, where /K/ is the total
   -- length of all keys minus . When many keys has equal prefixes,
-  -- the second summand is much smaller.
+  -- the second summand could be much smaller.
   --
   -- See also:
   --
@@ -777,17 +777,21 @@ fromDistinctAscList xs = CritBit $ top $ toFalwk xs
   -- on-line string searches". In Proceedings of the first annual
   -- ACM-SIAM symposium on Discrete algorithms 90 (319): 327.
   where
-    top (FalwkLeaf (k, v)) = Leaf k v
-    top node               = build 0 node (left node) (right node)
+    upper = length xs - 1
+    array = (A.listArray (0, upper) xs A.!)
 
-    build _ (FalwkLeaf (k, v)) _ _ = Leaf k v
-    build z (FalwkNode a b) al br = merge (build byteO a al ar)
-                                          (build byteO b bl br)
+    build z left right
+      | left == right = uncurry Leaf $ array left
+      | otherwise     = merge (build byteO left    middle)
+                              (build byteO middle1 right )
       where
-        ar = right a
-        bl = left  b
-        (byteO, _, _) = followPrefixesFrom z al br
-        (n, nob, _) = followPrefixesFrom byteO bl ar
+        middle = left + (right - left) `div` 2
+        middle1 = middle + 1
+
+        key i = fst $ array i
+        {-# INLINE key #-}
+        (byteO, _, _) = followPrefixesFrom z   (key left  ) (key right  )
+        (n, nob, _) = followPrefixesFrom byteO (key middle) (key middle1)
         nbb = (n, nob)
 
         merge a'@(Internal _ r abyte abits) b'@(Internal l _ bbyte bbits)
@@ -807,29 +811,6 @@ fromDistinctAscList xs = CritBit $ top $ toFalwk xs
         merge _ _ = error "CritBit.fromDistinctAscList.merge: unpossible"
         {-# INLINE merge #-}
     {-# INLINE build #-}
-
-    -- /O(n)/. Building 'Falwk' tree from list
-    toFalwk = head . until cond pairs . List.map FalwkLeaf
-      where
-        cond [_] = True
-        cond _   = False
-        {-# INLINE cond #-}
-
-        pairs []  = []
-        pairs [x] = [x]
-        pairs (a:b:ys) = FalwkNode a b : pairs ys
-        {-# INLINE pairs #-}
-    {-# INLINE toFalwk #-}
-
-    left (FalwkLeaf (k, _)) = k
-    left (FalwkNode a _ ) = left a
-    {-# INLINE left #-}
-    right (FalwkLeaf (k, _)) = k
-    right (FalwkNode _ b) = right b
-    {-# INLINE right #-}
-data FalwkTree k v = FalwkLeaf !(k, v)
-                   | FalwkNode !(FalwkTree k v) !(FalwkTree k v)
-                   deriving (Show)
 {-# INLINABLE fromDistinctAscList #-}
 
 -- | /O(n)/. Filter all values that satisfy the predicate.
