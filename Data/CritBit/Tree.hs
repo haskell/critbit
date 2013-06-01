@@ -20,8 +20,10 @@ module Data.CritBit.Tree
     , notMember
     , lookup
     , findWithDefault
+    , lookupLT
     , lookupGT
-    -- , lookupGE
+    , lookupLE
+    , lookupGE
 
     -- * Construction
     , empty
@@ -299,31 +301,90 @@ findWithDefault d k m = lookupWith d id k m
 -- > lookupGT "aa" (fromList [("a",3), ("b",5)]) == Just ("b",5)
 -- > lookupGT "b"  (fromList [("a",3), ("b",5)]) == Nothing
 lookupGT :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
-lookupGT k (CritBit root) = go root
+lookupGT k m = lookupOrd f k m
+  where f ord kv = case ord of
+                     LT -> Just kv
+                     _  -> Nothing
+{-# INLINABLE lookupGT #-}
+
+-- | /O(log n)/. Find smallest key greater or equal to the given one and return
+-- the corresponding (key, value) pair.
+--
+-- > lookupGE "a" (fromList [("a",3), ("b",5)]) == Just ("a",3)
+-- > lookupGE "b" (fromList [("a",3), ("c",5)]) == Just ("c",5)
+-- > lookupGE "c" (fromList [("a",3), ("b",5)]) == Nothing
+lookupGE :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
+lookupGE k m = lookupOrd f k m
+  where f ord kv = case ord of
+                     GT -> Nothing
+                     _  -> Just kv
+{-# INLINABLE lookupGE #-}
+
+-- | /O(log n)/. Find largest key smaller than the given one and return the
+-- corresponding (key, value) pair.
+--
+-- > lookupLT "a" (fromList [("a",3), ("b",5)]) == Nothing
+-- > lookupLT "b" (fromList [("a",3), ("c",5)]) == Just ("a",3)
+lookupLT :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
+lookupLT k m = lookupOrd f k m
+  where f ord kv = case ord of
+                     GT -> Just kv
+                     _  -> Nothing
+{-# INLINABLE lookupLT #-}
+
+-- | /O(log n)/. Find largest key smaller or equal to the given one and return
+-- the corresponding (key, value) pair.
+--
+-- lookupLE ""  (fromList [("a",3), ("b",5)]) == Nothing
+-- lookupLE "b" (fromList [("a",3), ("c",5)]) == Just ("a",3)
+-- lookupLE "b" (fromList [("a",3), ("b",5)]) == Just ("b",5)
+lookupLE :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
+lookupLE k m = lookupOrd f k m
+  where f ord kv = case ord of
+                     LT -> Nothing
+                     _  -> Just kv
+{-# INLINABLE lookupLE #-}
+
+lookupOrd :: (CritBitKey k)
+          => (Ordering -> (k,v) -> Maybe (k,v))
+          -> k
+          -> CritBit k v
+          -> Maybe (k, v)
+lookupOrd f k (CritBit root) = go root
   where
     go i@(Internal left right _ _)
       | direction k i == 0 = go left
       | otherwise          = go right
     go (Leaf lk lv)        = rewalk root
       where
-        finish (Leaf _ _) = case byteCompare k lk of
-                              LT -> Just (lk, lv)
-                              _ -> Nothing
+        finish (Leaf _ _) = f (byteCompare k lk) (lk,lv)
         finish node
-          | calcDirection nob c == 0 = Nothing
-          | otherwise                = leftmost Nothing pair node
-        rewalk i@(Internal left right byte otherBits)
+          | dir == 0  = case ordering of
+                          GT -> Nothing
+                          _  -> rightmost Nothing pair node
+          | otherwise = case ordering of
+                          LT -> Nothing
+                          _  -> leftmost Nothing pair node
+            where dir = calcDirection nob c
+
+        rewalk i@(Internal l r byte otherBits)
           | byte > n                     = finish i
           | byte == n && otherBits > nob = finish i
-          | direction k i == 0       = case rewalk left of
-                                        Nothing -> leftmost Nothing pair right
-                                        wat     -> wat
-          | otherwise                    = rewalk right
-        rewalk i                         = finish i
+          | direction k i == 0 = case ordering of
+                                   GT -> rewalk l <|> leftmost Nothing pair r
+                                   _  -> rewalk l
+          | otherwise          = case ordering of
+                                   LT -> rewalk r <|> rightmost Nothing pair l
+                                   _  -> rewalk r
+        rewalk i               = finish i
+
         (n, nob, c) = followPrefixes k lk
         pair a b = Just (a, b)
+        ordering = case f LT (lk,lv) of
+                      Nothing -> LT
+                      _       -> GT
     go Empty = Nothing
-{-# INLINABLE lookupGT #-}
+{-# INLINE lookupOrd #-}
 
 byteCompare :: (CritBitKey k) => k -> k -> Ordering
 byteCompare a b = go 0
