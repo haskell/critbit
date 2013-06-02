@@ -27,6 +27,7 @@ module Data.CritBit.Core
     , direction
     , followPrefixes
     , followPrefixesFrom
+    , followPrefixesByteFrom
     ) where
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
@@ -159,16 +160,11 @@ followPrefixesFrom :: (CritBitKey k) =>
                    -> k             -- ^ First key.
                    -> k             -- ^ Second key.
                    -> (Int, BitMask, Word16)
-followPrefixesFrom position k l = go position
+followPrefixesFrom position k l = (n, maskLowerBits (b `xor` c), c)
   where
-    -- Warning! 'fromAscListWithKey' assumes that last element of the result
-    -- argument is zero if and only if keys are equal
-    go n | n == byteCount k = (n, maskLowerBits c, c)
-         | n == byteCount l = (n, maskLowerBits b, 0)
-         | b /= c           = (n, maskLowerBits (b `xor` c), c)
-         | otherwise        = go (n+1)
-      where b = getByte k n
-            c = getByte l n
+    n = followPrefixesByteFrom position k l
+    b = getByte k n
+    c = getByte l n
 
     maskLowerBits :: Word16 -> Word16
     maskLowerBits v = (n3 .&. (complement (n3 `shiftR` 1))) `xor` 0x1FF
@@ -178,6 +174,23 @@ followPrefixesFrom position k l = go position
         n1 = n0 .|. (n0 `shiftR` 2)
         n0 = v  .|. (v  `shiftR` 1)
 {-# INLINE followPrefixesFrom #-}
+
+-- | Figure out the offset of the first different byte in two keys,
+-- starting from specified position.
+followPrefixesByteFrom :: (CritBitKey k) =>
+                          Int           -- ^ Positition to start from
+                       -> k             -- ^ First key.
+                       -> k             -- ^ Second key.
+                       -> Int
+followPrefixesByteFrom position k l = go position
+  where
+    go n | b /= c    = n
+         | b == 0    = n
+         | c == 0    = n
+         | otherwise = go (n+1)
+      where b = getByte k n
+            c = getByte l n
+{-# INLINE followPrefixesByteFrom #-}
 
 leftmost, rightmost :: a -> (k -> v -> a) -> Node k v -> a
 leftmost  = extremity ileft
