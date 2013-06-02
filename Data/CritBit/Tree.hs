@@ -756,7 +756,8 @@ fromAscListWithKey f = fromDistinctAscList . foldEq
 -- > valid (fromDistinctAscList [(3,"b"), (5,"a"), (5,"b")]) == False
 fromDistinctAscList :: (CritBitKey k) => [(k,a)] -> CritBit k a
 fromDistinctAscList [] = empty
-fromDistinctAscList xs = CritBit $ build 0 0 upper
+fromDistinctAscList [(k, v)] = singleton k v
+fromDistinctAscList kvs = build 0 1 upper fromContext kvs RCNil
   -- This implementation based on the idea of binary search in
   -- suffix array using LCP array.
   --
@@ -777,41 +778,37 @@ fromDistinctAscList xs = CritBit $ build 0 0 upper
   -- on-line string searches". In Proceedings of the first annual
   -- ACM-SIAM symposium on Discrete algorithms 90 (319): 327.
   where
-    upper = length xs - 1
-    array = (A.listArray (0, upper) xs A.!)
+    upper = length kvs - 1
+    array = fst . (A.listArray (0, upper) kvs A.!)
 
-    build z left right
-      | left == right = uncurry Leaf $ array left
-      | otherwise     = merge (build byteO left    middle)
-                              (build byteO middle1 right )
+    fromContext = add (0, 0, 0::BitMask) $
+        (const $ \(RCCons node _ _ _) -> CritBit node)
+
+    build z left right cont xs cx
+      | left == right = add diffI cont xs cx
+      | otherwise     = (build diffO left      mid    $
+                         build diffO (mid + 1) right  cont) xs cx
       where
-        middle = left + (right - left) `div` 2
-        middle1 = middle + 1
-
-        key i = fst $ array i
-        {-# INLINE key #-}
-        (byteO, _, _) = followPrefixesFrom z   (key left  ) (key right  )
-        (n, nob, _) = followPrefixesFrom byteO (key middle) (key middle1)
-        nbb = (n, nob)
-
-        merge a'@(Internal _ r abyte abits) b'@(Internal l _ bbyte bbits)
-          | (n, nob) < min abb bbb = Internal a' b' n nob
-          | abb < bbb              = a' { iright = merge r b' }
-          | otherwise              = b' { ileft  = merge a' l }
-            where
-              abb = (abyte, abits)
-              bbb = (bbyte, bbits)
-        merge a'@(Internal _ r byte bits) b'@(Leaf{})
-          | (byte, bits) < nbb = a' { iright = merge r b' }
-          | otherwise = Internal a' b' n nob
-        merge a'@(Leaf{}) b'@(Internal l _ byte bits)
-          | (byte, bits) < nbb = b' { ileft = merge a' l }
-          | otherwise = Internal a' b' n nob
-        merge a'@(Leaf{}) b'@(Leaf{}) = Internal a' b' n nob
-        merge _ _ = error "CritBit.fromDistinctAscList.merge: unpossible"
-        {-# INLINE merge #-}
+        mid = (left + right - 1) `div` 2
+        diffO = followPrefixesByteFrom z (fst (head xs)) (array right)
+        diffI = followPrefixesFrom     z (fst (head xs)) (array right)
     {-# INLINE build #-}
+
+    add (byte, bits, _) cont xs cx = cont (tail xs) $ 
+        pop (uncurry Leaf (head xs)) cx
+      where
+        pop right cs@(RCCons left cbyte cbits cs')
+          | cbyte > byte || cbyte == byte && cbits > bits 
+                = pop (Internal left right cbyte cbits) cs'
+          | otherwise = RCCons right byte bits cs
+        pop right cs  = RCCons right byte bits cs
+    {-# INLINE add #-}
 {-# INLINABLE fromDistinctAscList #-}
+
+-- | One-hole CritBit context focused on the maximum leaf
+data RightContext k v
+    = RCNil
+    | RCCons !(Node k v) !Int !BitMask !(RightContext k v)
 
 -- | /O(n)/. Filter all values that satisfy the predicate.
 --
