@@ -102,6 +102,8 @@ main = do
                      "to use it for benchmark data)")
                ioError err
   let b_ordKVs = zip ordKeys [(0::Int)..]
+      prefix = B.concat $ L.map fst b_ordKVs
+      b_longKVs = map (first (B.append prefix)) b_ordKVs
       b_revKVs = reverse b_ordKVs
   b_randKVs <- do
     gen <- create
@@ -354,9 +356,13 @@ main = do
         ]
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
-      , bgroup "fromAscList" [
-          bench "critbit" $ whnf   C.fromAscList b_ordKVs
-        , bench "map"     $ whnf Map.fromAscList b_ordKVs
+      , bgroup "fromAscList_short" [
+          bench "critbit" $ nf   C.fromAscList b_ordKVs
+        , bench "map"     $ nf Map.fromAscList b_ordKVs
+        ]
+      , bgroup "fromAscList_long" [
+          bench "critbit" $ nf   C.fromAscList b_longKVs
+        , bench "map"     $ nf Map.fromAscList b_longKVs
         ]
       , bgroup "fromAscListWith" [
           bench "critbit" $ nf (  C.fromAscListWith (+)) b_ordKVs
@@ -370,12 +376,9 @@ main = do
           bench "critbit" $ nf (  C.fromDistinctAscList) b_ordKVs
         , bench "map"     $ nf (Map.fromDistinctAscList) b_ordKVs
         ]
-      , bgroup "fromAscDistinctList_long" $ let
-          prefix = B.concat $ L.map fst b_ordKVs
-          b_KVs = map (first (B.append prefix)) b_ordKVs
-        in [
-          bench "critbit" $ nf (  C.fromDistinctAscList) b_KVs
-        , bench "map"     $ nf (Map.fromDistinctAscList) b_KVs
+      , bgroup "fromAscDistinctList_long" [
+          bench "critbit" $ nf (  C.fromDistinctAscList) b_longKVs
+        , bench "map"     $ nf (Map.fromDistinctAscList) b_longKVs
         ]
       , bgroup "filter" $ let p  = (< 128)
                               p' = \e -> if p e then Just e else Nothing
