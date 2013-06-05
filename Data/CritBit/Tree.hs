@@ -814,7 +814,7 @@ switch k n a0 b0 a1 b1
 minKey :: (CritBitKey k) => Node k v -> k
 minKey n = leftmost
     (error "Data.CritBit.Tree.minKey: Empty")
-    (\k _ -> k) n
+    const n
 {-# INLINE minKey #-}
 
 -- | Link children to the parent node.
@@ -971,7 +971,7 @@ data RightContext k v
 -- > filter (> "x") (fromList [("5","a"), ("3","b")]) == empty
 -- > filter (< "a") (fromList [("5","a"), ("3","b")]) == empty
 filter :: (v -> Bool) -> CritBit k v -> CritBit k v
-filter p = filterWithKey (\_ -> p)
+filter p m = filterWithKey (const p) m
 
 -- | /O(n)/. Filter all keys\/values that satisfy the predicate.
 --
@@ -1181,7 +1181,7 @@ submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
 
     minKey n = leftmost
         (error "Data.CritBit.Tree.isSubmapOfBy.minKey: Empty")
-        (\k _ -> k) n
+        const n
     {-# INLINE minKey #-}
 {-# INLINABLE submapTypeBy #-}
 
