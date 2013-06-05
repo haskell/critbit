@@ -660,16 +660,17 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
         error("Data.CritBit.Tree.binarySetOpWithKey.splitB: unpossible")
     {-# INLINE splitB #-}
 
+    minKey n = leftmost
+        (error "Data.CritBit.Tree.binarySetOpWithKey.minKey: Empty")
+        (\k _ -> k) n
+    {-# INLINE minKey #-}
+
     link _ Empty b = b
     link _ a Empty = a
     link (Internal _ _ byte bits) a b = Internal a b byte bits
     link _ _ _ = error("Data.CritBit.Tree.differenceWithKey.link: unpossible")
     {-# INLINE link #-}
 {-# INLINEABLE binarySetOpWithKey #-}
-
-minKey :: Node k v -> k
-minKey = leftmost (error "CritBit.minKey: Empty") const
-{-# INLINE minKey #-}
 
 -- | /O(n)/. Apply a function to all values.
 --
@@ -738,26 +739,9 @@ fromAscListWith f = fromAscListWithKey (\_ x y -> f x y)
 -- > valid (fromAscListWithKey f [(3,"b"), (5,"a"), (5,"b"), (5,"b")]) == True
 -- > valid (fromAscListWithKey f [(5,"a"), (3,"b"), (5,"b"), (5,"b")]) == False
 fromAscListWithKey :: (CritBitKey k) => (k -> a -> a -> a) -> [(k,a)] -> CritBit k a
-fromAscListWithKey f = fromDistinctAscList . foldEq
-  where
-     foldEq [] = []
-     foldEq [x] = [x]
-     foldEq (x@(kx, vx):xs@((ky, vy):ys))
-       | byteCompare kx ky == EQ = foldEq $ (kx, f kx vy vx) : ys
-       | otherwise               = x : foldEq xs
-{-# INLINABLE fromAscListWithKey #-}
-
--- | /O(n)/. Build a tree from an ascending list of distinct elements
--- in linear time.
--- /The precondition is not checked./
---
--- > fromDistinctAscList [(3,"b"), (5,"a")] == fromList [(3, "b"), (5, "a")]
--- > valid (fromDistinctAscList [(3,"b"), (5,"a")])          == True
--- > valid (fromDistinctAscList [(3,"b"), (5,"a"), (5,"b")]) == False
-fromDistinctAscList :: (CritBitKey k) => [(k,a)] -> CritBit k a
-fromDistinctAscList [] = empty
-fromDistinctAscList [(k, v)] = singleton k v
-fromDistinctAscList kvs = build 0 1 upper fromContext kvs RCNil
+fromAscListWithKey _ [] = empty
+fromAscListWithKey _ [(k, v)] = singleton k v
+fromAscListWithKey f kvs = build 0 1 upper fromContext kvs RCNil
   -- This implementation based on the idea of binary search in
   -- suffix array using LCP array.
   --
@@ -794,15 +778,29 @@ fromDistinctAscList kvs = build 0 1 upper fromContext kvs RCNil
         diffI = followPrefixesFrom     z (fst (head xs)) (array right)
     {-# INLINE build #-}
 
-    add (byte, bits, _) cont xs cx = cont (tail xs) $ 
-        pop (uncurry Leaf (head xs)) cx
+    add (byte, bits, _) cont (x:xs) cx
+        | bits == 0x1ff = let (k, v1) = x; (_, v2) = head xs
+                          in cont ((k, f k v2 v1) : tail xs) cx
+        | otherwise     = cont xs $ pop (uncurry Leaf x) cx
       where
         pop right cs@(RCCons left cbyte cbits cs')
-          | cbyte > byte || cbyte == byte && cbits > bits 
+          | cbyte > byte || cbyte == byte && cbits > bits
                 = pop (Internal left right cbyte cbits) cs'
           | otherwise = RCCons right byte bits cs
         pop right cs  = RCCons right byte bits cs
+    add _ _ _ _ = error "CritBit.fromAscListWithKey.add: Unpossible"
     {-# INLINE add #-}
+{-# INLINABLE fromAscListWithKey #-}
+
+-- | /O(n)/. Build a tree from an ascending list of distinct elements
+-- in linear time.
+-- /The precondition is not checked./
+--
+-- > fromDistinctAscList [(3,"b"), (5,"a")] == fromList [(3, "b"), (5, "a")]
+-- > valid (fromDistinctAscList [(3,"b"), (5,"a")])          == True
+-- > valid (fromDistinctAscList [(3,"b"), (5,"a"), (5,"b")]) == False
+fromDistinctAscList :: (CritBitKey k) => [(k,a)] -> CritBit k a
+fromDistinctAscList = fromAscListWithKey undefined
 {-# INLINABLE fromDistinctAscList #-}
 
 -- | One-hole CritBit context focused on the maximum leaf
