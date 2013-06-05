@@ -922,7 +922,7 @@ fromAscListWithKey f kvs = build 0 1 upper fromContext kvs RCNil
     upper = length kvs - 1
     array = fst . (A.listArray (0, upper) kvs A.!)
 
-    fromContext = add (0, 0, 0::BitMask) $
+    fromContext = add (0, 0, 0::BitMask)
         (const $ \(RCCons node _ _ _) -> CritBit node)
 
     build z left right cont xs cx
@@ -1052,8 +1052,8 @@ split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
                                (r,gt)     -> (i { iright = r }, gt)
     go (Leaf lk lv) =
       case byteCompare lk k of
-        LT -> ((Leaf lk lv), Empty)
-        GT -> (Empty, (Leaf lk lv))
+        LT -> (Leaf lk lv, Empty)
+        GT -> (Empty, Leaf lk lv)
         EQ -> (Empty, Empty)
     go _ = (Empty,Empty)
 {-# INLINABLE split #-}
@@ -1080,8 +1080,8 @@ splitLookup k (CritBit root) =
                                (r,res,gt)     -> (i { iright = r }, res, gt)
     go (Leaf lk lv) =
       case byteCompare lk k of
-        LT -> ((Leaf lk lv), Nothing, Empty)
-        GT -> (Empty, Nothing, (Leaf lk lv))
+        LT -> (Leaf lk lv, Nothing, Empty)
+        GT -> (Empty, Nothing, Leaf lk lv)
         EQ -> (Empty, Just lv, Empty)
     go _ = (Empty, Nothing, Empty)
 {-# INLINABLE splitLookup #-}
@@ -1167,7 +1167,7 @@ submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
         GT -> splitB a ak b bk
         EQ -> min (go al ak bl bk) (go ar (minKey ar) br (minKey br))
     -- Assumes that empty nodes exist only on the top level
-    go _ _ _ _ = error("Data.CritBit.Tree.isSubmapOfBy.go: Empty")
+    go _ _ _ _ = error "Data.CritBit.Tree.isSubmapOfBy.go: Empty" 
 
     splitB a ak b@(Internal bl br _ _) bk = if t == No then No else Yes
       where
@@ -1176,7 +1176,7 @@ submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
             else go a ak br (minKey br)
 
     splitB _ _ _ _ =
-        error("Data.CritBit.Tree.isSubmapOfBy.splitB: unpossible")
+        error "Data.CritBit.Tree.isSubmapOfBy.splitB: unpossible"
     {-# INLINE splitB #-}
 
     minKey n = leftmost
@@ -1404,7 +1404,7 @@ traverseWithKey f (CritBit root) = fmap CritBit (go root)
   where
     go i@(Internal l r _ _) = let constr l' r' = i { ileft = l', iright = r' }
                               in constr <$> go l <*> go r
-    go (Leaf k v)           = (Leaf k) <$> f k v
+    go (Leaf k v)           = Leaf k <$> f k v
     go Empty                = pure Empty
 {-# INLINABLE traverseWithKey #-}
 
