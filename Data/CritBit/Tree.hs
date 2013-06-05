@@ -545,7 +545,7 @@ unionsWith f cs = List.foldl' (unionWith f) empty cs
 -- > let l = fromList [("a", 5), ("b", 3)]
 -- > let r = fromList [("A", 2), ("b", 7)]
 -- > difference l r == fromList [("a", 5)]
-difference :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
+difference :: (CritBitKey k) => CritBit k v -> CritBit k w -> CritBit k v
 difference a b = differenceWithKey (\_ _ _ -> Nothing) a b
 {-# INLINEABLE difference #-}
 
@@ -559,8 +559,8 @@ difference a b = differenceWithKey (\_ _ _ -> Nothing) a b
 -- > let l = fromList [(pack "a", 5), (pack "b", 3), (pack "c", 8)]
 -- > let r = fromList [(pack "a", 2), (pack "b", 7), (pack "d", 8)]
 -- > differenceWith f l r == fromList [(pack "b", 10), (pack "c", 8)]
-differenceWith :: (CritBitKey k) => (v -> v -> Maybe v)
-                 -> CritBit k v -> CritBit k v -> CritBit k v
+differenceWith :: (CritBitKey k) => (v -> w -> Maybe v)
+                 -> CritBit k v -> CritBit k w -> CritBit k v
 differenceWith f a b = differenceWithKey (const f) a b
 {-# INLINEABLE differenceWith #-}
 
@@ -574,8 +574,8 @@ differenceWith f a b = differenceWithKey (const f) a b
 -- > let l = fromList [("a", 5), ("b", 3), ("c", 8)]
 -- > let r = fromList [("a", 2), ("b", 7), ("d", 8)]
 -- > differenceWithKey f l r == fromList [("b", 11), ("c", 8)]
-differenceWithKey :: (CritBitKey k) => (k -> v -> v -> Maybe v)
-                    -> CritBit k v -> CritBit k v -> CritBit k v
+differenceWithKey :: (CritBitKey k) => (k -> v -> w -> Maybe v)
+                    -> CritBit k v -> CritBit k w -> CritBit k v
 differenceWithKey = binarySetOpWithKey id
 {-# INLINEABLE differenceWithKey #-}
 
@@ -585,7 +585,7 @@ differenceWithKey = binarySetOpWithKey id
 -- > let l = fromList [("a", 5), ("b", 3)]
 -- > let r = fromList [("A", 2), ("b", 7)]
 -- > intersection l r == fromList [("b", 3)]
-intersection :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
+intersection :: (CritBitKey k) => CritBit k v -> CritBit k w -> CritBit k v
 intersection a b = intersectionWithKey (\_ x _ -> x) a b
 {-# INLINEABLE intersection #-}
 
@@ -594,8 +594,8 @@ intersection a b = intersectionWithKey (\_ x _ -> x) a b
 -- > let l = fromList [("a", 5), ("b", 3)]
 -- > let r = fromList [("A", 2), ("b", 7)]
 -- > intersectionWith (+) l r == fromList [("b", 10)]
-intersectionWith :: (CritBitKey k) => (v -> v -> v)
-                 -> CritBit k v -> CritBit k v -> CritBit k v
+intersectionWith :: (CritBitKey k) => (v -> w -> x)
+                 -> CritBit k v -> CritBit k w -> CritBit k x
 intersectionWith f a b = intersectionWithKey (const f) a b
 {-# INLINEABLE intersectionWith #-}
 
@@ -605,19 +605,19 @@ intersectionWith f a b = intersectionWithKey (const f) a b
 -- > let l = fromList [("a", 5), ("b", 3)]
 -- > let r = fromList [("A", 2), ("b", 7)]
 -- > intersectionWithKey f l r == fromList [("b", 11)]
-intersectionWithKey :: (CritBitKey k) => (k -> v -> v -> v)
-                    -> CritBit k v -> CritBit k v -> CritBit k v
+intersectionWithKey :: (CritBitKey k) => (k -> v -> w -> x)
+                    -> CritBit k v -> CritBit k w -> CritBit k x
 intersectionWithKey f = binarySetOpWithKey (const Empty) f'
   where
     f' k v1 v2 = Just (f k v1 v2)
 
 -- | Performs binary set operation on two maps
 binarySetOpWithKey :: (CritBitKey k)
-    => (Node k v -> Node k v) -- ^ Process unmatched node in first map
-    -> (k -> v -> v -> Maybe v) -- ^ Process matching values
+    => (Node k v -> Node k x) -- ^ Process unmatched node in first map
+    -> (k -> v -> w -> Maybe x) -- ^ Process matching values
     -> CritBit k v -- ^ First map
-    -> CritBit k v -- ^ Second map
-    -> CritBit k v
+    -> CritBit k w -- ^ Second map
+    -> CritBit k x
 binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
   where
     -- Assumes that empty nodes exist only on the top level
