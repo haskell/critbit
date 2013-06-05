@@ -11,7 +11,7 @@ module Data.CritBit.Tree
     (
     -- * Operators
       (!)
-    -- , (\\)
+    , (\\)
 
     -- * Query
     , null
@@ -153,7 +153,7 @@ import Data.Maybe (fromMaybe)
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.List as List
 
-infixl 9 !
+infixl 9 !, \\
 
 -- | /O(log n)/. Find the value at a key.
 -- Calls 'error' when the element can not be found.
@@ -164,6 +164,11 @@ infixl 9 !
 (!) m k = lookupWith err id k m
   where err = error "CritBit.!: given key is not an element in the map"
 {-# INLINABLE (!) #-}
+
+-- | Same as 'difference'.
+(\\) :: CritBitKey k => CritBit k v -> CritBit k w -> CritBit k v
+(\\) m n = difference m n
+{-# INLINABLE (\\) #-}
 
 -- | /O(1)/. Is the map empty?
 --
