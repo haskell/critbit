@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 -- |
 -- Module      :  Data.CritBit.Tree
 -- Copyright   :  (c) Bryan O'Sullivan 2013
@@ -160,7 +161,7 @@ followPrefixesFrom :: (CritBitKey k) =>
                    -> k             -- ^ First key.
                    -> k             -- ^ Second key.
                    -> (Int, BitMask, Word16)
-followPrefixesFrom position k l = (n, maskLowerBits (b `xor` c), c)
+followPrefixesFrom !position !k !l = (n, maskLowerBits (b `xor` c), c)
   where
     n = followPrefixesByteFrom position k l
     b = getByte k n
@@ -182,12 +183,10 @@ followPrefixesByteFrom :: (CritBitKey k) =>
                        -> k             -- ^ First key.
                        -> k             -- ^ Second key.
                        -> Int
-followPrefixesByteFrom position k l = go position
+followPrefixesByteFrom !position !k !l = go position
   where
-    go n | b /= c    = n
-         | b == 0    = n
-         | c == 0    = n
-         | otherwise = go (n+1)
+    go !n | b /= c || b == 0 || c == 0 = n
+          | otherwise                  = go (n + 1)
       where b = getByte k n
             c = getByte l n
 {-# INLINE followPrefixesByteFrom #-}
