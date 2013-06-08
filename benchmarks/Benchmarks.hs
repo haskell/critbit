@@ -46,6 +46,9 @@ instance NFData B.ByteString
 instance (NFData a) => NFData (Trie.Trie a) where
     rnf = rnf . Trie.toList
 
+forceTuple:: (a,a) -> (a,a)
+forceTuple (a,b) = a `seq` b `seq` (a,b)
+
 every k = go 0
   where
     go i (x:xs)
@@ -395,17 +398,15 @@ main = do
           bench "critbit" $ nf (C.mapEitherWithKey f) b_critbit
         , bench "map" $ nf (Map.mapEitherWithKey f) b_map
         ]
-      , bgroup "split" $
-        let forceTuple (a,b) = a `seq` b `seq` (a,b)
-        in [
+      , bgroup "split" $ [
           bench "critbit" $ whnf (forceTuple . C.split key) b_critbit
         , bench "map" $ whnf (forceTuple . Map.split key) b_map
         ]
       , bgroup "splitLookup" $
-        let forceTuple (a,_,b) = a `seq` b `seq` (a,b)
+        let forceTriple (a,_,b) = a `seq` b `seq` (a,b)
         in [
-          bench "critbit" $ whnf (forceTuple . C.splitLookup key) b_critbit
-        , bench "map" $ whnf (forceTuple . Map.splitLookup key) b_map
+          bench "critbit" $ whnf (forceTriple . C.splitLookup key) b_critbit
+        , bench "map" $ whnf (forceTriple . Map.splitLookup key) b_map
         ]
       , bgroup "findMin" $ [
           bench "critbit" $ whnf (C.findMin) b_critbit
@@ -492,6 +493,16 @@ main = do
           bench "critbit" $  whnf (C.alter altF key) b_critbit
         , bench "map" $ whnf (Map.alter altF key) b_map
         ]
+     , bgroup "partitionWithKey" $ let predicate k _ = odd $ C.byteCount k
+                                       forceTuple (a,b) = a `seq` b `seq` (a,b)
+                                   in [
+          bench "critbit" $ whnf (forceTuple . C.partitionWithKey predicate) b_critbit
+        , bench "map" $ whnf (forceTuple . Map.partitionWithKey predicate) b_map
+     ]
+     , bgroup "partition" $ [
+          bench "critbit" $ whnf (forceTuple . C.partition odd) b_critbit
+        , bench "map" $ whnf (forceTuple . Map.partition odd) b_map
+     ]
     ]
     , bgroup "text" [
         bgroup "fromList" [
