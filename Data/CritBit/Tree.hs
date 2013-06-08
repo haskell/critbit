@@ -562,10 +562,10 @@ unionWithKey f (CritBit lt) (CritBit rt) = CritBit (top lt rt)
       leafBranch a b bk (splitB a ak b bk) (fork a ak b bk)
     go a@(Internal _ _ _ _) ak b@(Leaf _ _) bk =
       leafBranch b a ak (splitA a ak b bk) (fork a ak b bk)
-    go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk =
-      if (dbyte, dbits) < min (abyte, abits) (bbyte, bbits)
-      then fork a ak b bk
-      else case compare (abyte, abits) (bbyte, bbits) of
+    go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk
+      | (dbyte, dbits) < min (abyte, abits) (bbyte, bbits) = fork a ak b bk
+      | otherwise =
+           case compare (abyte, abits) (bbyte, bbits) of
              LT -> splitA a ak b bk
              GT -> splitB a ak b bk
              EQ -> link a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
