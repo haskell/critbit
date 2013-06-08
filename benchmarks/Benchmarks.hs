@@ -136,6 +136,18 @@ main = do
         , bench "map" $ whnf Map.fromList kvs
         , bench "hashmap" $ whnf H.fromList kvs
         ]
+      fromListWith kvs = [
+          bench "critbit" $ whnf (C.fromListWith (\a b -> a+b)) kvs
+        , bench "map" $ whnf (Map.fromListWith (\a b -> a+b)) kvs
+        , bench "hashmap" $ whnf (H.fromListWith (\a b -> a+b)) kvs
+        , bench "trie" $ whnf (TC.fromListWith (\a b -> a+b)) kvs
+        ]
+      fromListWithKey kvs = [
+          bench "critbit" $ whnf (C.fromListWithKey (\k a b -> a + b)) kvs
+        , bench "map" $ whnf (Map.fromListWithKey (\k a b -> a+b)) kvs
+        -- , bench "hashmap" $ whnf (H.fromListWithKey (\a b -> a+b)) kvs
+        -- , bench "trie" $ whnf (TC.fromListWithKey (\a b -> a+b)) kvs
+        ]
       keyed critbit map hashmap trie =
         [
           bgroup "present" [
@@ -180,6 +192,16 @@ main = do
                             [ bench "trie" $ whnf Trie.fromList b_randKVs ]
         , bgroup "reversed" $ fromList b_revKVs ++
                               [ bench "trie" $ whnf Trie.fromList b_revKVs ]
+        ]
+      , bgroup "fromListWith" [
+          bgroup "ordered" $ fromListWith b_ordKVs
+        , bgroup "random" $ fromListWith b_randKVs
+        , bgroup "reversed" $ fromListWith b_revKVs
+        ]
+      , bgroup "fromListWithKey" [
+          bgroup "ordered" $ fromListWithKey b_ordKVs
+        , bgroup "random" $ fromListWithKey b_randKVs
+        , bgroup "reversed" $ fromListWithKey b_revKVs
         ]
       , bgroup "delete" $ keyed C.delete Map.delete H.delete Trie.delete
       , bgroup "insert" $ keyed (flip C.insert 1) (flip Map.insert 1)
@@ -476,6 +498,16 @@ main = do
           bgroup "ordered" $ fromList t_ordKVs
         , bgroup "random" $ fromList t_randKVs
         , bgroup "reversed" $ fromList t_revKVs
+        ]
+      , bgroup "fromListWith" [
+          bgroup "ordered" $ fromListWith b_ordKVs
+        , bgroup "random" $ fromListWith b_randKVs
+        , bgroup "reversed" $ fromListWith b_revKVs
+        ]
+      , bgroup "fromListWithKey" [
+          bgroup "ordered" $ fromListWithKey b_ordKVs
+        , bgroup "random" $ fromListWithKey b_randKVs
+        , bgroup "reversed" $ fromListWithKey b_revKVs
         ]
       ]
     ]
