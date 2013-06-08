@@ -752,7 +752,7 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
 
 -- | Detects wether branch in 'Internal' node comes 'before' or 'after'
 --   branch initiated by 'Leaf'
-leafBranch :: CritBitKey k => Node k v -> Node k v -> k -> t -> t -> t
+leafBranch :: CritBitKey k => Node k v -> Node k w -> k -> t -> t -> t
 leafBranch (Leaf lk _) (Internal _ _ sbyte sbits) sk before after
     | dbyte > sbyte || dbyte == sbyte && dbits >= sbits = before
     | otherwise                                         = after
@@ -762,8 +762,8 @@ leafBranch _ _ _ _ _ = error "Data.CritBit.Tree.leafBranch: unpossible"
 {-# INLINE leafBranch #-}
 
 -- | Select child to link under node 'n' by 'k'
-switch :: (CritBitKey k) => k -> Node k v -> Node k v -> Node k v
-       -> Node k v -> Node k v -> Node k v
+switch :: (CritBitKey k) => k -> Node k v -> Node k w -> Node k w
+       -> Node k w -> Node k w -> Node k w
 switch k n a0 b0 a1 b1
   | direction k n == 0 = link n a0 b0
   | otherwise          = link n a1 b1
@@ -779,9 +779,9 @@ minKey n = leftmost
 -- | Links childs to the parent node
 link :: (CritBitKey k)
      => Node k v -- ^ parent
-     -> Node k v -- ^ left child
-     -> Node k v -- ^ right child
-     -> Node k v
+     -> Node k w -- ^ left child
+     -> Node k w -- ^ right child
+     -> Node k w
 link _ Empty b = b
 link _ a Empty = a
 link (Internal _ _ byte bits) a b = Internal a b byte bits
