@@ -6,7 +6,7 @@ module Properties
 import Control.Applicative ((<$>))
 import Control.Arrow (second, (***))
 import Data.ByteString (ByteString)
-import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
+import Data.CritBit.Map.Lazy (CritBitKey, CritBit, byteCount)
 import Data.Foldable (foldMap)
 
 --only needed for a test requiring containers >= 0.5
@@ -109,6 +109,28 @@ t_fromList_toList = id === id
 
 t_fromList_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_fromList_size = isoWith C.size Map.size id id
+
+t_fromListWith_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWith_toList _ (KV kvs) =
+    Map.toList (Map.fromListWith (+) kvsDup) == C.toList (C.fromListWith (+) kvsDup)
+    where kvsDup = concatMap (replicate 2) kvs
+
+t_fromListWith_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWith_size _ (KV kvs) =
+    Map.size (Map.fromListWith (+) kvsDup) == C.size (C.fromListWith (+) kvsDup)
+    where kvsDup = concatMap (replicate 2) kvs
+
+t_fromListWithKey_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWithKey_toList _ (KV kvs) =
+    Map.toList (Map.fromListWithKey f kvsDup) == C.toList (C.fromListWithKey f kvsDup)
+    where kvsDup = concatMap (replicate 2) kvs
+          f key a1 a2 = toEnum (byteCount key) + a1 + a2
+
+t_fromListWithKey_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWithKey_size _ (KV kvs) =
+    Map.size (Map.fromListWithKey f kvsDup) == C.size (C.fromListWithKey f kvsDup)
+    where kvsDup = concatMap (replicate 2) kvs
+          f key a1 a2 = toEnum (byteCount key) + a1 + a2
 
 t_delete_present :: (CritBitKey k, Ord k) => k -> KV k -> k -> V -> Bool
 t_delete_present _ (KV kvs) k v =
@@ -501,6 +523,10 @@ propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
   , testProperty "t_fromList_size" $ t_fromList_size t
+  , testProperty "t_fromListWith_toList" $ t_fromListWith_toList t
+  , testProperty "t_fromListWith_size" $ t_fromListWith_size t
+  , testProperty "t_fromListWithKey_toList" $ t_fromListWithKey_toList t
+  , testProperty "t_fromListWithKey_size" $ t_fromListWithKey_size t
   , testProperty "t_null" $ t_null t
   , testProperty "t_lookup_present" $ t_lookup_present t
   , testProperty "t_lookup_missing" $ t_lookup_missing t
