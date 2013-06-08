@@ -64,7 +64,7 @@ test-suite tests
     other-modules:  Properties
 
   ghc-options:
-    -Wall -threaded -rtsopts
+    -Wall -threaded -rtsopts -with-rtsopts=-N
 
   build-depends:
     base >= 4 && < 5,
