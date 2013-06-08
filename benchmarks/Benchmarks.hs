@@ -47,7 +47,7 @@ instance (NFData a) => NFData (Trie.Trie a) where
     rnf = rnf . Trie.toList
 
 forcePair:: (a,a) -> ()
-forcePair (a,b) = a `seq` b `seq` (a,b)
+forcePair (a,b) = a `seq` b `seq` ()
 
 every k = go 0
   where
@@ -403,7 +403,7 @@ main = do
         , bench "map" $ whnf (forcePair . Map.split key) b_map
         ]
       , bgroup "splitLookup" $
-        let forceTriple (a,_,b) = a `seq` b `seq` (a,b)
+        let forceTriple (a,_,b) = a `seq` b `seq` ()
         in [
           bench "critbit" $ whnf (forceTriple . C.splitLookup key) b_critbit
         , bench "map" $ whnf (forceTriple . Map.splitLookup key) b_map
