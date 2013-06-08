@@ -10,11 +10,11 @@
 module Data.CritBit.Tree
     (
     -- * Operators
-    -- , (!)
-    -- , (\\)
+      (!)
+    , (\\)
 
     -- * Query
-      null
+    , null
     , size
     , member
     , notMember
@@ -102,10 +102,10 @@ module Data.CritBit.Tree
     -- ** Ordered lists
     , toAscList
     , toDescList
-    -- , fromAscList
-    -- , fromAscListWith
-    -- , fromAscListWithKey
-    -- , fromDistinctAscList
+    , fromAscList
+    , fromAscListWith
+    , fromAscListWithKey
+    , fromDistinctAscList
 
     -- * Filter
     , filter
@@ -152,6 +152,24 @@ import Data.CritBit.Types.Internal
 import Data.Maybe (fromMaybe)
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.List as List
+import qualified Data.Array as A
+
+infixl 9 !, \\
+
+-- | /O(log n)/. Find the value at a key.
+-- Calls 'error' when the element can not be found.
+--
+-- > fromList [("a",5), ("b",3)] ! "c"    Error: element not in the map
+-- > fromList [("a",5), ("b",3)] ! "a" == 5
+(!) :: CritBitKey k => CritBit k v -> k -> v
+(!) m k = lookupWith err id k m
+  where err = error "CritBit.!: given key is not an element in the map"
+{-# INLINABLE (!) #-}
+
+-- | Same as 'difference'.
+(\\) :: CritBitKey k => CritBit k v -> CritBit k w -> CritBit k v
+(\\) m n = difference m n
+{-# INLINABLE (\\) #-}
 
 -- | /O(1)/. Is the map empty?
 --
@@ -606,7 +624,7 @@ unionsWith f cs = List.foldl' (unionWith f) empty cs
 -- > let l = fromList [("a", 5), ("b", 3)]
 -- > let r = fromList [("A", 2), ("b", 7)]
 -- > difference l r == fromList [("a", 5)]
-difference :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
+difference :: (CritBitKey k) => CritBit k v -> CritBit k w -> CritBit k v
 difference a b = differenceWithKey (\_ _ _ -> Nothing) a b
 {-# INLINEABLE difference #-}
 
@@ -620,8 +638,8 @@ difference a b = differenceWithKey (\_ _ _ -> Nothing) a b
 -- > let l = fromList [(pack "a", 5), (pack "b", 3), (pack "c", 8)]
 -- > let r = fromList [(pack "a", 2), (pack "b", 7), (pack "d", 8)]
 -- > differenceWith f l r == fromList [(pack "b", 10), (pack "c", 8)]
-differenceWith :: (CritBitKey k) => (v -> v -> Maybe v)
-                 -> CritBit k v -> CritBit k v -> CritBit k v
+differenceWith :: (CritBitKey k) => (v -> w -> Maybe v)
+                 -> CritBit k v -> CritBit k w -> CritBit k v
 differenceWith f a b = differenceWithKey (const f) a b
 {-# INLINEABLE differenceWith #-}
 
@@ -635,8 +653,8 @@ differenceWith f a b = differenceWithKey (const f) a b
 -- > let l = fromList [("a", 5), ("b", 3), ("c", 8)]
 -- > let r = fromList [("a", 2), ("b", 7), ("d", 8)]
 -- > differenceWithKey f l r == fromList [("b", 11), ("c", 8)]
-differenceWithKey :: (CritBitKey k) => (k -> v -> v -> Maybe v)
-                    -> CritBit k v -> CritBit k v -> CritBit k v
+differenceWithKey :: (CritBitKey k) => (k -> v -> w -> Maybe v)
+                    -> CritBit k v -> CritBit k w -> CritBit k v
 differenceWithKey = binarySetOpWithKey id
 {-# INLINEABLE differenceWithKey #-}
 
@@ -646,7 +664,7 @@ differenceWithKey = binarySetOpWithKey id
 -- > let l = fromList [("a", 5), ("b", 3)]
 -- > let r = fromList [("A", 2), ("b", 7)]
 -- > intersection l r == fromList [("b", 3)]
-intersection :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
+intersection :: (CritBitKey k) => CritBit k v -> CritBit k w -> CritBit k v
 intersection a b = intersectionWithKey (\_ x _ -> x) a b
 {-# INLINEABLE intersection #-}
 
@@ -655,8 +673,8 @@ intersection a b = intersectionWithKey (\_ x _ -> x) a b
 -- > let l = fromList [("a", 5), ("b", 3)]
 -- > let r = fromList [("A", 2), ("b", 7)]
 -- > intersectionWith (+) l r == fromList [("b", 10)]
-intersectionWith :: (CritBitKey k) => (v -> v -> v)
-                 -> CritBit k v -> CritBit k v -> CritBit k v
+intersectionWith :: (CritBitKey k) => (v -> w -> x)
+                 -> CritBit k v -> CritBit k w -> CritBit k x
 intersectionWith f a b = intersectionWithKey (const f) a b
 {-# INLINEABLE intersectionWith #-}
 
@@ -666,19 +684,19 @@ intersectionWith f a b = intersectionWithKey (const f) a b
 -- > let l = fromList [("a", 5), ("b", 3)]
 -- > let r = fromList [("A", 2), ("b", 7)]
 -- > intersectionWithKey f l r == fromList [("b", 11)]
-intersectionWithKey :: (CritBitKey k) => (k -> v -> v -> v)
-                    -> CritBit k v -> CritBit k v -> CritBit k v
+intersectionWithKey :: (CritBitKey k) => (k -> v -> w -> x)
+                    -> CritBit k v -> CritBit k w -> CritBit k x
 intersectionWithKey f = binarySetOpWithKey (const Empty) f'
   where
     f' k v1 v2 = Just (f k v1 v2)
 
 -- | Performs binary set operation on two maps
 binarySetOpWithKey :: (CritBitKey k)
-    => (Node k v -> Node k v) -- ^ Process unmatched node in first map
-    -> (k -> v -> v -> Maybe v) -- ^ Process matching values
+    => (Node k v -> Node k x) -- ^ Process unmatched node in first map
+    -> (k -> v -> w -> Maybe x) -- ^ Process matching values
     -> CritBit k v -- ^ First map
-    -> CritBit k v -- ^ Second map
-    -> CritBit k v
+    -> CritBit k w -- ^ Second map
+    -> CritBit k x
 binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
   where
     -- Assumes that empty nodes exist only on the top level
@@ -791,6 +809,106 @@ toAscList m = foldrWithKey f [] m
 toDescList :: CritBit k v -> [(k,v)]
 toDescList m = foldlWithKey f [] m
   where f vs k v = (k,v):vs
+
+-- | /O(n)/. Build a tree from an ascending list in linear time.
+-- /The precondition (input list is ascending) is not checked./
+--
+-- > fromAscList [(3,"b"), (5,"a")]          == fromList [(3, "b"), (5, "a")]
+-- > fromAscList [(3,"b"), (5,"a"), (5,"b")] == fromList [(3, "b"), (5, "b")]
+-- > valid (fromAscList [(3,"b"), (5,"a"), (5,"b")]) == True
+-- > valid (fromAscList [(5,"a"), (3,"b"), (5,"b")]) == False
+fromAscList :: (CritBitKey k) => [(k, a)] -> CritBit k a
+fromAscList = fromAscListWithKey (\_ x _ -> x)
+{-# INLINABLE fromAscList #-}
+
+-- | /O(n)/. Build a tree from an ascending list in linear time
+-- with a combining function for equal keys.
+-- /The precondition (input list is ascending) is not checked./
+--
+-- > fromAscListWith (++) [(3,"b"), (5,"a"), (5,"b")] == fromList [(3, "b"), (5, "ba")]
+-- > valid (fromAscListWith (++) [(3,"b"), (5,"a"), (5,"b")]) == True
+-- > valid (fromAscListWith (++) [(5,"a"), (3,"b"), (5,"b")]) == False
+fromAscListWith :: (CritBitKey k) => (a -> a -> a) -> [(k,a)] -> CritBit k a
+fromAscListWith f = fromAscListWithKey (\_ x y -> f x y)
+{-# INLINABLE fromAscListWith #-}
+
+-- | /O(n)/. Build a map from an ascending list in linear time with a
+-- combining function for equal keys.
+-- /The precondition (input list is ascending) is not checked./
+--
+-- > let f k a1 a2 = (show k) ++ ":" ++ a1 ++ a2
+-- > fromAscListWithKey f [(3,"b"), (5,"a"), (5,"b"), (5,"b")] == fromList [(3, "b"), (5, "5:b5:ba")]
+-- > valid (fromAscListWithKey f [(3,"b"), (5,"a"), (5,"b"), (5,"b")]) == True
+-- > valid (fromAscListWithKey f [(5,"a"), (3,"b"), (5,"b"), (5,"b")]) == False
+fromAscListWithKey :: (CritBitKey k) => (k -> a -> a -> a) -> [(k,a)] -> CritBit k a
+fromAscListWithKey _ [] = empty
+fromAscListWithKey _ [(k, v)] = singleton k v
+fromAscListWithKey f kvs = build 0 1 upper fromContext kvs RCNil
+  -- This implementation based on the idea of binary search in
+  -- suffix array using LCP array.
+  --
+  -- Input list is converted to array and processed top-down.
+  -- When building tree for interval we finds the length of
+  -- the common prefix of all keys in this interval. We never
+  -- compare known common prefixes, thus reducing number of
+  -- comparisons. Than we merge trees build recursively on
+  -- halves of this interval.
+  --
+  -- This algorithm runs in /O(n+K)/ time, where /K/ is the total
+  -- length of all keys minus . When many keys has equal prefixes,
+  -- the second summand could be much smaller.
+  --
+  -- See also:
+  --
+  -- Manber, Udi; Myers, Gene (1990). "Suffix arrays: a new method for
+  -- on-line string searches". In Proceedings of the first annual
+  -- ACM-SIAM symposium on Discrete algorithms 90 (319): 327.
+  where
+    upper = length kvs - 1
+    array = fst . (A.listArray (0, upper) kvs A.!)
+
+    fromContext = add (0, 0, 0::BitMask) $
+        (const $ \(RCCons node _ _ _) -> CritBit node)
+
+    build z left right cont xs cx
+      | left == right = add diffI cont xs cx
+      | otherwise     = (build diffO left      mid    $
+                         build diffO (mid + 1) right  cont) xs cx
+      where
+        mid = (left + right - 1) `div` 2
+        diffO = followPrefixesByteFrom z (fst (head xs)) (array right)
+        diffI = followPrefixesFrom     z (fst (head xs)) (array right)
+    {-# INLINE build #-}
+
+    add (byte, bits, _) cont (x:xs) cx
+        | bits == 0x1ff = let (k, v1) = x; (_, v2) = head xs
+                          in cont ((k, f k v2 v1) : tail xs) cx
+        | otherwise     = cont xs $ pop (uncurry Leaf x) cx
+      where
+        pop right cs@(RCCons left cbyte cbits cs')
+          | cbyte > byte || cbyte == byte && cbits > bits
+                = pop (Internal left right cbyte cbits) cs'
+          | otherwise = RCCons right byte bits cs
+        pop right cs  = RCCons right byte bits cs
+    add _ _ _ _ = error "CritBit.fromAscListWithKey.add: Unpossible"
+    {-# INLINE add #-}
+{-# INLINABLE fromAscListWithKey #-}
+
+-- | /O(n)/. Build a tree from an ascending list of distinct elements
+-- in linear time.
+-- /The precondition is not checked./
+--
+-- > fromDistinctAscList [(3,"b"), (5,"a")] == fromList [(3, "b"), (5, "a")]
+-- > valid (fromDistinctAscList [(3,"b"), (5,"a")])          == True
+-- > valid (fromDistinctAscList [(3,"b"), (5,"a"), (5,"b")]) == False
+fromDistinctAscList :: (CritBitKey k) => [(k,a)] -> CritBit k a
+fromDistinctAscList = fromAscListWithKey undefined
+{-# INLINABLE fromDistinctAscList #-}
+
+-- | One-hole CritBit context focused on the maximum leaf
+data RightContext k v
+    = RCNil
+    | RCCons !(Node k v) !Int !BitMask !(RightContext k v)
 
 -- | /O(n)/. Filter all values that satisfy the predicate.
 --
@@ -939,7 +1057,7 @@ findMax (CritBit root) = rightmost emptyMap (,) root
 -- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("b",3), ("c",7)]
 -- > deleteMin empty == empty
 deleteMin :: CritBit k v -> CritBit k v
-deleteMin m = updateExtremity goLeft (const (const Nothing)) m
+deleteMin m = updateMinWithKey (\_ _ -> Nothing) m
 {-# INLINABLE deleteMin #-}
 
 -- | /O(log n)/. Delete the maximal key. Returns an empty map if the
@@ -948,7 +1066,7 @@ deleteMin m = updateExtremity goLeft (const (const Nothing)) m
 -- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("a",5), ("b","3")]
 -- > deleteMin empty == empty
 deleteMax :: CritBit k v -> CritBit k v
-deleteMax m = updateExtremity goRight (const (const Nothing)) m
+deleteMax m = updateMaxWithKey (\_ _ -> Nothing) m
 {-# INLINABLE deleteMax #-}
 
 -- | /O(log n)/. Delete and find the minimal element.
@@ -956,14 +1074,8 @@ deleteMax m = updateExtremity goRight (const (const Nothing)) m
 -- > deleteFindMin (fromList [("a",5), ("b",3), ("c",10)]) == (("a",5), fromList[("b",3), ("c",10)])
 -- > deleteFindMin     Error: can not return the minimal element of an empty map
 deleteFindMin :: CritBit k v -> ((k, v), CritBit k v)
-deleteFindMin (CritBit root)   = let (km, r) = go root in (km, CritBit r)
-  where
-    go (Internal (Leaf k v) r _ _) = ((k, v), r)
-    go i@(Internal left _ _ _)     = (kmin, i { ileft = newLeft })
-        where (kmin, newLeft)      = go left
-    go (Leaf k v)                  = ((k, v), Empty)
-    go _ = error $ "CritBit.deleteFindMin: can not return the minimal element \
-                   \of an empty map"
+deleteFindMin = maybe (error "CritBit.deleteFindMin: cannot return the minimal \
+                             \element of an empty map") id . minViewWithKey
 {-# INLINABLE deleteFindMin #-}
 
 -- | /O(log n)/. Delete and find the maximal element.
@@ -971,14 +1083,8 @@ deleteFindMin (CritBit root)   = let (km, r) = go root in (km, CritBit r)
 -- > deleteFindMax (fromList [("a",5), ("b",3), ("c",10)]) == (("c",10), fromList[("a",5), ("b",3)])
 -- > deleteFindMax     Error: can not return the maximal element of an empty map
 deleteFindMax :: CritBit k v -> ((k, v), CritBit k v)
-deleteFindMax (CritBit root) = let (km, r) = go root in (km, CritBit r)
-  where
-    go (Internal l (Leaf k v) _ _) = ((k, v), l)
-    go i@(Internal _ right _ _)    = (kmin, i { iright = newRight })
-      where (kmin, newRight)       = go right
-    go (Leaf k v)                  = ((k, v), Empty)
-    go _ = error "CritBit.deleteFindMax: can not return the maximal element \
-                  \of an empty map"
+deleteFindMax = maybe (error "CritBit.deleteFindMax: cannot return the minimal \
+                             \element of an empty map") id . maxViewWithKey
 {-# INLINABLE deleteFindMax #-}
 
 -- | /O(log n)/. Retrieves the value associated with minimal key of the
@@ -988,8 +1094,7 @@ deleteFindMax (CritBit root) = let (km, r) = go root in (km, CritBit r)
 -- > minView (fromList [("a",5), ("b",3)]) == Just (5, fromList [("b",3)])
 -- > minView empty == Nothing
 minView :: CritBit k v -> Maybe (v, CritBit k v)
-minView (CritBit Empty) = Nothing
-minView m = Just $ first snd $ deleteFindMin m
+minView = fmap (first snd) . minViewWithKey
 {-# INLINABLE minView #-}
 
 -- | /O(log n)/. Retrieves the value associated with maximal key of the
@@ -998,8 +1103,7 @@ minView m = Just $ first snd $ deleteFindMin m
 -- > maxView (fromList [("a",5), ("b",3)]) == Just (3, fromList [("a",5)])
 -- > maxView empty == Nothing
 maxView :: CritBit k v -> Maybe (v, CritBit k v)
-maxView (CritBit Empty) = Nothing
-maxView m = Just $ first snd $ deleteFindMax m
+maxView = fmap (first snd) . maxViewWithKey
 {-# INLINABLE maxView #-}
 
 -- | /O(log n)/. Retrieves the minimal (key,value) pair of the map, and
@@ -1008,8 +1112,12 @@ maxView m = Just $ first snd $ deleteFindMax m
 -- > minViewWithKey (fromList [("a",5), ("b",3)]) == Just (("a",5), fromList [("b",3)])
 -- > minViewWithKey empty == Nothing
 minViewWithKey :: CritBit k v -> Maybe ((k, v), CritBit k v)
-minViewWithKey (CritBit Empty) = Nothing
-minViewWithKey m = Just $ deleteFindMin m
+minViewWithKey (CritBit root) = go root CritBit
+  where
+    go (Internal (Leaf lk lv) right _ _) cont = Just ((lk,lv), cont right)
+    go i@(Internal left _ _ _) cont = go left $ \l -> cont $! i { ileft = l }
+    go (Leaf lk lv) _ = Just ((lk,lv),empty)
+    go _ _ = Nothing
 {-# INLINABLE minViewWithKey #-}
 
 -- | /O(log n)/. Retrieves the maximal (key,value) pair of the map, and
@@ -1018,8 +1126,12 @@ minViewWithKey m = Just $ deleteFindMin m
 -- > maxViewWithKey (fromList [("a",5), ("b",3)]) == Just (("b",3), fromList [("a",5)])
 -- > maxViewWithKey empty == Nothing
 maxViewWithKey :: CritBit k v -> Maybe ((k,v), CritBit k v)
-maxViewWithKey (CritBit Empty) = Nothing
-maxViewWithKey m = Just $ deleteFindMax m
+maxViewWithKey (CritBit root) = go root CritBit
+  where
+    go (Internal left (Leaf lk lv) _ _) cont = Just ((lk,lv), cont left)
+    go i@(Internal _ right _ _) cont = go right $ \r -> cont $! i { iright = r }
+    go (Leaf lk lv) _ = Just ((lk,lv),empty)
+    go _ _ = Nothing
 {-# INLINABLE maxViewWithKey #-}
 
 first :: (a -> b) -> (a,c) -> (b,c)
@@ -1031,7 +1143,7 @@ first f (x,y) = (f x, y)
 -- > updateMin (\ a -> Just (a + 7)) (fromList [("a",5), ("b",3)]) == fromList [("a",12), ("b",3)]
 -- > updateMin (\ _ -> Nothing)      (fromList [("a",5), ("b",3)]) == fromList [("b",3)]
 updateMin :: (v -> Maybe v) -> CritBit k v -> CritBit k v
-updateMin f m = updateExtremity goLeft (const f) m
+updateMin f m = updateMinWithKey (const f) m
 {-# INLINABLE updateMin #-}
 
 -- | /O(log n)/. Update the value at the maximal key.
@@ -1039,7 +1151,7 @@ updateMin f m = updateExtremity goLeft (const f) m
 -- > updateMax (\ a -> Just (a + 7)) (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",10)]
 -- > updateMax (\ _ -> Nothing)      (fromList [("a",5), ("b",3)]) == fromList [("a",5)]
 updateMax :: (v -> Maybe v) -> CritBit k v -> CritBit k v
-updateMax f m = updateExtremity goRight (const f) m
+updateMax f m = updateMaxWithKey (const f) m
 {-# INLINABLE updateMax #-}
 
 -- | /O(log n)/. Update the value at the minimal key.
@@ -1047,7 +1159,13 @@ updateMax f m = updateExtremity goRight (const f) m
 -- > updateMinWithKey (\ k a -> Just (length k + a)) (fromList [("a",5), ("b",3)]) == fromList [("a",6), ("b",3)]
 -- > updateMinWithKey (\ _ _ -> Nothing)             (fromList [("a",5), ("b",3)]) == fromList [("b",3)]
 updateMinWithKey :: (k -> v -> Maybe v) -> CritBit k v -> CritBit k v
-updateMinWithKey f m = updateExtremity goLeft f m
+updateMinWithKey maybeUpdate (CritBit root) = CritBit $ go root
+  where
+    go i@(Internal left right _ _) = case go left of
+                                       Empty -> right
+                                       l     -> i { ileft = l }
+    go (Leaf lk lv) = maybe Empty (Leaf lk) $ maybeUpdate lk lv
+    go _ = Empty
 {-# INLINABLE updateMinWithKey #-}
 
 -- | /O(log n)/. Update the value at the maximal key.
@@ -1055,27 +1173,14 @@ updateMinWithKey f m = updateExtremity goLeft f m
 -- > updateMaxWithKey (\ k a -> Just (length k + a)) (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",4)]
 -- > updateMaxWithKey (\ _ _ -> Nothing)             (fromList [("a",5), ("b",3)]) == fromList [("a",5)]
 updateMaxWithKey :: (k -> v -> Maybe v) -> CritBit k v -> CritBit k v
-updateMaxWithKey f m = updateExtremity goRight f m
-{-# INLINABLE updateMaxWithKey #-}
-
-updateExtremity :: ((Node k v -> Node k v) -> Node k v -> Node k v)
-                -> (k -> v -> Maybe v)
-                -> CritBit k v
-                -> CritBit k v
-updateExtremity dir maybeUpdate (CritBit root) = CritBit $ go root
+updateMaxWithKey maybeUpdate (CritBit root) = CritBit $ go root
   where
-    go i@(Internal {}) = dir go i
-    go (Leaf k v0)     = maybe Empty (Leaf k) (maybeUpdate k v0)
-    go _               = root
-{-# INLINE updateExtremity #-}
-
-goLeft, goRight :: (Node k v -> Node k v) -> Node k v -> Node k v
-goLeft f n = n { ileft = f l }
-  where l = ileft n
-{-# INLINE goLeft #-}
-goRight f n = n { iright = f r }
-  where r = iright n
-{-# INLINE goRight #-}
+    go i@(Internal left right _ _) = case go right of
+                                       Empty -> left
+                                       r     -> i { iright = r }
+    go (Leaf lk lv) = maybe Empty (Leaf lk) $ maybeUpdate lk lv
+    go _ = Empty
+{-# INLINABLE updateMaxWithKey #-}
 
 -- | /O(log n)/. Insert a new key and value in the map.  If the key is
 -- already present in the map, the associated value is replaced with

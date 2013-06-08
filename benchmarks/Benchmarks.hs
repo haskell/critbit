@@ -11,7 +11,7 @@ import Criterion.Types (Pure)
 import Data.Foldable (foldMap)
 import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..), hashByteArray)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.Monoid (Sum(..))
 import Data.Text.Array (aBA)
 import Data.Text.Encoding (decodeUtf8)
@@ -32,6 +32,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Generic.Mutable as M
 import qualified Data.Vector.Unboxed as U
+import qualified Data.List as L
 
 #if 0
 instance Hashable Text where
@@ -96,7 +97,7 @@ updateFVal v = updateFKey undefined v
 main = do
   fileName <- getEnv "WORDS" `Exc.catch` \(_::IOError) ->
               return "/usr/share/dict/words"
-  ordKeys <- (every 5 . B.words) <$> B.readFile fileName
+  ordKeys <- L.sort <$> (every 5 . B.words) <$> B.readFile fileName
              `Exc.catch` \(err::IOError) -> do
                when (isDoesNotExistError err) $ do
                  hPutStrLn stderr
@@ -104,6 +105,8 @@ main = do
                      "to use it for benchmark data)")
                ioError err
   let b_ordKVs = zip ordKeys [(0::Int)..]
+      prefix = B.concat $ L.map fst b_ordKVs
+      b_longKVs = map (first (B.append prefix)) b_ordKVs
       b_revKVs = reverse b_ordKVs
   b_randKVs <- do
     gen <- create
@@ -378,6 +381,30 @@ main = do
         ]
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
+      , bgroup "fromAscList_short" [
+          bench "critbit" $ nf   C.fromAscList b_ordKVs
+        , bench "map"     $ nf Map.fromAscList b_ordKVs
+        ]
+      , bgroup "fromAscList_long" [
+          bench "critbit" $ nf   C.fromAscList b_longKVs
+        , bench "map"     $ nf Map.fromAscList b_longKVs
+        ]
+      , bgroup "fromAscListWith" [
+          bench "critbit" $ nf (  C.fromAscListWith (+)) b_ordKVs
+        , bench "map"     $ nf (Map.fromAscListWith (+)) b_ordKVs
+        ]
+      , bgroup "fromAscListWithKey" [
+          bench "critbit" $ nf (  C.fromAscListWithKey (const (+))) b_ordKVs
+        , bench "map"     $ nf (Map.fromAscListWithKey (const (+))) b_ordKVs
+        ]
+      , bgroup "fromAscDistinctList_short" [
+          bench "critbit" $ nf (  C.fromDistinctAscList) b_ordKVs
+        , bench "map"     $ nf (Map.fromDistinctAscList) b_ordKVs
+        ]
+      , bgroup "fromAscDistinctList_long" [
+          bench "critbit" $ nf (  C.fromDistinctAscList) b_longKVs
+        , bench "map"     $ nf (Map.fromDistinctAscList) b_longKVs
+        ]
       , bgroup "filter" $ let p  = (< 128)
                               p' = \e -> if p e then Just e else Nothing
                           in  function nf (C.filter p) (Map.filter p)
@@ -425,28 +452,28 @@ main = do
         , bench "map" $ whnf (Map.deleteMax) b_map
        ]
       , bgroup "deleteFindMin" $ [
-          bench "critbit" $ whnf (C.deleteFindMin) b_critbit
-        , bench "map" $ whnf (Map.deleteFindMin) b_map
+          bench "critbit" $ whnf (snd . C.deleteFindMin) b_critbit
+        , bench "map" $ whnf (snd . Map.deleteFindMin) b_map
         ]
       , bgroup "deleteFindMax" $ [
-          bench "critbit" $ whnf (C.deleteFindMax) b_critbit
-        , bench "map" $ whnf (Map.deleteFindMax) b_map
+          bench "critbit" $ whnf (snd . C.deleteFindMax) b_critbit
+        , bench "map" $ whnf (snd . Map.deleteFindMax) b_map
         ]
       , bgroup "minView" $ [
-          bench "critbit" $ whnf C.minView b_critbit
-        , bench "map" $ whnf Map.minView b_map
+          bench "critbit" $ whnf (snd . fromJust . C.minView) b_critbit
+        , bench "map" $ whnf (snd . fromJust . Map.minView) b_map
         ]
       , bgroup "maxView" $ [
-          bench "critbit" $ whnf C.maxView b_critbit
-        , bench "map" $ whnf Map.maxView b_map
+          bench "critbit" $ whnf (snd . fromJust . C.maxView) b_critbit
+        , bench "map" $ whnf (snd . fromJust . Map.maxView) b_map
         ]
       , bgroup "minViewWithKey" $ [
-          bench "critbit" $ whnf C.minViewWithKey b_critbit
-        , bench "map" $ whnf Map.minViewWithKey b_map
+          bench "critbit" $ whnf (snd . fromJust . C.minViewWithKey) b_critbit
+        , bench "map" $ whnf (snd . fromJust . Map.minViewWithKey) b_map
         ]
       , bgroup "maxViewWithKey" $ [
-          bench "critbit" $ whnf C.minViewWithKey b_critbit
-        , bench "map" $ whnf Map.minViewWithKey b_map
+          bench "critbit" $ whnf (snd . fromJust . C.minViewWithKey) b_critbit
+        , bench "map" $ whnf (snd . fromJust . Map.minViewWithKey) b_map
         ]
       , bgroup "updateMin" $ [
           bench "critbit" $ whnf (C.updateMin updateFVal) b_critbit
