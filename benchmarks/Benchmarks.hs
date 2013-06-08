@@ -32,6 +32,7 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Generic.Mutable as M
 import qualified Data.Vector.Unboxed as U
+import qualified Data.List as L
 
 #if 0
 instance Hashable Text where
@@ -96,7 +97,7 @@ updateFVal v = updateFKey undefined v
 main = do
   fileName <- getEnv "WORDS" `Exc.catch` \(_::IOError) ->
               return "/usr/share/dict/words"
-  ordKeys <- (every 5 . B.words) <$> B.readFile fileName
+  ordKeys <- L.sort <$> (every 5 . B.words) <$> B.readFile fileName
              `Exc.catch` \(err::IOError) -> do
                when (isDoesNotExistError err) $ do
                  hPutStrLn stderr
@@ -104,6 +105,8 @@ main = do
                      "to use it for benchmark data)")
                ioError err
   let b_ordKVs = zip ordKeys [(0::Int)..]
+      prefix = B.concat $ L.map fst b_ordKVs
+      b_longKVs = map (first (B.append prefix)) b_ordKVs
       b_revKVs = reverse b_ordKVs
   b_randKVs <- do
     gen <- create
@@ -378,6 +381,30 @@ main = do
         ]
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
+      , bgroup "fromAscList_short" [
+          bench "critbit" $ nf   C.fromAscList b_ordKVs
+        , bench "map"     $ nf Map.fromAscList b_ordKVs
+        ]
+      , bgroup "fromAscList_long" [
+          bench "critbit" $ nf   C.fromAscList b_longKVs
+        , bench "map"     $ nf Map.fromAscList b_longKVs
+        ]
+      , bgroup "fromAscListWith" [
+          bench "critbit" $ nf (  C.fromAscListWith (+)) b_ordKVs
+        , bench "map"     $ nf (Map.fromAscListWith (+)) b_ordKVs
+        ]
+      , bgroup "fromAscListWithKey" [
+          bench "critbit" $ nf (  C.fromAscListWithKey (const (+))) b_ordKVs
+        , bench "map"     $ nf (Map.fromAscListWithKey (const (+))) b_ordKVs
+        ]
+      , bgroup "fromAscDistinctList_short" [
+          bench "critbit" $ nf (  C.fromDistinctAscList) b_ordKVs
+        , bench "map"     $ nf (Map.fromDistinctAscList) b_ordKVs
+        ]
+      , bgroup "fromAscDistinctList_long" [
+          bench "critbit" $ nf (  C.fromDistinctAscList) b_longKVs
+        , bench "map"     $ nf (Map.fromDistinctAscList) b_longKVs
+        ]
       , bgroup "filter" $ let p  = (< 128)
                               p' = \e -> if p e then Just e else Nothing
                           in  function nf (C.filter p) (Map.filter p)

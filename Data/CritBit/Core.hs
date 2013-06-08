@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 -- |
 -- Module      :  Data.CritBit.Tree
 -- Copyright   :  (c) Bryan O'Sullivan 2013
@@ -26,6 +27,8 @@ module Data.CritBit.Core
     , calcDirection
     , direction
     , followPrefixes
+    , followPrefixesFrom
+    , followPrefixesByteFrom
     ) where
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
@@ -145,15 +148,24 @@ followPrefixes :: (CritBitKey k) =>
                   k             -- ^ The key from "outside" the tree.
                -> k             -- ^ Key from the leaf we reached.
                -> (Int, BitMask, Word16)
+followPrefixes = followPrefixesFrom 0
 {-# INLINE followPrefixes #-}
-followPrefixes k l = go 0
+
+-- | Figure out the offset of the first different byte in two keys,
+-- starting from specified position.
+--
+-- We return some auxiliary stuff that we'll bang on to help us figure
+-- out which direction to go in to insert a new node.
+followPrefixesFrom :: (CritBitKey k) =>
+                      Int           -- ^ Positition to start from
+                   -> k             -- ^ First key.
+                   -> k             -- ^ Second key.
+                   -> (Int, BitMask, Word16)
+followPrefixesFrom !position !k !l = (n, maskLowerBits (b `xor` c), c)
   where
-    go n | n == byteCount k = (n, maskLowerBits c, c)
-         | n == byteCount l = (n, maskLowerBits b, 0)
-         | b /= c           = (n, maskLowerBits (b `xor` c), c)
-         | otherwise        = go (n+1)
-      where b = getByte k n
-            c = getByte l n
+    n = followPrefixesByteFrom position k l
+    b = getByte k n
+    c = getByte l n
 
     maskLowerBits :: Word16 -> Word16
     maskLowerBits v = (n3 .&. (complement (n3 `shiftR` 1))) `xor` 0x1FF
@@ -162,6 +174,22 @@ followPrefixes k l = go 0
         n2 = n1 .|. (n1 `shiftR` 4)
         n1 = n0 .|. (n0 `shiftR` 2)
         n0 = v  .|. (v  `shiftR` 1)
+{-# INLINE followPrefixesFrom #-}
+
+-- | Figure out the offset of the first different byte in two keys,
+-- starting from specified position.
+followPrefixesByteFrom :: (CritBitKey k) =>
+                          Int           -- ^ Positition to start from
+                       -> k             -- ^ First key.
+                       -> k             -- ^ Second key.
+                       -> Int
+followPrefixesByteFrom !position !k !l = go position
+  where
+    go !n | b /= c || b == 0 || c == 0 = n
+          | otherwise                  = go (n + 1)
+      where b = getByte k n
+            c = getByte l n
+{-# INLINE followPrefixesByteFrom #-}
 
 leftmost, rightmost :: a -> (k -> v -> a) -> Node k v -> a
 leftmost  = extremity ileft
@@ -180,4 +208,5 @@ extremity direct onEmpty onLeaf node = go node
     go i@(Internal{}) = go $ direct i
     go (Leaf k v)     = onLeaf k v
     go _              = onEmpty
+    {-# INLINE go #-}
 {-# INLINE extremity #-}
