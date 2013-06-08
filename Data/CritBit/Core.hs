@@ -106,22 +106,38 @@ updateLookupWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k
 --
 -- (If you want a good little exercise, rewrite this function without
 -- using continuations, and benchmark the two versions.)
-updateLookupWithKey f k t@(CritBit root) = go root CritBit
+updateLookupWithKey f k t@(CritBit root) = top root
   where
-    go i@(Internal left right _ _) cont
-      | direction k i == 0 = go left $ \new ->
-                             case new of
-                               Empty -> cont right
-                               l     -> cont $! i { ileft = l }
-      | otherwise          = go right $ \new ->
-                             case new of
-                               Empty -> cont left
-                               r     -> cont $! i { iright = r }
-    go (Leaf lk lv) cont
-      | k == lk = case f k lv of
-                    Just lv' -> (Just lv', cont (Leaf lk lv'))
-                    Nothing  -> (Just lv, cont Empty)
-    go _ _    = (Nothing, t)
+    top i@(Internal left right _ _) = go i left right CritBit
+    top (Leaf lk lv) | k == lk =
+      maybeUpdate lk lv (\v -> CritBit $ Leaf lk v) (CritBit Empty)
+    top _ = (Nothing, t)
+
+    go i left right cont
+      | direction k i == 0 =
+        case left of
+          i'@(Internal left' right' _ _) ->
+            go i' left' right' $ \l -> cont $! i { ileft = l }
+          Leaf lk lv -> maybeUpdate lk lv
+                        (\v -> cont $! i { ileft = (Leaf lk v) })
+                        (cont right)
+          _ -> error "Data.CritBit.Core.updateLookupWithKey: Empty in tree."
+      | otherwise =
+        case right of
+          i'@(Internal left' right' _ _) ->
+            go i' left' right' $ \r -> cont $! i { iright = r }
+          Leaf lk lv -> maybeUpdate lk lv
+                        (\v -> cont $! i { iright = (Leaf lk v) })
+                        (cont left)
+          _ -> error "Data.CritBit.Core.updateLookupWithKey: Empty in tree."
+
+    maybeUpdate lk lv c1 c2
+      | k == lk = case f lk lv of
+                    Just lv' -> (Just lv', c1 lv')
+                    Nothing  -> (Just lv, c2)
+      | otherwise = (Nothing, t)
+    {-# INLINE maybeUpdate #-}
+
 {-# INLINABLE updateLookupWithKey #-}
 
 -- | Determine which direction we should move down the tree based on
