@@ -14,7 +14,8 @@ import Data.Foldable (foldMap)
 import Data.Functor.Identity (Identity(..))
 #endif
 
-import Data.List (unfoldr)
+import Data.List (unfoldr, sort, nubBy)
+import Data.Function (on)
 import Data.Map (Map)
 import Data.Monoid (Sum(..))
 import Data.String (IsString, fromString)
@@ -369,6 +370,33 @@ t_toAscList = isoWith C.toAscList Map.toAscList id id
 t_toDescList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_toDescList = isoWith C.toDescList Map.toDescList id id
 
+-- Check that 'toList's are equal, with input preprocessing
+(====) :: (CritBitKey k, Ord k) =>
+          ([(k, V)] -> CritBit k V) -> ([(k, V)] -> Map k V)
+       -> ([(k, V)] -> [(k, V)]) -> KV k -> Bool
+(====) f g p (KV kvs) = C.toList (f kvs') == Map.toList (g kvs')
+  where
+    kvs' = p kvs
+
+t_fromAscList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromAscList _ = (C.fromAscList ==== Map.fromAscList) sort
+
+t_fromAscListWith :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromAscListWith _ =
+    (C.fromAscListWith (+) ==== Map.fromAscListWith (+)) sort
+
+t_fromAscListWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromAscListWithKey _ =
+    (C.fromAscListWithKey f ==== Map.fromAscListWithKey f) sort
+  where
+    f k v1 v2 = fromIntegral (C.byteCount k) + v1 + 2 * v2
+
+t_fromDistinctAscList :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
+t_fromDistinctAscList _ k v =
+    ((( C.insert k v) .   C.fromDistinctAscList) ====
+    ((Map.insert k v) . Map.fromDistinctAscList))
+    (nubBy ((==) `on` fst) . sort)
+
 t_filter :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_filter = C.filter p === Map.filter p
   where p = (> (maxBound - minBound) `div` 2)
@@ -586,6 +614,10 @@ propertiesFor t = [
   , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t
   , testProperty "t_toAscList" $ t_toAscList t
   , testProperty "t_toDescList" $ t_toDescList t
+  , testProperty "t_fromAscList" $ t_fromAscList t
+  , testProperty "t_fromAscListWith" $ t_fromAscListWith t
+  , testProperty "t_fromAscListWithKey" $ t_fromAscListWithKey t
+  , testProperty "t_fromDistinctAscList" $ t_fromDistinctAscList t
   , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   , testProperty "t_filter" $ t_filter t

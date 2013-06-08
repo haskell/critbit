@@ -102,10 +102,10 @@ module Data.CritBit.Tree
     -- ** Ordered lists
     , toAscList
     , toDescList
-    -- , fromAscList
-    -- , fromAscListWith
-    -- , fromAscListWithKey
-    -- , fromDistinctAscList
+    , fromAscList
+    , fromAscListWith
+    , fromAscListWithKey
+    , fromDistinctAscList
 
     -- * Filter
     , filter
@@ -152,6 +152,7 @@ import Data.CritBit.Types.Internal
 import Data.Maybe (fromMaybe)
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.List as List
+import qualified Data.Array as A
 
 -- | /O(1)/. Is the map empty?
 --
@@ -791,6 +792,106 @@ toAscList m = foldrWithKey f [] m
 toDescList :: CritBit k v -> [(k,v)]
 toDescList m = foldlWithKey f [] m
   where f vs k v = (k,v):vs
+
+-- | /O(n)/. Build a tree from an ascending list in linear time.
+-- /The precondition (input list is ascending) is not checked./
+--
+-- > fromAscList [(3,"b"), (5,"a")]          == fromList [(3, "b"), (5, "a")]
+-- > fromAscList [(3,"b"), (5,"a"), (5,"b")] == fromList [(3, "b"), (5, "b")]
+-- > valid (fromAscList [(3,"b"), (5,"a"), (5,"b")]) == True
+-- > valid (fromAscList [(5,"a"), (3,"b"), (5,"b")]) == False
+fromAscList :: (CritBitKey k) => [(k, a)] -> CritBit k a
+fromAscList = fromAscListWithKey (\_ x _ -> x)
+{-# INLINABLE fromAscList #-}
+
+-- | /O(n)/. Build a tree from an ascending list in linear time
+-- with a combining function for equal keys.
+-- /The precondition (input list is ascending) is not checked./
+--
+-- > fromAscListWith (++) [(3,"b"), (5,"a"), (5,"b")] == fromList [(3, "b"), (5, "ba")]
+-- > valid (fromAscListWith (++) [(3,"b"), (5,"a"), (5,"b")]) == True
+-- > valid (fromAscListWith (++) [(5,"a"), (3,"b"), (5,"b")]) == False
+fromAscListWith :: (CritBitKey k) => (a -> a -> a) -> [(k,a)] -> CritBit k a
+fromAscListWith f = fromAscListWithKey (\_ x y -> f x y)
+{-# INLINABLE fromAscListWith #-}
+
+-- | /O(n)/. Build a map from an ascending list in linear time with a
+-- combining function for equal keys.
+-- /The precondition (input list is ascending) is not checked./
+--
+-- > let f k a1 a2 = (show k) ++ ":" ++ a1 ++ a2
+-- > fromAscListWithKey f [(3,"b"), (5,"a"), (5,"b"), (5,"b")] == fromList [(3, "b"), (5, "5:b5:ba")]
+-- > valid (fromAscListWithKey f [(3,"b"), (5,"a"), (5,"b"), (5,"b")]) == True
+-- > valid (fromAscListWithKey f [(5,"a"), (3,"b"), (5,"b"), (5,"b")]) == False
+fromAscListWithKey :: (CritBitKey k) => (k -> a -> a -> a) -> [(k,a)] -> CritBit k a
+fromAscListWithKey _ [] = empty
+fromAscListWithKey _ [(k, v)] = singleton k v
+fromAscListWithKey f kvs = build 0 1 upper fromContext kvs RCNil
+  -- This implementation based on the idea of binary search in
+  -- suffix array using LCP array.
+  --
+  -- Input list is converted to array and processed top-down.
+  -- When building tree for interval we finds the length of
+  -- the common prefix of all keys in this interval. We never
+  -- compare known common prefixes, thus reducing number of
+  -- comparisons. Than we merge trees build recursively on
+  -- halves of this interval.
+  --
+  -- This algorithm runs in /O(n+K)/ time, where /K/ is the total
+  -- length of all keys minus . When many keys has equal prefixes,
+  -- the second summand could be much smaller.
+  --
+  -- See also:
+  --
+  -- Manber, Udi; Myers, Gene (1990). "Suffix arrays: a new method for
+  -- on-line string searches". In Proceedings of the first annual
+  -- ACM-SIAM symposium on Discrete algorithms 90 (319): 327.
+  where
+    upper = length kvs - 1
+    array = fst . (A.listArray (0, upper) kvs A.!)
+
+    fromContext = add (0, 0, 0::BitMask) $
+        (const $ \(RCCons node _ _ _) -> CritBit node)
+
+    build z left right cont xs cx
+      | left == right = add diffI cont xs cx
+      | otherwise     = (build diffO left      mid    $
+                         build diffO (mid + 1) right  cont) xs cx
+      where
+        mid = (left + right - 1) `div` 2
+        diffO = followPrefixesByteFrom z (fst (head xs)) (array right)
+        diffI = followPrefixesFrom     z (fst (head xs)) (array right)
+    {-# INLINE build #-}
+
+    add (byte, bits, _) cont (x:xs) cx
+        | bits == 0x1ff = let (k, v1) = x; (_, v2) = head xs
+                          in cont ((k, f k v2 v1) : tail xs) cx
+        | otherwise     = cont xs $ pop (uncurry Leaf x) cx
+      where
+        pop right cs@(RCCons left cbyte cbits cs')
+          | cbyte > byte || cbyte == byte && cbits > bits
+                = pop (Internal left right cbyte cbits) cs'
+          | otherwise = RCCons right byte bits cs
+        pop right cs  = RCCons right byte bits cs
+    add _ _ _ _ = error "CritBit.fromAscListWithKey.add: Unpossible"
+    {-# INLINE add #-}
+{-# INLINABLE fromAscListWithKey #-}
+
+-- | /O(n)/. Build a tree from an ascending list of distinct elements
+-- in linear time.
+-- /The precondition is not checked./
+--
+-- > fromDistinctAscList [(3,"b"), (5,"a")] == fromList [(3, "b"), (5, "a")]
+-- > valid (fromDistinctAscList [(3,"b"), (5,"a")])          == True
+-- > valid (fromDistinctAscList [(3,"b"), (5,"a"), (5,"b")]) == False
+fromDistinctAscList :: (CritBitKey k) => [(k,a)] -> CritBit k a
+fromDistinctAscList = fromAscListWithKey undefined
+{-# INLINABLE fromDistinctAscList #-}
+
+-- | One-hole CritBit context focused on the maximum leaf
+data RightContext k v
+    = RCNil
+    | RCCons !(Node k v) !Int !BitMask !(RightContext k v)
 
 -- | /O(n)/. Filter all values that satisfy the predicate.
 --
