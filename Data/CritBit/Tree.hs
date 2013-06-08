@@ -690,7 +690,7 @@ intersectionWithKey f = binarySetOpWithKey (const Empty) f'
   where
     f' k v1 v2 = Just (f k v1 v2)
 
--- | Performs binary set operation on two maps
+-- | Perform binary set operation on two maps.
 binarySetOpWithKey :: (CritBitKey k)
     => (Node k v -> Node k x) -- ^ Process unmatched node in first map
     -> (k -> v -> w -> Maybe x) -- ^ Process matching values
@@ -699,13 +699,13 @@ binarySetOpWithKey :: (CritBitKey k)
     -> CritBit k x
 binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
   where
-    -- Assumes that empty nodes exist only on the top level
+    -- Assumes that empty nodes exist only on the top level.
     top Empty _ = Empty
     top a Empty = left a
     top a b = go a (minKey a) b (minKey b)
 
     -- Each node is followed by the minimum key in that node.
-    -- This trick assures that overall time spend by minKey in O(n+m)
+    -- This trick assures that overall time spend by minKey is O(n+m).
     go a@(Leaf ak av) _ (Leaf bk bv) _
         | ak == bk = case both ak av bv of
                        Just v  -> Leaf ak v
@@ -720,7 +720,7 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
         LT -> splitA a ak b bk
         GT -> splitB a ak b bk
         EQ -> link a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
-    -- Assumes that empty nodes exist only on the top level
+    -- Assumes that empty nodes exist only on the top level.
     go _ _ _ _ = error "Data.CritBit.Tree.binarySetOpWithKey.go: Empty"
 
     splitA a@(Internal al ar _ _) ak b bk =
@@ -736,8 +736,8 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
     {-# INLINE splitB #-}
 {-# INLINEABLE binarySetOpWithKey #-}
 
--- | Detects wether branch in 'Internal' node comes 'before' or 'after'
---   branch initiated by 'Leaf'
+-- | Detect whether branch in 'Internal' node comes 'before' or
+-- 'after' branch initiated by 'Leaf'.
 leafBranch :: CritBitKey k => Node k v -> Node k w -> k -> t -> t -> t
 leafBranch (Leaf lk _) (Internal _ _ sbyte sbits) sk before after
     | dbyte > sbyte || dbyte == sbyte && dbits >= sbits = before
@@ -747,7 +747,7 @@ leafBranch (Leaf lk _) (Internal _ _ sbyte sbits) sk before after
 leafBranch _ _ _ _ _ = error "Data.CritBit.Tree.leafBranch: unpossible"
 {-# INLINE leafBranch #-}
 
--- | Select child to link under node 'n' by 'k'
+-- | Select child to link under node 'n' by 'k'.
 switch :: (CritBitKey k) => k -> Node k v -> Node k w -> Node k w
        -> Node k w -> Node k w -> Node k w
 switch k n a0 b0 a1 b1
@@ -755,14 +755,14 @@ switch k n a0 b0 a1 b1
   | otherwise          = link n a1 b1
 {-# INLINE switch #-}
 
--- | Extracts minimum key from the subtree.
+-- | Extract minimum key from the subtree.
 minKey :: (CritBitKey k) => Node k v -> k
 minKey n = leftmost
     (error "Data.CritBit.Tree.minKey: Empty")
     (\k _ -> k) n
 {-# INLINE minKey #-}
 
--- | Links childs to the parent node
+-- | Link children to the parent node.
 link :: (CritBitKey k)
      => Node k v -- ^ parent
      -> Node k w -- ^ left child
@@ -844,19 +844,19 @@ fromAscListWithKey :: (CritBitKey k) => (k -> a -> a -> a) -> [(k,a)] -> CritBit
 fromAscListWithKey _ [] = empty
 fromAscListWithKey _ [(k, v)] = singleton k v
 fromAscListWithKey f kvs = build 0 1 upper fromContext kvs RCNil
-  -- This implementation based on the idea of binary search in
-  -- suffix array using LCP array.
+  -- This implementation is based on the idea of binary search in
+  -- a suffix array using LCP array.
   --
   -- Input list is converted to array and processed top-down.
   -- When building tree for interval we finds the length of
   -- the common prefix of all keys in this interval. We never
   -- compare known common prefixes, thus reducing number of
-  -- comparisons. Than we merge trees build recursively on
+  -- comparisons. Then we merge trees, building recursively on
   -- halves of this interval.
   --
   -- This algorithm runs in /O(n+K)/ time, where /K/ is the total
-  -- length of all keys minus . When many keys has equal prefixes,
-  -- the second summand could be much smaller.
+  -- length of all keys minus . When many keys have equal prefixes,
+  -- the second summand may be much smaller.
   --
   -- See also:
   --
@@ -973,9 +973,10 @@ mapEitherWithKey f (CritBit root) = (CritBit *** CritBit) $ go root
     go Empty      = (Empty, Empty)
 {-# INLINABLE mapEitherWithKey #-}
 
--- | /O(log n)/. The expression (@'split' k map@) is a pair @(map1,map2)@ where
--- the keys in @map1@ are smaller than @k@ and the keys in @map2@ larger than @k@.
--- Any key equal to @k@ is found in neither @map1@ nor @map2@.
+-- | /O(log n)/. The expression (@'split' k map@) is a pair
+-- @(map1,map2)@ where the keys in @map1@ are smaller than @k@ and the
+-- keys in @map2@ larger than @k@.  Any key equal to @k@ is found in
+-- neither @map1@ nor @map2@.
 --
 -- > split "a" (fromList [("b",1), ("d",2)]) == (empty, fromList [("b",1), ("d",2)])
 -- > split "b" (fromList [("b",1), ("d",2)]) == (empty, singleton "d" 2)
