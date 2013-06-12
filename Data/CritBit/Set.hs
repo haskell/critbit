@@ -35,8 +35,8 @@ module Data.CritBit.Set
     -- * Construction
     , empty
     , singleton
-    -- , insert
-    -- , delete
+    , insert
+    , delete
 
     -- * Combine
     -- , union
@@ -225,6 +225,18 @@ isSubsetOf = liftSS T.isSubmapOf
 isProperSubsetOf :: (CritBitKey a) => Set a -> Set a -> Bool
 isProperSubsetOf = liftSS T.isProperSubmapOf
 {-# INLINABLE isProperSubsetOf #-}
+
+-- | /O(k)/. Insert an element in a set.
+-- If the set already contains an element equal to the given value,
+-- it is replaced with the new value.
+insert :: (CritBitKey a) => a -> Set a -> Set a
+insert = (Set .) . liftVS (flip T.insert ())
+{-# INLINABLE insert #-}
+
+-- | /O(log n)/. Delete an element from a set.
+delete :: (CritBitKey a) => a -> Set a -> Set a
+delete = (Set .) . liftVS T.delete
+{-# INLINABLE delete #-}
 
 -- | Lifts tree operation to set operation
 liftS :: (CritBit a () -> r) -> Set a -> r
