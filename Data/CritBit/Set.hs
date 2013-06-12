@@ -62,14 +62,14 @@ module Data.CritBit.Set
     , foldl'
 
     -- * Min\/Max
-    -- , findMin
-    -- , findMax
-    -- , deleteMin
-    -- , deleteMax
-    -- , deleteFindMin
-    -- , deleteFindMax
-    -- , maxView
-    -- , minView
+    , findMin
+    , findMax
+    , deleteMin
+    , deleteMax
+    , deleteFindMin
+    , deleteFindMax
+    , maxView
+    , minView
 
     -- * Conversion
 
@@ -363,6 +363,52 @@ foldr f = liftVS (T.foldrWithKey (const . f))
 foldr' :: (a -> b -> b) -> b -> Set a -> b
 foldr' f = liftVS (T.foldrWithKey' (const . f))
 {-# INLINE foldr' #-}
+
+-- | /O(k)/. The minimal element of a set.
+findMin :: Set a -> a
+findMin = fst . liftS T.findMin
+{-# INLINE findMin #-}
+
+-- | /O(k)/. The maximal element of a set.
+findMax :: Set a -> a
+findMax = fst . liftS T.findMax
+{-# INLINE findMax #-}
+
+-- | /O(log n)/. Delete the minimal element. Returns an empty set if the set is empty.
+deleteMin :: Set a -> Set a
+deleteMin = Set . liftS T.deleteMin
+{-# INLINE deleteMin #-}
+
+-- | /O(log n)/. Delete the maximal element. Returns an empty set if the set is empty.
+deleteMax :: Set a -> Set a
+deleteMax = Set . liftS T.deleteMax
+{-# INLINE deleteMax #-}
+
+-- | /O(log n)/. Delete and find the minimal element.
+--
+-- > deleteFindMin set = (findMin set, deleteMin set)
+deleteFindMin :: Set a -> (a, Set a)
+deleteFindMin = (fst *** Set) . liftS T.deleteFindMin
+{-# INLINE deleteFindMin #-}
+
+-- | /O(log n)/. Delete and find the maximal element.
+--
+-- > deleteFindMax set = (findMax set, deleteMax set)
+deleteFindMax :: Set a -> (a, Set a)
+deleteFindMax = (fst *** Set) . liftS T.deleteFindMax
+{-# INLINE deleteFindMax #-}
+
+-- | /O(log n)/. Retrieves the minimal key of the set, and the set
+-- stripped of that element, or 'Nothing' if passed an empty set.
+minView :: Set a -> Maybe (a, Set a)
+minView = fmap (fst *** Set) . liftS T.minViewWithKey
+{-# INLINE minView #-}
+
+-- | /O(log n)/. Retrieves the maximal key of the set, and the set
+-- stripped of that element, or 'Nothing' if passed an empty set.
+maxView :: Set a -> Maybe (a, Set a)
+maxView = fmap (fst *** Set) . liftS T.maxViewWithKey
+{-# INLINE maxView #-}
 
 -- | Lifts tree operation to set operation
 liftS :: (CritBit a () -> r) -> Set a -> r
