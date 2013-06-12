@@ -73,7 +73,7 @@ module Data.CritBit.Tree
     , mapAccumWithKey
     , mapAccumRWithKey
     , mapKeys
-    -- , mapKeysWith
+    , mapKeysWith
     , mapKeysMonotonic
 
     -- * Folds
@@ -808,9 +808,27 @@ map = fmap
 -- > let f = fromString . (++ "1") . show
 -- > mapKeys f (fromList [("a", 5), ("b", 3)])            == fromList ([("a1", 5), ("b1", 3)])
 -- > mapKeys (\ _ -> "a") (fromList [("a", 5), ("b", 3)]) == singleton "a" 3
-mapKeys :: (CritBitKey k2) => (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
-mapKeys f = foldrWithKey g empty
-  where g k x m = insertWithKey (\_ _ x0 -> x0) (f k) x m
+mapKeys :: (CritBitKey k2)
+        => (k1 -> k2)
+        -> CritBit k1 v -> CritBit k2 v
+mapKeys f m = mapKeysWith (\_ v -> v) f m
+{-# INLINABLE mapKeys #-}
+
+-- | /O(n*log n)/.
+-- @'mapKeysWith' c f s@ is the map obtained by applying @f@ to each key of @s@.
+--
+-- The size of the result may be smaller if @f@ maps two or more distinct
+-- keys to the same new key.  In this case the associated values will be
+-- combined using @c@.
+--
+-- > mapKeysWith (+) (\ _ -> "a") (fromList [("b",1), ("a",2), ("d",3), ("c",4)]) == singleton "a" 10
+mapKeysWith :: (CritBitKey k2)
+            => (v -> v -> v)
+            -> (k1 -> k2)
+            -> CritBit k1 v -> CritBit k2 v
+mapKeysWith c f m = foldrWithKey ins empty m
+  where ins k v nm = insertWith c (f k) v nm
+{-# INLINABLE mapKeysWith #-}
 
 -- | /O(K)/.
 -- @'mapKeysMonotonic' f s == 'mapKeys' f s@, but works only when @f@

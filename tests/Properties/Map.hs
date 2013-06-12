@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, TypeFamilies #-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings #-}
 module Properties.Map
     where
 
@@ -9,8 +9,8 @@ import Data.Foldable (foldMap)
 import Data.Function (on)
 import Data.List (unfoldr, sort, nubBy)
 import Data.Map (Map)
-import Data.Monoid (Sum(..))
-import Data.String (IsString, fromString)
+import Data.Monoid (Monoid,Sum(..),mappend)
+import Data.String (IsString)
 import Data.Text (Text)
 import Data.Word (Word8)
 import Properties.Common
@@ -342,14 +342,21 @@ mapAccumWithKey critbitF mapF _ (KV kvs) = mappedC == mappedM
         mappedC = second C.toList . critbitF fun 0 $ (C.fromList kvs)
         mappedM = second Map.toList . mapF fun 0 $ (Map.fromList kvs)
 
-t_mapKeys :: (CritBitKey k, Ord k, IsString k, Show k) => k -> KV k -> Bool
-t_mapKeys = C.mapKeys f === Map.mapKeys f
-  where
-    f :: (CritBitKey k, Ord k, IsString k, Show k) => k -> k
-    f = fromString . (++ "test") . show
+prepends :: (CritBitKey k, Ord k, IsString k, Monoid k) => k -> k
+prepends = mappend "test"
 
-t_mapKeysMonotonic :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_mapKeysMonotonic = C.mapKeysMonotonic id === Map.mapKeysMonotonic id
+t_mapKeys :: (CritBitKey k, Ord k, IsString k, Monoid k) => k -> KV k -> Bool
+t_mapKeys = C.mapKeys prepends === Map.mapKeys prepends
+
+t_mapKeysWith :: (CritBitKey k, Ord k, IsString k, Monoid k)
+              => k -> KV k -> Bool
+t_mapKeysWith =
+  C.mapKeysWith (+) prepends === Map.mapKeysWith (+) prepends
+
+t_mapKeysMonotonic :: (CritBitKey k, Ord k, IsString k, Monoid k)
+                   => k -> KV k -> Bool
+t_mapKeysMonotonic =
+  C.mapKeysMonotonic prepends === Map.mapKeysMonotonic prepends
 
 t_mapAccumRWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_mapAccumRWithKey = mapAccumWithKey C.mapAccumRWithKey Map.mapAccumRWithKey
@@ -597,7 +604,7 @@ t_partition _ (KV kvs) = partCrit == partMap
     partCrit = fixup C.toList . C.partition odd . C.fromList $ kvs
     partMap  = fixup Map.toList . Map.partition odd . Map.fromList $ kvs
 
-propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, IsString k, Show k) => k -> [Test]
+propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, IsString k, Monoid k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
   , testProperty "t_fromList_size" $ t_fromList_size t
@@ -652,6 +659,7 @@ propertiesFor t = [
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapWithKey" $ t_mapWithKey t
   , testProperty "t_mapKeys" $ t_mapKeys t
+  , testProperty "t_mapKeysWith" $ t_mapKeysWith t
   , testProperty "t_mapKeysMonotonic" $ t_mapKeysMonotonic t
   , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t
   , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t
