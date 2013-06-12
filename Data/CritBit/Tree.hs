@@ -375,7 +375,7 @@ lookupOrd accepts k (CritBit root) = go root
       | otherwise          = go right
     go (Leaf lk lv)        = rewalk root
       where
-        finish (Leaf _ _) 
+        finish (Leaf _ _)
           | accepts (byteCompare lk k) = Just (lk, lv)
           | otherwise                  = Nothing
         finish node
@@ -394,7 +394,7 @@ lookupOrd accepts k (CritBit root) = go root
         ifGT = test GT  leftmost
         ifLT = test LT rightmost
         test v f node
-          | accepts v = f Nothing pair node 
+          | accepts v = f Nothing pair node
           | otherwise = Nothing
 {-# INLINABLE lookupOrd #-}
 
@@ -1086,7 +1086,7 @@ splitLookup k (CritBit root) =
     go _ = (Empty, Nothing, Empty)
 {-# INLINABLE splitLookup #-}
 
--- | /O(n+m)/. This function is defined as 
+-- | /O(n+m)/. This function is defined as
 --   (@'isSubmapOf' = 'isSubmapOfBy' (==)@).
 isSubmapOf :: (CritBitKey k, Eq v) => CritBit k v -> CritBit k v -> Bool
 isSubmapOf = isSubmapOfBy (==)
@@ -1106,7 +1106,7 @@ isSubmapOf = isSubmapOfBy (==)
 -- > isSubmapOfBy (==) (fromList [("a",2)]) (fromList [("a",1),("b",2)])
 -- > isSubmapOfBy (<)  (fromList [("a",1)]) (fromList [("a",1),("b",2)])
 -- > isSubmapOfBy (==) (fromList [("a",1),("b",2)]) (fromList [("a",1)])
-isSubmapOfBy :: (CritBitKey k) => (a -> b -> Bool) -> CritBit k a 
+isSubmapOfBy :: (CritBitKey k) => (a -> b -> Bool) -> CritBit k a
              -> CritBit k b -> Bool
 isSubmapOfBy f a b = submapTypeBy f a b /= No
 {-# INLINABLE isSubmapOfBy #-}
@@ -1171,16 +1171,16 @@ submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
 
     splitB a ak b@(Internal bl br _ _) bk = if t == No then No else Yes
       where
-        t = if direction ak b == 0 
+        t = if direction ak b == 0
             then go a ak bl bk
             else go a ak br (minKey br)
-                                            
-    splitB _ _ _ _ = 
+
+    splitB _ _ _ _ =
         error("Data.CritBit.Tree.isSubmapOfBy.splitB: unpossible")
     {-# INLINE splitB #-}
 
     minKey n = leftmost
-        (error "Data.CritBit.Tree.isSubmapOfBy.minKey: Empty") 
+        (error "Data.CritBit.Tree.isSubmapOfBy.minKey: Empty")
         (\k _ -> k) n
     {-# INLINE minKey #-}
 {-# INLINABLE submapTypeBy #-}
