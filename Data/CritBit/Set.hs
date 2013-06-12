@@ -55,13 +55,11 @@ module Data.CritBit.Set
     , mapMonotonic
 
     -- * Folds
-    -- , S.foldr
-    -- , S.foldl
+    , foldr
+    , foldl
     -- ** Strict folds
-    -- , foldr'
-    -- , foldl'
-    -- ** Legacy folds
-    -- , fold
+    , foldr'
+    , foldl'
 
     -- * Min\/Max
     -- , findMin
@@ -93,7 +91,8 @@ import Data.CritBit.Types.Internal (CritBit(..), CritBitKey, Node(..))
 import Data.Foldable (Foldable, foldMap)
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isJust)
-import Prelude hiding (null, filter, map)
+import Prelude hiding (null, filter, map, foldl, foldr)
+import qualified Data.List as List
 import qualified Data.CritBit.Tree as T
 
 -- | A set based on crit-bit trees.
@@ -253,7 +252,7 @@ union = (Set .) . liftSS T.union
 
 -- | The union of a list of sets: (@'unions' == 'foldl' 'union' 'empty'@).
 unions :: (CritBitKey a) => [Set a] -> Set a
-unions = foldl union empty
+unions = List.foldl' union empty
 {-# INLINABLE unions #-}
 
 -- | /O(K)/. The difference of two sets.
@@ -330,6 +329,40 @@ mapMonotonic :: (CritBitKey a2) => (a1 -> a2) -> Set a1 -> Set a2
 mapMonotonic = error "Depends on T.mapKeysMonotonic"
 --mapMonotonic = (Set .) . liftVS T.mapKeysMonotonic
 {-# INLINABLE mapMonotonic #-}
+
+-- | /O(n)/. Fold the elements in the set using the given left-associative
+-- binary operator, such that @'foldl' f z == 'Prelude.foldl' f z . 'toAscList'@.
+--
+-- For example,
+--
+-- > toDescList set = foldl (flip (:)) [] set
+foldl :: (a -> b -> a) -> a -> Set b -> a
+foldl f = liftVS (T.foldlWithKey ((const .) . f))
+{-# INLINE foldl #-}
+
+-- | /O(n)/. A strict version of 'foldl'. Each application of the operator is
+-- evaluated before using the result in the next application. This
+-- function is strict in the starting value.
+foldl' :: (a -> b -> a) -> a -> Set b -> a
+foldl' f = liftVS (T.foldlWithKey' ((const .) . f))
+{-# INLINE foldl' #-}
+
+-- | /O(n)/. Fold the elements in the set using the given right-associative
+-- binary operator, such that @'foldr' f z == 'Prelude.foldr' f z . 'toAscList'@.
+--
+-- For example,
+--
+-- > toAscList set = foldr (:) [] set
+foldr :: (a -> b -> b) -> b -> Set a -> b
+foldr f = liftVS (T.foldrWithKey (const . f))
+{-# INLINE foldr #-}
+
+-- | /O(n)/. A strict version of 'foldr'. Each application of the operator is
+-- evaluated before using the result in the next application. This
+-- function is strict in the starting value.
+foldr' :: (a -> b -> b) -> b -> Set a -> b
+foldr' f = liftVS (T.foldrWithKey' (const . f))
+{-# INLINE foldr' #-}
 
 -- | Lifts tree operation to set operation
 liftS :: (CritBit a () -> r) -> Set a -> r
