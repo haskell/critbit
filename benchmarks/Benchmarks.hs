@@ -421,6 +421,12 @@ main = do
                               p' = \e -> if p e then Just e else Nothing
                           in  function nf (C.filter p) (Map.filter p)
                                           (H.filter p) (Trie.filterMap p')
+      , bgroup "mapMaybe" $
+        let f x = if even x then Just (2 * x) else Nothing
+        in [
+          bench "critbit" $ whnf (C.mapMaybe f) b_critbit
+        , bench "map" $ whnf (Map.mapMaybe f) b_map
+        ]
       , bgroup "mapMaybeWithKey" $
         let f k v | even (fromIntegral v :: Int) =
                     Just (v + fromIntegral (C.byteCount k))

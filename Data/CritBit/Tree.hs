@@ -115,7 +115,7 @@ module Data.CritBit.Tree
     , partition
     , partitionWithKey
 
-    -- , mapMaybe
+    , mapMaybe
     , mapMaybeWithKey
     -- , mapEither
     , mapEitherWithKey
@@ -985,6 +985,13 @@ filterWithKey p (CritBit root)    = CritBit $ fromMaybe Empty (go root)
         go l@(Leaf k v)           = guard (p k v) *> pure l
         go Empty                  = Nothing
 {-# INLINABLE filterWithKey #-}
+
+-- | /O(n)/. Map values and collect the 'Just' results.
+--
+-- > let f x = if x == 5 then Just 10 else Nothing
+-- > mapMaybe f (fromList [("a",5), ("b",3)]) == singleton "a" 10
+mapMaybe :: (a -> Maybe b) -> CritBit k a -> CritBit k b
+mapMaybe = mapMaybeWithKey . const
 
 -- | /O(n)/. Map keys\/values and collect the 'Just' results.
 --
