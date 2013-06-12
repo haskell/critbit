@@ -18,7 +18,7 @@ module Data.CritBit.Set
     Set
 
     -- * Operators
-    -- , (\\)
+    , (\\)
 
     -- * Query
     , null
@@ -39,16 +39,16 @@ module Data.CritBit.Set
     , delete
 
     -- * Combine
-    -- , union
-    -- , unions
-    -- , difference
-    -- , intersection
+    , union
+    , unions
+    , difference
+    , intersection
 
     -- * Filter
-    -- , S.filter
-    -- , partition
-    -- , split
-    -- , splitMember
+    , filter
+    , partition
+    , split
+    , splitMember
 
     -- * Map
     -- , S.map
@@ -88,10 +88,12 @@ module Data.CritBit.Set
     ) where
 
 import Control.DeepSeq (NFData)
+import Control.Arrow ((***))
 import Data.CritBit.Types.Internal (CritBit(..), CritBitKey, Node(..))
 import Data.Foldable (Foldable, foldMap)
 import Data.Monoid (Monoid(..))
-import Prelude hiding (null)
+import Data.Maybe (isJust)
+import Prelude hiding (null, filter)
 import qualified Data.CritBit.Tree as T
 
 -- | A set based on crit-bit trees.
@@ -109,6 +111,11 @@ foldSet f (Internal l r _ _) = mappend (foldSet f l) (foldSet f r)
 foldSet f (Leaf k _)         = f k
 foldSet _ Empty              = mempty
 {-# INLINABLE foldSet #-}
+
+-- | Same as 'difference'.
+(\\) :: CritBitKey a => Set a -> Set a -> Set a
+s \\ p = difference s p
+{-# INLINABLE (\\) #-}
 
 -- | /O(1)/. Is the set empty?
 --
@@ -238,13 +245,77 @@ delete :: (CritBitKey a) => a -> Set a -> Set a
 delete = (Set .) . liftVS T.delete
 {-# INLINABLE delete #-}
 
+-- | /O(K)/. The union of two sets, preferring the first set when
+-- equal elements are encountered.
+union :: (CritBitKey a) => Set a -> Set a -> Set a
+union = (Set .) . liftSS T.union
+{-# INLINABLE union #-}
+
+-- | The union of a list of sets: (@'unions' == 'foldl' 'union' 'empty'@).
+unions :: (CritBitKey a) => [Set a] -> Set a
+unions = foldl union empty
+{-# INLINABLE unions #-}
+
+-- | /O(K)/. The difference of two sets.
+difference :: (CritBitKey a) => Set a -> Set a -> Set a
+difference = (Set .) . liftSS T.union
+{-# INLINABLE difference #-}
+
+-- | /O(K)/. The intersection of two sets. Elements of the
+-- result come from the first set.
+intersection :: (CritBitKey a) => Set a -> Set a -> Set a
+intersection = (Set .) . liftSS T.union
+{-# INLINABLE intersection #-}
+
+-- | /O(n)/. Filter all elements that satisfy the predicate.
+--
+-- > filter (> "a") (fromList ["a", "b"]) == fromList [("3","b")]
+-- > filter (> "x") (fromList ["a", "b"]) == empty
+-- > filter (< "a") (fromList ["a", "b"]) == empty
+filter :: (a -> Bool) -> Set a -> Set a
+filter = (Set .) . liftVS (T.filterWithKey . (const .))
+{-# INLINABLE filter #-}
+
+-- | /O(n)/. Partition the set into two sets, one with all elements that satisfy
+-- the predicate and one with all elements that don't satisfy the predicate.
+-- See also 'split'.
+partition :: (CritBitKey a) => (a -> Bool) -> Set a -> (Set a, Set a)
+partition = ((Set *** Set) .) . liftVS (T.partitionWithKey . (const .))
+{-# INLINABLE partition #-}
+
+-- | /O(k)/. The expression (@'split' x set@) is a pair @(set1,set2)@
+-- where @set1@ comprises the elements of @set@ less than @x@ and @set2@
+-- comprises the elements of @set@ greater than @x@.
+--
+-- > split "a" (fromList ["b", "d"]) == (empty, fromList ["b", "d")])
+-- > split "b" (fromList ["b", "d"]) == (empty, singleton "d")
+-- > split "c" (fromList ["b", "d"]) == (singleton "b", singleton "d")
+-- > split "d" (fromList ["b", "d"]) == (singleton "b", empty)
+-- > split "e" (fromList ["b", "d"]) == (fromList ["b", "d"], empty)
+split :: (CritBitKey a) => a -> Set a -> (Set a, Set a)
+split = ((Set *** Set) .) . liftVS T.split
+{-# INLINABLE split #-}
+
+-- | /O(log n)/. Performs a 'split' but also returns whether the pivot
+-- element was found in the original set.
+--
+-- > splitMember "a" (fromList ["b", "d"]) == (empty, False, fromList ["b", "d"])
+-- > splitMember "b" (fromList ["b", "d"]) == (empty, True, singleton "d")
+-- > splitMember "c" (fromList ["b", "d"]) == (singleton "b", False, singleton "d")
+-- > splitMember "d" (fromList ["b", "d"]) == (singleton "b", True, empty)
+-- > splitMember "e" (fromList ["b", "d"]) == (fromList ["b", "d"], False, empty)
+splitMember :: (CritBitKey a) => a -> Set a -> (Set a, Bool, Set a)
+splitMember = (pack .) . liftVS T.splitLookup
+  where pack (l, m, r) = (Set l, isJust m, Set r)
+{-# INLINABLE splitMember #-}
+
 -- | Lifts tree operation to set operation
 liftS :: (CritBit a () -> r) -> Set a -> r
 liftS f (Set s) = f s
 {-# INLINE liftS #-}
 
 -- | Lifts (value, tree) operation to (value, set) operation
-liftVS :: (a -> CritBit a () -> r) -> a -> Set a -> r
+liftVS :: (t -> CritBit a () -> r) -> t -> Set a -> r
 liftVS = (liftS .)
 {-# INLINE liftVS #-}
 
