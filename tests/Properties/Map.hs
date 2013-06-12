@@ -597,7 +597,7 @@ t_partition _ (KV kvs) = partCrit == partMap
     partCrit = fixup C.toList . C.partition odd . C.fromList $ kvs
     partMap  = fixup Map.toList . Map.partition odd . Map.fromList $ kvs
 
-propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
+propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, IsString k, Show k) => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
   , testProperty "t_fromList_size" $ t_fromList_size t
@@ -651,7 +651,7 @@ propertiesFor t = [
   , testProperty "t_fromSet" $ t_fromSet t
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapWithKey" $ t_mapWithKey t
-  , testProperty "t_mapKeys" $ t_map t
+  , testProperty "t_mapKeys" $ t_mapKeys t
   , testProperty "t_mapKeysMonotonic" $ t_mapKeysMonotonic t
   , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t
   , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t
