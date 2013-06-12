@@ -74,7 +74,7 @@ module Data.CritBit.Set
     -- * Conversion
 
     -- ** List
-    -- , elems
+    , elems
     , toList
     , fromList
 
@@ -129,6 +129,7 @@ null (Set a) = T.null a
 -- > size empty == 0
 empty :: Set a
 empty = Set $ T.empty
+{-# INLINABLE empty #-}
 
 -- | /O(1)/. A set with a single element.
 --
@@ -144,6 +145,10 @@ singleton a = Set $ T.singleton a ()
 fromList :: (CritBitKey a) => [a] -> Set a
 fromList xs = Set . T.fromList . zip xs . repeat $ ()
 {-# INLINABLE fromList #-}
+
+-- | /O(n)/. An alias of 'toList'. The elements of a set in ascending order.
+elems :: Set a -> [a]
+elems = toList
 
 -- | /O(n)/. Convert the set to a list of values. The list returned
 -- will be sorted in lexicographically ascending order.
