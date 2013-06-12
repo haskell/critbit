@@ -51,8 +51,8 @@ module Data.CritBit.Set
     , splitMember
 
     -- * Map
-    -- , S.map
-    -- , mapMonotonic
+    , map
+    , mapMonotonic
 
     -- * Folds
     -- , S.foldr
@@ -93,7 +93,7 @@ import Data.CritBit.Types.Internal (CritBit(..), CritBitKey, Node(..))
 import Data.Foldable (Foldable, foldMap)
 import Data.Monoid (Monoid(..))
 import Data.Maybe (isJust)
-import Prelude hiding (null, filter)
+import Prelude hiding (null, filter, map)
 import qualified Data.CritBit.Tree as T
 
 -- | A set based on crit-bit trees.
@@ -308,6 +308,28 @@ splitMember :: (CritBitKey a) => a -> Set a -> (Set a, Bool, Set a)
 splitMember = (pack .) . liftVS T.splitLookup
   where pack (l, m, r) = (Set l, isJust m, Set r)
 {-# INLINABLE splitMember #-}
+
+-- | /O(K)/. @'map' f s@ is the set obtained by applying @f@ to each
+-- element of @s@.
+--
+-- It's worth noting that the size of the result may be smaller if,
+-- for some @(x,y)@, @x \/= y && f x == f y@
+map :: (CritBitKey a2) => (a1 -> a2) -> Set a1 -> Set a2
+map = (Set .) . liftVS T.mapKeys
+{-# INLINABLE map #-}
+
+-- | /O(n)/. The @'mapMonotonic' f s == 'map' f s@, but works only when
+-- @f@ is monotonic.
+-- /The precondition is not checked./
+-- Semi-formally, we have:
+--
+-- > and [x < y ==> f x < f y | x <- ls, y <- ls]
+-- >                     ==> mapMonotonic f s == map f s
+-- >     where ls = toList s
+mapMonotonic :: (CritBitKey a2) => (a1 -> a2) -> Set a1 -> Set a2
+mapMonotonic = error "Depends on T.mapKeysMonotonic"
+--mapMonotonic = (Set .) . liftVS T.mapKeysMonotonic
+{-# INLINABLE mapMonotonic #-}
 
 -- | Lifts tree operation to set operation
 liftS :: (CritBit a () -> r) -> Set a -> r
