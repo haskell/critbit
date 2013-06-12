@@ -253,6 +253,13 @@ t_mapMaybeWithKey = C.mapMaybeWithKey f === Map.mapMaybeWithKey f
         Just (x + fromIntegral (C.byteCount k))
       | otherwise = Nothing
 
+t_mapEither :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapEither = 
+    isoWith (C.toList *** C.toList) (Map.toList *** Map.toList)
+            (C.mapEither f) (Map.mapEither f)
+  where
+    f x = if even x then Left (2 * x) else Right (3 * x)
+
 t_mapEitherWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_mapEitherWithKey =
     isoWith (C.toList *** C.toList) (Map.toList *** Map.toList)
@@ -642,6 +649,7 @@ propertiesFor t = [
   , testProperty "t_updateLookupWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_mapMaybe" $ t_mapMaybe t
   , testProperty "t_mapMaybeWithKey" $ t_mapMaybeWithKey t
+  , testProperty "t_mapEither" $ t_mapEither t
   , testProperty "t_mapEitherWithKey" $ t_mapEitherWithKey t
   , testProperty "t_unionL" $ t_unionL t
   , testProperty "t_unionR" $ t_unionR t

@@ -117,7 +117,7 @@ module Data.CritBit.Tree
 
     , mapMaybe
     , mapMaybeWithKey
-    -- , mapEither
+    , mapEither
     , mapEitherWithKey
 
     , split
@@ -1010,6 +1010,17 @@ mapMaybeWithKey f (CritBit root) = CritBit $ go root
                       Just v' -> Leaf k v'
     go Empty      = Empty
 {-# INLINABLE mapMaybeWithKey #-}
+
+-- | /O(n)/. Map values and separate the 'Left' and 'Right' results.
+--
+-- > let f a = if a < 5 then Left a else Right a
+-- > mapEither f (fromList [("a",5), ("b",3), ("x",1), ("z",7)])
+-- >     == (fromList [("b",3), ("x",1)], fromList [("a",5), ("z",7)])
+-- >
+-- > mapEither (\ a -> Right a) (fromList [("a",5), ("b",3), ("x",1), ("z",7)])
+-- >     == (empty, fromList [("a",5), ("b",3), ("x",1), ("z",7)])
+mapEither :: (a -> Either b c) -> CritBit k a -> (CritBit k b, CritBit k c)
+mapEither = mapEitherWithKey . const
 
 -- | /O(n)/. Map keys\/values and separate the 'Left' and 'Right' results.
 --

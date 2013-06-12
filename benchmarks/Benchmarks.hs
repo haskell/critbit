@@ -435,6 +435,12 @@ main = do
           bench "critbit" $ whnf (C.mapMaybeWithKey f) b_critbit
         , bench "map" $ whnf (Map.mapMaybeWithKey f) b_map
         ]
+      , bgroup "mapEither" $
+        let f x = if even x then Left (2 * x) else Right (3 * x)
+        in [
+          bench "critbit" $ whnf (C.mapEither f) b_critbit
+        , bench "map" $ whnf (Map.mapEither f) b_map
+        ]
       , bgroup "mapEitherWithKey" $
         let f k v | even (fromIntegral v :: Int) =
                     Left (v + fromIntegral (C.byteCount k))
