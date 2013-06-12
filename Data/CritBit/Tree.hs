@@ -21,7 +21,9 @@ module Data.CritBit.Tree
     , lookup
     , findWithDefault
     , lookupGT
-    -- , lookupGE
+    , lookupGE
+    , lookupLT
+    , lookupLE
 
     -- * Construction
     , empty
@@ -325,37 +327,76 @@ findWithDefault :: (CritBitKey k) =>
 findWithDefault d k m = lookupWith d id k m
 {-# INLINABLE findWithDefault #-}
 
--- | /O(log n)/. Find smallest key greater than the given one and
+-- | /O(k)/. Find smallest key greater than the given one and
 -- return the corresponding (key, value) pair.
 --
 -- > lookupGT "aa" (fromList [("a",3), ("b",5)]) == Just ("b",5)
 -- > lookupGT "b"  (fromList [("a",3), ("b",5)]) == Nothing
 lookupGT :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
-lookupGT k (CritBit root) = go root
+lookupGT k r = lookupOrd (GT ==) k r
+{-# INLINABLE lookupGT #-}
+
+-- | /O(k)/. Find smallest key greater than or equal to the given one and
+-- return the corresponding (key, value) pair.
+--
+-- > lookupGE "aa" (fromList [("a",3), ("b",5)]) == Just("b",5)
+-- > lookupGE "b"  (fromList [("a",3), ("b",5)]) == Just("b",5)
+-- > lookupGE "bb" (fromList [("a",3), ("b",5)]) == Nothing
+lookupGE :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
+lookupGE k r = lookupOrd (LT /=) k r
+{-# INLINABLE lookupGE #-}
+
+-- | /O(k)/. Find largest key smaller than the given one and
+-- return the corresponding (key, value) pair.
+--
+-- > lookupLT "aa" (fromList [("a",3), ("b",5)]) == Just ("a",3)
+-- > lookupLT "a"  (fromList [("a",3), ("b",5)]) == Nothing
+lookupLT :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
+lookupLT k r = lookupOrd (LT ==) k r
+{-# INLINABLE lookupLT #-}
+
+-- | /O(k)/. Find lagest key smaller than or equal to the given one and
+-- return the corresponding (key, value) pair.
+--
+-- > lookupGE "bb" (fromList [("aa",3), ("b",5)]) == Just("b",5)
+-- > lookupGE "aa" (fromList [("aa",3), ("b",5)]) == Just("aa",5)
+-- > lookupGE "a"  (fromList [("aa",3), ("b",5)]) == Nothing
+lookupLE :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
+lookupLE k r = lookupOrd (GT /=) k r
+{-# INLINABLE lookupLE #-}
+
+-- | /O(k)/. Common part of lookupXX functions.
+lookupOrd :: (CritBitKey k) => (Ordering -> Bool) -> k -> CritBit k v -> Maybe (k, v)
+lookupOrd accepts k (CritBit root) = go root
   where
+    go Empty = Nothing
     go i@(Internal left right _ _)
       | direction k i == 0 = go left
       | otherwise          = go right
     go (Leaf lk lv)        = rewalk root
       where
-        finish (Leaf _ _) = case byteCompare k lk of
-                              LT -> Just (lk, lv)
-                              _ -> Nothing
+        finish (Leaf _ _) 
+          | accepts (byteCompare lk k) = Just (lk, lv)
+          | otherwise                  = Nothing
         finish node
-          | calcDirection nob c == 0 = Nothing
-          | otherwise                = leftmost Nothing pair node
+          | calcDirection nob c == 0 = ifLT node
+          | otherwise                = ifGT node
+
         rewalk i@(Internal left right byte otherBits)
           | byte > n                     = finish i
           | byte == n && otherBits > nob = finish i
-          | direction k i == 0       = case rewalk left of
-                                        Nothing -> leftmost Nothing pair right
-                                        wat     -> wat
-          | otherwise                    = rewalk right
+          | direction k i == 0           = rewalk left  <|> ifGT right
+          | otherwise                    = rewalk right <|> ifLT left
         rewalk i                         = finish i
+
         (n, nob, c) = followPrefixes k lk
         pair a b = Just (a, b)
-    go Empty = Nothing
-{-# INLINABLE lookupGT #-}
+        ifGT = test GT  leftmost
+        ifLT = test LT rightmost
+        test v f node
+          | accepts v = f Nothing pair node 
+          | otherwise = Nothing
+{-# INLINABLE lookupOrd #-}
 
 byteCompare :: (CritBitKey k) => k -> k -> Ordering
 byteCompare a b = go 0
