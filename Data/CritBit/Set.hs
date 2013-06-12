@@ -22,15 +22,15 @@ module Data.CritBit.Set
 
     -- * Query
     , null
-    -- , size
-    -- , member
-    -- , notMember
-    -- , lookupLT
-    -- , lookupGT
-    -- , lookupLE
-    -- , lookupGE
-    -- , isSubsetOf
-    -- , isProperSubsetOf
+    , size
+    , member
+    , notMember
+    , lookupLT
+    , lookupGT
+    , lookupLE
+    , lookupGE
+    , isSubsetOf
+    , isProperSubsetOf
 
     -- * Construction
     , empty
@@ -145,5 +145,98 @@ fromList xs = Set . T.fromList . zip xs . repeat $ ()
 -- > toList (fromList ["b", "a"]) == ["a", "b"]
 -- > toList empty == []
 toList :: Set a -> [a]
-toList (Set a) = T.keys a
+toList = liftS T.keys
 {-# INLINABLE toList #-}
+
+-- | /O(n)/. The number of elements in the set.
+--
+-- > size empty                      == 0
+-- > size (singleton "a")            == 1
+-- > size (fromList ["a", "c", "b"]) == 3
+size :: Set a -> Int
+size = liftS T.size
+{-# INLINABLE size #-}
+
+-- | /O(k)/. Is the element in the set?
+--
+-- > member "a" (fromList ["a", "b"]) == True
+-- > member "c" (fromList ["a", "b"]) == False
+--
+-- See also 'notMember'.
+member :: (CritBitKey a) => a -> Set a -> Bool
+member a (Set s) = T.member a s
+{-# INLINABLE member #-}
+
+-- | /O(k)/. Is the element not in the set?
+--
+-- > notMember "a" (fromList ["a", "b"]) == False
+-- > notMember "c" (fromList ["a", "b"]) == True
+--
+-- See also 'member'.
+notMember :: (CritBitKey a) => a -> Set a -> Bool
+notMember a (Set s) = T.notMember a s
+{-# INLINABLE notMember #-}
+
+-- | /O(k)/. Find largest element smaller than the given one.
+--
+-- > lookupLT "b"  (fromList ["a", "b"]) == Just "a"
+-- > lookupLT "aa" (fromList ["a", "b"]) == Just "a"
+-- > lookupLT "a"  (fromList ["a", "b"]) == Nothing
+lookupLT :: (CritBitKey a) => a -> Set a -> Maybe a
+lookupLT = (fmap fst .) . liftVS T.lookupLT
+{-# INLINABLE lookupLT #-}
+
+-- | /O(k)/. Find smallest element greater than the given one.
+--
+-- > lookupGT "b"  (fromList ["a", "b"]) == Nothing
+-- > lookupGT "aa" (fromList ["a", "b"]) == Just "b"
+-- > lookupGT "a"  (fromList ["a", "b"]) == Just "b"
+lookupGT :: (CritBitKey a) => a -> Set a -> Maybe a
+lookupGT = (fmap fst .) . liftVS T.lookupGT
+{-# INLINABLE lookupGT #-}
+
+-- | /O(k)/. Find lagest element smaller than or equal to the given one.
+--
+-- > lookupGE "b"  (fromList ["a", "b"]) == Just "b"
+-- > lookupGE "aa" (fromList ["a", "b"]) == Just "b"
+-- > lookupGE "a"  (fromList ["a", "b"]) == Just "a"
+-- > lookupGE ""   (fromList ["a", "b"]) == Nothing
+lookupLE :: (CritBitKey a) => a -> Set a -> Maybe a
+lookupLE = (fmap fst .) . liftVS T.lookupLE
+{-# INLINABLE lookupLE #-}
+
+-- | /O(k)/. Find smallest element greater than or equal to the given one.
+--
+-- > lookupGE "aa" (fromList ["a", "b"]) == Just "b"
+-- > lookupGE "b"  (fromList ["a", "b"]) == Just "b"
+-- > lookupGE "bb" (fromList ["a", "b"]) == Nothing
+lookupGE :: (CritBitKey a) => a -> Set a -> Maybe a
+lookupGE = (fmap fst .) . liftVS T.lookupGE
+{-# INLINABLE lookupGE #-}
+
+-- | /O(n+m)/. Is this a subset?
+-- @(s1 `isSubsetOf` s2)@ tells whether @s1@ is a subset of @s2@.
+isSubsetOf :: (CritBitKey a) => Set a -> Set a -> Bool
+isSubsetOf = liftSS T.isSubmapOf
+{-# INLINABLE isSubsetOf #-}
+
+-- | /O(n+m)/. Is this a proper subset (ie. a subset but not equal)?
+-- @(s1 `isSubsetOf` s2)@ tells whether @s1@ is a proper subset of @s2@.
+isProperSubsetOf :: (CritBitKey a) => Set a -> Set a -> Bool
+isProperSubsetOf = liftSS T.isProperSubmapOf
+{-# INLINABLE isProperSubsetOf #-}
+
+-- | Lifts tree operation to set operation
+liftS :: (CritBit a () -> r) -> Set a -> r
+liftS f (Set s) = f s
+{-# INLINE liftS #-}
+
+-- | Lifts (value, tree) operation to (value, set) operation
+liftVS :: (a -> CritBit a () -> r) -> a -> Set a -> r
+liftVS = (liftS .)
+{-# INLINE liftVS #-}
+
+-- | Lifts (tree, tree) operation to (set, set) operation
+liftSS :: (CritBit a () -> CritBit a () -> r) -> Set a -> Set a -> r
+liftSS = liftS . (liftS .)
+{-# INLINE liftSS #-}
