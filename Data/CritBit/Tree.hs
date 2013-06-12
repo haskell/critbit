@@ -73,7 +73,7 @@ module Data.CritBit.Tree
     , mapAccumWithKey
     , mapAccumRWithKey
     , mapKeys
-    -- , mapKeysWith
+    , mapKeysWith
     -- , mapKeysMonotonic
 
     -- * Folds
@@ -804,6 +804,19 @@ map = fmap
 mapKeys :: (CritBitKey k2) => (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
 mapKeys f = foldrWithKey g empty
   where g k x m = insertWithKey (\_ _ x0 -> x0) (f k) x m
+
+-- | /O(K)/.
+-- @'mapKeysWith' c f s@ is the map obtained by applying @f@ to each key of @s@.
+--
+-- The size of the result may be smaller if @f@ maps two or more distinct
+-- keys to the same new key.  In this case the associated values will be
+-- combined using @c@.
+--
+-- > mapKeysWith (++) (\ _ -> 1) (fromList [(1,"b"), (2,"a"), (3,"d"), (4,"c")]) == singleton 1 "cdab"
+-- > mapKeysWith (++) (\ _ -> 3) (fromList [(1,"b"), (2,"a"), (3,"d"), (4,"c")]) == singleton 3 "cdab"
+mapKeysWith :: (CritBitKey k2) => (v -> v -> v) -> (k1 -> k2)
+            -> CritBit k1 v -> CritBit k2 v
+mapKeysWith c f = foldlWithKey (\m k v -> insertWith c (f k) v m) empty
 
 -- | /O(n)/. Convert the map to a list of key/value pairs where the keys are in
 -- ascending order.

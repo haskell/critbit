@@ -367,6 +367,10 @@ main = do
           bench "critbit" $ nf (C.mapKeys f) b_critbit
         , bench "map" $ nf (Map.mapKeys f) b_map
         ]
+      , bgroup "mapKeysWith" $ let f k = B.pack (show k ++ "test") in [
+          bench "critbit" $ nf (C.mapKeysWith (+) f) b_critbit
+        , bench "map" $ nf (Map.mapKeysWith (+) f) b_map
+        ]
       , bgroup "mapAccumWithKey" $ [
           bench "critbit" $ whnf (C.mapAccumWithKey mapAccumFKey 0) b_critbit
         , bench "map" $ whnf (Map.mapAccumWithKey mapAccumFKey 0) b_map
