@@ -348,6 +348,9 @@ t_mapKeys = C.mapKeys f === Map.mapKeys f
     f :: (CritBitKey k, Ord k, IsString k, Show k) => k -> k
     f = fromString . (++ "test") . show
 
+t_mapKeysMonotonic :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapKeysMonotonic = C.mapKeysMonotonic id === Map.mapKeysMonotonic id
+
 t_mapAccumRWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_mapAccumRWithKey = mapAccumWithKey C.mapAccumRWithKey Map.mapAccumRWithKey
 
@@ -649,6 +652,7 @@ propertiesFor t = [
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapWithKey" $ t_mapWithKey t
   , testProperty "t_mapKeys" $ t_map t
+  , testProperty "t_mapKeysMonotonic" $ t_mapKeysMonotonic t
   , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t
   , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t
   , testProperty "t_toAscList" $ t_toAscList t
