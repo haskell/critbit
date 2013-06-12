@@ -1061,11 +1061,11 @@ split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
 -- | /O(log n)/. The expression (@'splitLookup' k map@) splits a map just
 -- like 'split' but also returns @'lookup' k map@.
 --
--- > split "a" (fromList [("b",1), ("d",2)]) == (empty, Nothing, fromList [("b",1), ("d",2)])
--- > split "b" (fromList [("b",1), ("d",2)]) == (empty, Just 1, singleton "d" 2)
--- > split "c" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Nothing, singleton "d" 2)
--- > split "d" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Just 2, empty)
--- > split "e" (fromList [("b",1), ("d",2)]) == (fromList [("b",1), ("d",2)], Nothing, empty)
+-- > splitLookup "a" (fromList [("b",1), ("d",2)]) == (empty, Nothing, fromList [("b",1), ("d",2)])
+-- > splitLookup "b" (fromList [("b",1), ("d",2)]) == (empty, Just 1, singleton "d" 2)
+-- > splitLookup "c" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Nothing, singleton "d" 2)
+-- > splitLookup "d" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Just 2, empty)
+-- > splitLookup "e" (fromList [("b",1), ("d",2)]) == (fromList [("b",1), ("d",2)], Nothing, empty)
 splitLookup :: (CritBitKey k) => k -> CritBit k v
                -> (CritBit k v, Maybe v, CritBit k v)
 splitLookup k (CritBit root) =
