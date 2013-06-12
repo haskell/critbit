@@ -79,10 +79,10 @@ module Data.CritBit.Set
     , fromList
 
     -- ** Ordered list
-    -- , toAscList
-    -- , toDescList
-    -- , fromAscList
-    -- , fromDistinctAscList
+    , toAscList
+    , toDescList
+    , fromAscList
+    , fromDistinctAscList
     ) where
 
 import Control.DeepSeq (NFData)
@@ -143,7 +143,7 @@ singleton a = Set $ T.singleton a ()
 -- > fromList [] == empty
 -- > fromList ["a", "b", "a"] == fromList ["a", "b"]
 fromList :: (CritBitKey a) => [a] -> Set a
-fromList xs = Set . T.fromList . zip xs . repeat $ ()
+fromList = liftFromList T.fromList
 {-# INLINABLE fromList #-}
 
 -- | /O(n)/. An alias of 'toList'. The elements of a set in ascending order.
@@ -415,6 +415,24 @@ maxView :: Set a -> Maybe (a, Set a)
 maxView = fmap (fst *** Set) . liftS T.maxViewWithKey
 {-# INLINE maxView #-}
 
+-- | /O(n)/. Convert the set to an ascending list of elements.
+toAscList :: Set a -> [a]
+toAscList = toList
+
+-- | /O(n)/. Convert the set to a descending list of elements.
+toDescList :: Set a -> [a]
+toDescList = reverse . toAscList
+
+-- | /O(n)/. Build a set from an ascending list in linear time.
+-- /The precondition (input list is ascending) is not checked./
+fromAscList :: (CritBitKey a) => [a] -> Set a
+fromAscList = liftFromList T.fromAscList
+
+-- | /O(n)/. Build a set from an ascending list in linear time.
+-- /The precondition (input list is ascending) is not checked./
+fromDistinctAscList :: (CritBitKey a) => [a] -> Set a
+fromDistinctAscList = liftFromList T.fromDistinctAscList
+
 -- | Lifts tree operation to set operation
 liftS :: (CritBit a () -> r) -> Set a -> r
 liftS f (Set s) = f s
@@ -429,3 +447,7 @@ liftVS = (liftS .)
 liftSS :: (CritBit a () -> CritBit a () -> r) -> Set a -> Set a -> r
 liftSS = liftS . (liftS .)
 {-# INLINE liftSS #-}
+
+liftFromList :: ([(a, ())] -> CritBit a ()) -> [a] -> Set a
+liftFromList f xs = Set . f . zip xs . repeat $ ()
+{-# INLINE liftFromList #-}
