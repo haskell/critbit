@@ -93,7 +93,7 @@ module Data.CritBit.Tree
     , keys
     , assocs
     , keysSet
-    -- , fromSet
+    , fromSet
 
     -- ** Lists
     , toList
@@ -585,6 +585,15 @@ assocs m = toAscList m
 keysSet :: CritBit k v -> Set k
 keysSet m = Set (fmap (const ()) m)
 {-# INLINABLE keysSet #-}
+
+-- | /O(n)/. Build a map from a set of keys and a function which for each key
+-- computes its value.
+--
+-- > fromSet (\k -> length k) (Data.IntSet.fromList ["a", "bb"]) == fromList [("a",1), ("bb",2)]
+-- > fromSet undefined Data.IntSet.empty == empty
+fromSet :: (k -> v) -> Set k -> CritBit k v
+fromSet f (Set s) = mapWithKey (const . f) s
+{-# INLINABLE fromSet #-}
 
 -- | /O(n)/. Return all keys of the map in ascending order.
 --
@@ -1374,7 +1383,7 @@ insertWith f = insertWithKey (\_ v v' -> f v v')
 --
 -- >  let f key x = show key ++ ":" ++ show x
 -- >  mapWithKey f (fromList [("a",5), ("b",3)]) == fromList [("a","a:5"), ("b","b:3")]
-mapWithKey :: (CritBitKey k) => (k -> v -> w) -> CritBit k v -> CritBit k w
+mapWithKey :: (k -> v -> w) -> CritBit k v -> CritBit k w
 mapWithKey f (CritBit root) = CritBit (go root)
   where
     go i@(Internal l r _ _) = i { ileft = go l, iright = go r }
