@@ -389,7 +389,7 @@ t_mapKeys :: (CritBitKey k, Ord k, IsString k, Show k) => k -> KV k -> Bool
 t_mapKeys = C.mapKeys f === Map.mapKeys f
   where
     f :: (CritBitKey k, Ord k, IsString k, Show k) => k -> k
-    f = fromString . (++ "test") . show
+    f = fromString . (++ "test") . drop 2 . show
 
 t_mapKeysWith :: (CritBitKey k, Ord k, IsString k, Show k) => k -> KV k -> Bool
 t_mapKeysWith = C.mapKeysWith c f === Map.mapKeysWith c f
@@ -698,7 +698,7 @@ propertiesFor t = [
   , testProperty "t_fromSet" $ t_fromSet t
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapWithKey" $ t_mapWithKey t
-  , testProperty "t_mapKeys" $ t_map t
+  , testProperty "t_mapKeys" $ t_mapKeys t
   , testProperty "t_mapKeysWith" $ t_mapKeysWith t
   , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t
   , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t
