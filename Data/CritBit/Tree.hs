@@ -92,7 +92,7 @@ module Data.CritBit.Tree
     , elems
     , keys
     , assocs
-    -- , keysSet
+    , keysSet
     -- , fromSet
 
     -- ** Lists
@@ -577,6 +577,14 @@ elems m = foldrWithKey f [] m
 -- > assocs empty == []
 assocs :: CritBit k v -> [(k,v)]
 assocs m = toAscList m
+
+-- | /O(n)/. Return set of all keys of the map.
+--
+-- > keysSet (fromList [("b",5), ("a",3)]) == Set.fromList ["a", "b"]
+-- > keysSet empty == []
+keysSet :: CritBit k v -> Set k
+keysSet m = Set (fmap (const ()) m)
+{-# INLINABLE keysSet #-}
 
 -- | /O(n)/. Return all keys of the map in ascending order.
 --

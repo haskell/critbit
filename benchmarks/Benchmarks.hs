@@ -329,6 +329,10 @@ main = do
                           (H.foldl' (+) 0) id
       , bgroup "elems" $ function nf C.elems Map.elems H.elems Trie.elems
       , bgroup "keys" $ function nf C.keys Map.keys H.keys Trie.keys
+      , bgroup "keysSet" [
+          bench "critbit" $ nf C.keysSet b_critbit
+        , bench "map" $ nf Map.keysSet b_map
+        ]
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
       , bgroup "mapWithKey" $ [
