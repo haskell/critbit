@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
 -- |
 -- Module      :  Data.CritBit.Tree
 -- Copyright   :  (c) Bryan O'Sullivan 2013
@@ -19,6 +19,8 @@ module Data.CritBit.Core
     (
     -- * Public functions
       insertWithKey
+    , insertLookupWithKey
+    , insertLookupGen
     , lookupWith
     , updateLookupWithKey
     , leftmost
@@ -73,6 +75,62 @@ insertWithKey f k v (CritBit root) = CritBit . go $ root
         nd          = calcDirection nob c
     go Empty = Leaf k v
 {-# INLINABLE insertWithKey #-}
+
+-- | /O(log n)/. Combines insert operation with old value retrieval.
+-- The expression (@'insertLookupWithKey' f k x map@)
+-- is a pair where the first element is equal to (@'lookup' k map@)
+-- and the second element equal to (@'insertWithKey' f k x map@).
+--
+-- > let f key new_value old_value = length key + old_value + new_value
+-- > insertLookupWithKey f "a" 2 (fromList [("a",5), ("b",3)]) == (Just 5, fromList [("a",8), ("b",3)])
+-- > insertLookupWithKey f "c" 2 (fromList [(5,"a"), (3,"b")]) == (Nothing, fromList [("a",5), ("b",3), ("c",2)])
+-- > insertLookupWithKey f "a" 2 empty                         == (Nothing, singleton "a" 2)
+--
+-- This is how to define @insertLookup@ using @insertLookupWithKey@:
+--
+-- > let insertLookup kx x t = insertLookupWithKey (\_ a _ -> a) kx x t
+-- > insertLookup "a" 1 (fromList [("a",5), ("b",3)]) == (Just 5, fromList [("a",1), ("b",3)])
+-- > insertLookup "c" 1 (fromList [("a",5), ("b",3)]) == (Nothing,  fromList [("a",5), ("b",3), ("c",1)])
+insertLookupWithKey :: CritBitKey k
+                    => (k -> v -> v -> v)
+                    -> k -> v -> CritBit k v
+                    -> (Maybe v, CritBit k v)
+insertLookupWithKey f k v m = insertLookupGen (,) f k v m
+{-# INLINABLE insertLookupWithKey #-}
+
+-- | General function used to implement all insert functions.
+insertLookupGen :: CritBitKey k
+                => (Maybe v -> CritBit k v -> a)
+                -> (k -> v -> v -> v)
+                -> k -> v -> CritBit k v -> a
+insertLookupGen ret f !k v (CritBit root) = go root
+  where
+    go i@(Internal left right _ _)
+      | direction k i == 0 = go left
+      | otherwise          = go right
+    go (Leaf lk v')
+      | keyPresent = wrap (Just v')
+      | otherwise  = wrap Nothing
+        where
+          keyPresent = k == lk
+          wrap val = ret val . CritBit $ rewalk root
+
+          rewalk i@(Internal left right byte otherBits)
+            | byte > n                     = finish i
+            | byte == n && otherBits > nob = finish i
+            | direction k i == 0           = i { ileft = rewalk left }
+            | otherwise                    = i { iright = rewalk right }
+          rewalk i                         = finish i
+
+          finish node
+            | keyPresent = Leaf k (f k v v')
+            | nd == 0    = Internal node (Leaf k v) n nob
+            | otherwise  = Internal (Leaf k v) node n nob
+
+          (n, nob, c) = followPrefixes k lk
+          nd          = calcDirection nob c
+    go Empty = ret Nothing . CritBit $ Leaf k v
+{-# INLINE insertLookupGen #-}
 
 lookupWith :: (CritBitKey k) =>
               a                 -- ^ Failure continuation

@@ -33,7 +33,7 @@ module Data.CritBit.Tree
     , insert
     , insertWith
     , insertWithKey
-    -- , insertLookupWithKey
+    , insertLookupWithKey
 
     -- * Deletion
     , delete
