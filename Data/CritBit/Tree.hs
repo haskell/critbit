@@ -1346,7 +1346,7 @@ updateMaxWithKey maybeUpdate (CritBit root) = CritBit $ go root
 -- > insert "x" 7 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("x",7)]
 -- > insert "x" 5 empty                         == singleton "x" 5
 insert :: (CritBitKey k) => k -> v -> CritBit k v -> CritBit k v
-insert = insertWithKey (\_ v _ -> v)
+insert = insertLookupGen (flip const) (\_ v _ -> v)
 {-# INLINABLE insert #-}
 
 -- | /O(log n)/. Insert with a function, combining new value and old value.
