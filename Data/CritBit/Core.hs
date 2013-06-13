@@ -50,30 +50,7 @@ import Data.Word (Word16)
 -- > insertWithKey f "a" 1 empty                         == singleton "a" 1
 insertWithKey :: CritBitKey k => (k -> v -> v -> v) -> k -> v -> CritBit k v
               -> CritBit k v
-insertWithKey f k v (CritBit root) = CritBit . go $ root
-  where
-    go i@(Internal left right _ _)
-      | direction k i == 0 = go left
-      | otherwise          = go right
-    go (Leaf lk _)         = rewalk root
-      where
-        rewalk i@(Internal left right byte otherBits)
-          | byte > n                     = finish i
-          | byte == n && otherBits > nob = finish i
-          | direction k i == 0           = i { ileft = rewalk left }
-          | otherwise                    = i { iright = rewalk right }
-        rewalk i                         = finish i
-
-        finish (Leaf _ v') | k == lk = Leaf k (f k v v')
-        finish node
-          | nd == 0   = Internal { ileft = node, iright = Leaf k v,
-                                   ibyte = n, iotherBits = nob }
-          | otherwise = Internal { ileft = Leaf k v, iright = node,
-                                   ibyte = n, iotherBits = nob }
-
-        (n, nob, c) = followPrefixes k lk
-        nd          = calcDirection nob c
-    go Empty = Leaf k v
+insertWithKey f k v m = insertLookupGen (flip const) f k v m
 {-# INLINABLE insertWithKey #-}
 
 -- | /O(log n)/. Combines insert operation with old value retrieval.
