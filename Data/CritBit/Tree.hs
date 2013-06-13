@@ -144,11 +144,14 @@ module Data.CritBit.Tree
     , maxView
     , minViewWithKey
     , maxViewWithKey
+   -- * Debugging
+    , valid
+    , validPart
     ) where
 
 import Control.Applicative (Applicative(..), (<$>), (*>), (<|>), pure, liftA2)
 import Control.Arrow (second, (***))
-import Control.Monad (guard)
+import Control.Monad (guard, liftM2,join)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
 import Data.Maybe (fromMaybe)
@@ -1537,14 +1540,14 @@ partitionWithKey f (CritBit root) = CritBit *** CritBit $ go root
     go l@(Leaf k v)
       | f k v     = (l,Empty)
       | otherwise = (Empty,l)
-    go i@(Internal left right _ _) = (join l1 r1, join l2 r2)
+    go i@(Internal left right _ _) = (merge l1 r1, merge l2 r2)
       where
         (!l1,!l2) = go left
         (!r1,!r2) = go right
 
-        join Empty r = r
-        join l Empty = l
-        join l r     = i { ileft = l, iright = r }
+        merge Empty r = r
+        merge l Empty = l
+        merge l r     = i { ileft = l, iright = r }
     go _ = (Empty,Empty)
 {-# INLINABLE partitionWithKey #-}
 
@@ -1561,3 +1564,36 @@ partition :: (CritBitKey k)
           -> (CritBit k v, CritBit k v)
 partition f m = partitionWithKey (const f) m
 {-# INLINABLE partition #-}
+
+-- | /O(n)/. Test if the internal map structure is valid.
+--
+-- > valid (fromAscList [("a",5), ("b",3)]) == True
+-- > valid (fromAscList [("b",3), ("a",5)]) == False
+valid :: CritBitKey k => CritBit k v -> Bool
+valid = maybe True (const False) . maybeValid
+{-# INLINABLE valid #-}
+
+-- | Partial validation function, exits with error on invalid tree.
+validPart :: CritBitKey k => CritBit k v -> Bool
+validPart = maybe True error . maybeValid
+{-# INLINABLE validPart #-}
+
+-- | Checks wether the tree is invalid.
+-- If the tree is invalid returns Just with an error message,
+-- otherwise it returns Nothing.
+maybeInvalid :: CritBitKey k => CritBit k v -> Maybe String
+maybeInvalid (CritBit Empty) = Nothing
+maybeInvalid (CritBit root)  = either Just (const Nothing) $ go root
+  where
+    go (Internal l r byte otherBits) = join $ liftM2 ivalidate (go l) (go r)
+      where
+        ivalidate (minl,maxl) (minr,maxr)
+          | byte /= n         = Left "Data.CritBit.Tree : byte inconsistent \
+                                      \ with keys."
+          | nob  /= otherBits = Left "Data.CritBit.Tree : otherBits \
+                                      \ inconsistent with keys."
+          | otherwise = Right (minl,maxr)
+            where (n,nob,_) = followPrefixes minr maxl
+    go (Leaf k _) = Right (k,k)
+    go Empty      = Left "Data.CritBit.Tree : Empty node in tree."
+{-# INLINE maybeValid #-}
