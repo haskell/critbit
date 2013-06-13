@@ -1360,7 +1360,7 @@ insert = insertLookupGen (flip const) (\_ v _ -> v)
 -- > insertWith (+) "x" 5 empty                         == singleton "x" 5
 --
 insertWith :: CritBitKey k => (v -> v -> v) -> k -> v -> CritBit k v -> CritBit k v
-insertWith f = insertWithKey (\_ v v' -> f v v')
+insertWith f = insertLookupGen (flip const) (\_ v v' -> f v v')
 {-# INLINABLE insertWith #-}
 
 -- | /O(n)/. Apply a function to all values.
