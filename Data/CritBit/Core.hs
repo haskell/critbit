@@ -89,7 +89,7 @@ insertLookupGen ret f !k v (CritBit root) = go root
       | keyPresent = wrap (Just v')
       | otherwise  = wrap Nothing
         where
-          keyPresent = k == lk
+          keyPresent = equal diff
           wrap val = ret val . CritBit $ rewalk root
 
           rewalk i@(Internal left right byte otherBits)
@@ -104,10 +104,16 @@ insertLookupGen ret f !k v (CritBit root) = go root
             | nd == 0    = Internal node (Leaf k v) n nob
             | otherwise  = Internal (Leaf k v) node n nob
 
-          (n, nob, c) = followPrefixes k lk
+          diff@(n, nob, c) = followPrefixes k lk
           nd          = calcDirection nob c
     go Empty = ret Nothing . CritBit $ Leaf k v
 {-# INLINE insertLookupGen #-}
+
+type Diff = (Int, BitMask, BitMask)
+
+equal :: Diff -> Bool
+equal (_, !bits, _) = bits == 0x1ff
+{-# INLINE equal #-}
 
 lookupWith :: (CritBitKey k) =>
               a                 -- ^ Failure continuation
