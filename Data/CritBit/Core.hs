@@ -86,10 +86,9 @@ insertLookupGen ret f !k v (CritBit root) = go root
       | direction k i == 0 = go left
       | otherwise          = go right
     go (Leaf lk v')
-      | keyPresent = wrap (Just v')
+      | equal diff = wrap (Just v')
       | otherwise  = wrap Nothing
         where
-          keyPresent = equal diff
           wrap val = ret val . CritBit $ rewalk root
 
           rewalk i@(Internal left right byte otherBits)
@@ -99,13 +98,10 @@ insertLookupGen ret f !k v (CritBit root) = go root
             | otherwise                    = i { iright = rewalk right }
           rewalk i                         = finish i
 
-          finish node
-            | keyPresent = Leaf k (f k v v')
-            | nd == 0    = Internal node (Leaf k v) n nob
-            | otherwise  = Internal (Leaf k v) node n nob
+          finish (Leaf _ v') | equal diff = Leaf k (f k v v')
+          finish node = internal diff node (Leaf k v)
 
-          diff@(n, nob, c) = followPrefixes k lk
-          nd          = calcDirection nob c
+          diff@(n, nob, _) = followPrefixes k lk
     go Empty = ret Nothing . CritBit $ Leaf k v
 {-# INLINE insertLookupGen #-}
 
@@ -114,6 +110,15 @@ type Diff = (Int, BitMask, BitMask)
 equal :: Diff -> Bool
 equal (_, !bits, _) = bits == 0x1ff
 {-# INLINE equal #-}
+
+-- | Smart consturctor for Internal nodes
+internal :: Diff -> Node k v -> Node k v -> Node k v
+internal (!byte, !bits, !c) child1 child2
+  | calcDirection bits c == 0 = Internal { ileft = child1, iright = child2,
+                                           ibyte = byte, iotherBits = bits }
+  | otherwise                 = Internal { ileft = child2, iright = child1,
+                                           ibyte = byte, iotherBits = bits }
+{-# INLINE internal #-}
 
 lookupWith :: (CritBitKey k) =>
               a                 -- ^ Failure continuation
