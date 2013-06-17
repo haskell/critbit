@@ -31,6 +31,7 @@ module Data.CritBit.Core
     , followPrefixes
     , followPrefixesFrom
     , followPrefixesByteFrom
+    , above
     ) where
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
@@ -91,17 +92,16 @@ insertLookupGen ret f !k v (CritBit root) = go root
         where
           wrap val = ret val . CritBit $ rewalk root
 
-          rewalk i@(Internal left right byte otherBits)
-            | byte > n                     = finish i
-            | byte == n && otherBits > nob = finish i
-            | direction k i == 0           = i { ileft = rewalk left }
-            | otherwise                    = i { iright = rewalk right }
-          rewalk i                         = finish i
+          rewalk i@(Internal left right _ _)
+            | diff `above` i     = finish i
+            | direction k i == 0 = i { ileft = rewalk left }
+            | otherwise          = i { iright = rewalk right }
+          rewalk i               = finish i
 
           finish (Leaf _ v') | equal diff = Leaf k (f k v v')
           finish node = internal diff node (Leaf k v)
 
-          diff@(n, nob, _) = followPrefixes k lk
+          diff = followPrefixes k lk
     go Empty = ret Nothing . CritBit $ Leaf k v
 {-# INLINE insertLookupGen #-}
 
@@ -119,6 +119,12 @@ internal (!byte, !bits, !c) child1 child2
   | otherwise                 = Internal { ileft = child2, iright = child1,
                                            ibyte = byte, iotherBits = bits }
 {-# INLINE internal #-}
+
+above :: Diff -> Node k v -> Bool
+above (dbyte, dbits, _) (Internal _ _ byte bits) =
+    dbyte < byte || dbyte == byte && dbits < bits
+above _ _ = error "Data.CritBit.Core.above: Non-Internal node"
+{-# INLINE above #-}
 
 lookupWith :: (CritBitKey k) =>
               a                 -- ^ Failure continuation

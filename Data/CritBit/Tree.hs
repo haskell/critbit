@@ -751,11 +751,9 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
 -- | Detect whether branch in 'Internal' node comes 'before' or
 -- 'after' branch initiated by 'Leaf'.
 leafBranch :: CritBitKey k => Node k v -> Node k w -> k -> t -> t -> t
-leafBranch (Leaf lk _) (Internal _ _ sbyte sbits) sk before after
-    | dbyte > sbyte || dbyte == sbyte && dbits >= sbits = before
-    | otherwise                                         = after
-  where
-    (dbyte, dbits, _) = followPrefixes lk sk
+leafBranch (Leaf lk _) i@(Internal{}) sk before after
+    | followPrefixes lk sk `above` i = after
+    | otherwise                      = before
 leafBranch _ _ _ _ _ = error "Data.CritBit.Tree.leafBranch: unpossible"
 {-# INLINE leafBranch #-}
 
