@@ -1054,21 +1054,22 @@ mapEitherWithKey f (CritBit root) = (CritBit *** CritBit) $ go root
 split :: (CritBitKey k) => k -> CritBit k v -> (CritBit k v, CritBit k v)
 -- Note that this is nontrivially faster than an implementation
 -- in terms of 'splitLookup'.
-split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
+split k m = CritBit *** CritBit $
+            findPosition (const id) finish goLeft goRight k m
   where
-    go i@(Internal left right _ _)
-      | k `onLeft` i = case go left of
-                         (lt, Empty) -> (lt, right)
-                         (lt, gt)    -> (lt, setLeft i gt)
-      | otherwise    = case go right of
-                         (Empty, gt) -> (left, gt)
-                         (lt, gt)    -> (setRight i lt, gt)
-    go leaf@(Leaf lk _) =
-      case diffOrd (followPrefixes k lk) of
-        LT -> (leaf , Empty)
-        GT -> (Empty, leaf )
-        EQ -> (Empty, Empty)
-    go _ = (Empty,Empty)
+    finish _ Empty = (Empty, Empty)
+    finish diff node = case diffOrd diff of
+      LT -> (node, Empty)
+      GT -> (Empty, node)
+      EQ -> (Empty, Empty)
+
+    goLeft i@(Internal{}) (lt, Empty) = (lt, iright i)
+    goLeft i@(Internal{}) (lt, gt   ) = (lt, setLeft i gt)
+    goLeft _ _ = error "Data.CritBit.Tree.split.goLeft: Unpossible."
+
+    goRight i@(Internal{}) (Empty, gt) = (ileft i, gt)
+    goRight i@(Internal{}) (lt   , gt) = (setRight i lt, gt)
+    goRight _ _ = error "Data.CritBit.Tree.split.goRight: Unpossible."
 {-# INLINABLE split #-}
 
 -- | /O(log n)/. The expression (@'splitLookup' k map@) splits a map just
