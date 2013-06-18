@@ -1063,13 +1063,11 @@ split k m = CritBit *** CritBit $
       GT -> (Empty, node)
       EQ -> (Empty, Empty)
 
-    goLeft i@(Internal{}) (lt, Empty) = (lt, iright i)
-    goLeft i@(Internal{}) (lt, gt   ) = (lt, setLeft i gt)
-    goLeft _ _ = error "Data.CritBit.Tree.split.goLeft: Unpossible."
+    goLeft i (lt, Empty) = (lt, iright i)
+    goLeft i (lt, gt   ) = (lt, setLeft i gt)
 
-    goRight i@(Internal{}) (Empty, gt) = (ileft i, gt)
-    goRight i@(Internal{}) (lt   , gt) = (setRight i lt, gt)
-    goRight _ _ = error "Data.CritBit.Tree.split.goRight: Unpossible."
+    goRight i (Empty, gt) = (ileft i, gt)
+    goRight i (lt   , gt) = (setRight i lt, gt)
 {-# INLINABLE split #-}
 
 -- | /O(log n)/. The expression (@'splitLookup' k map@) splits a map just
@@ -1082,22 +1080,23 @@ split k m = CritBit *** CritBit $
 -- > splitLookup "e" (fromList [("b",1), ("d",2)]) == (fromList [("b",1), ("d",2)], Nothing, empty)
 splitLookup :: (CritBitKey k) => k -> CritBit k v
                -> (CritBit k v, Maybe v, CritBit k v)
-splitLookup k (CritBit root) =
-  (\(ln,res,rn) -> (CritBit ln, res, CritBit rn)) $ go root
+splitLookup k m = (\(lt, eq, gt) -> (CritBit lt, eq, CritBit gt)) $
+                  findPosition (const id) finish goLeft goRight k m
   where
-    go i@(Internal left right _ _)
-      | k `onLeft` i = case go left of
-                         (lt, eq, Empty) -> (lt, eq, right)
-                         (lt, eq, gt   ) -> (lt, eq, setLeft i gt)
-      | otherwise    = case go right of
-                         (Empty, eq, gt) -> (left, eq, gt)
-                         (lt   , eq, gt) -> (setRight i lt, eq, gt)
-    go leaf@(Leaf lk lv) =
-      case diffOrd (followPrefixes k lk) of
-        LT -> (leaf, Nothing, Empty)
-        GT -> (Empty, Nothing, leaf)
-        EQ -> (Empty, Just lv, Empty)
-    go _ = (Empty, Nothing, Empty)
+    finish _ Empty = (Empty, Nothing, Empty)
+    finish diff node = case diffOrd diff of
+      LT -> (node,  Nothing  , Empty)
+      GT -> (Empty, Nothing  , node )
+      EQ -> (Empty, leaf node, Empty)
+
+    leaf (Leaf _ v) = Just v
+    leaf _ = error "Data.CritBit.Tree.splitLookup.leaf: Unpossible."
+
+    goLeft i (lt, eq, Empty) = (lt, eq, iright i)
+    goLeft i (lt, eq, gt   ) = (lt, eq, setLeft i gt)
+
+    goRight i (Empty, eq, gt) = (ileft i      , eq, gt)
+    goRight i (lt   , eq, gt) = (setRight i lt, eq, gt)
 {-# INLINABLE splitLookup #-}
 
 -- | /O(n+m)/. This function is defined as
