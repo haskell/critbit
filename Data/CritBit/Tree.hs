@@ -249,21 +249,15 @@ lookup k m = lookupWith Nothing Just k m
 -- > delete "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
 -- > delete "a" empty                         == empty
 delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
-delete k t@(CritBit root) = go root CritBit
+delete k t@(CritBit root) = go root empty CritBit
   where
-    go i@(Internal left right _ _) cont
-      | k `onLeft` i = case left of
-                         Leaf lk _
-                           | lk == k   -> cont right
-                           | otherwise -> t
-                         _ -> go left ((cont $!) . setLeft i)
-      | otherwise    = case right of
-                         Leaf lk _
-                           | lk == k   -> cont left
-                           | otherwise -> t
-                         _ -> go right ((cont $!) . setRight i)
-    go (Leaf lk _) _ | k == lk = empty
-    go _ _ = t
+    go i@(Internal left right _ _) _ cont
+      | k `onLeft` i = go left (cont right) $ ((cont $!) . setLeft  i)
+      | otherwise    = go right (cont left) $ ((cont $!) . setRight i)
+    go (Leaf lk _) other _
+      | k == lk   = other
+      | otherwise = t
+    go Empty _ _ = t
 {-# INLINABLE delete #-}
 
 -- | /O(log n)/. The expression (@'update' f k map@ updates the value @x@
