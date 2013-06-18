@@ -254,16 +254,16 @@ delete :: (CritBitKey k) => k -> CritBit k v -> CritBit k v
 delete k t@(CritBit root) = go root CritBit
   where
     go i@(Internal left right _ _) cont
-      | direction k i == 0 = case left of
-                               Leaf lk _
-                                 | lk == k   -> cont right
-                                 | otherwise -> t
-                               _ -> go left $ \l -> cont $! i { ileft = l }
-      | otherwise          = case right of
-                               Leaf lk _
-                                 | lk == k   -> cont left
-                                 | otherwise -> t
-                               _ -> go right $ \r -> cont $! i { iright = r }
+      | k `onLeft` i = case left of
+                         Leaf lk _
+                           | lk == k   -> cont right
+                           | otherwise -> t
+                         _ -> go left $ \l -> cont $! i { ileft = l }
+      | otherwise    = case right of
+                         Leaf lk _
+                           | lk == k   -> cont left
+                           | otherwise -> t
+                         _ -> go right $ \r -> cont $! i { iright = r }
     go (Leaf lk _) _ | k == lk = empty
     go _ _ = t
 {-# INLINABLE delete #-}
@@ -372,9 +372,9 @@ lookupOrd accepts k (CritBit root) = go root
   where
     go Empty = Nothing
     go i@(Internal left right _ _)
-      | direction k i == 0 = go left
-      | otherwise          = go right
-    go (Leaf lk lv)        = rewalk root
+      | k `onLeft` i = go left
+      | otherwise    = go right
+    go (Leaf lk lv)  = rewalk root
       where
         finish (Leaf _ _)
           | accepts (byteCompare lk k) = Just (lk, lv)
@@ -386,7 +386,7 @@ lookupOrd accepts k (CritBit root) = go root
         rewalk i@(Internal left right byte otherBits)
           | byte > n                     = finish i
           | byte == n && otherBits > nob = finish i
-          | direction k i == 0           = rewalk left  <|> ifGT right
+          | k `onLeft` i                 = rewalk left  <|> ifGT right
           | otherwise                    = rewalk right <|> ifLT left
         rewalk i                         = finish i
 
@@ -761,8 +761,8 @@ leafBranch _ _ _ _ _ = error "Data.CritBit.Tree.leafBranch: unpossible"
 switch :: (CritBitKey k) => k -> Node k v -> Node k w -> Node k w
        -> Node k w -> Node k w -> Node k w
 switch k n a0 b0 a1 b1
-  | direction k n == 0 = link n a0 b0
-  | otherwise          = link n a1 b1
+  | k `onLeft` n = link n a0 b0
+  | otherwise    = link n a1 b1
 {-# INLINE switch #-}
 
 -- | Extract minimum key from the subtree.
@@ -1080,12 +1080,12 @@ split :: (CritBitKey k) => k -> CritBit k v -> (CritBit k v, CritBit k v)
 split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
   where
     go i@(Internal left right _ _)
-      | direction k i == 0 = case go left of
-                               (lt,Empty) -> (lt, right)
-                               (lt,l)     -> (lt, i { ileft = l })
-      | otherwise          = case go right of
-                               (Empty,gt) -> (left, gt)
-                               (r,gt)     -> (i { iright = r }, gt)
+      | k `onLeft` i = case go left of
+                         (lt,Empty) -> (lt, right)
+                         (lt,l)     -> (lt, i { ileft = l })
+      | otherwise    = case go right of
+                         (Empty,gt) -> (left, gt)
+                         (r,gt)     -> (i { iright = r }, gt)
     go (Leaf lk lv) =
       case byteCompare lk k of
         LT -> (Leaf lk lv, Empty)
@@ -1108,12 +1108,12 @@ splitLookup k (CritBit root) =
   (\(ln,res,rn) -> (CritBit ln, res, CritBit rn)) $ go root
   where
     go i@(Internal left right _ _)
-      | direction k i == 0 = case go left of
-                               (lt,res,Empty) -> (lt, res, right)
-                               (lt,res,l)     -> (lt, res, i { ileft = l })
-      | otherwise          = case go right of
-                               (Empty,res,gt) -> (left, res, gt)
-                               (r,res,gt)     -> (i { iright = r }, res, gt)
+      | k `onLeft` i = case go left of
+                         (lt,res,Empty) -> (lt, res, right)
+                         (lt,res,l)     -> (lt, res, i { ileft = l })
+      | otherwise    = case go right of
+                         (Empty,res,gt) -> (left, res, gt)
+                         (r,res,gt)     -> (i { iright = r }, res, gt)
     go (Leaf lk lv) =
       case byteCompare lk k of
         LT -> (Leaf lk lv, Nothing, Empty)
@@ -1207,9 +1207,8 @@ submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
 
     splitB a ak b@(Internal bl br _ _) bk = if t == No then No else Yes
       where
-        t = if direction ak b == 0
-            then go a ak bl bk
-            else go a ak br (minKey br)
+        t = if ak `onLeft` b then go a ak bl bk
+                             else go a ak br (minKey br)
 
     splitB _ _ _ _ =
         error "Data.CritBit.Tree.isSubmapOfBy.splitB: unpossible"
@@ -1493,9 +1492,9 @@ alter :: (CritBitKey k)
 alter f !k (CritBit root) = CritBit . go $ root
   where
     go i@(Internal l r _ _)
-      | direction k i == 0 = go l
-      | otherwise           = go r
-    go (Leaf lk _)          = rewalk root
+      | k `onLeft` i = go l
+      | otherwise    = go r
+    go (Leaf lk _)   = rewalk root
       where
         (n,nob,c)  = followPrefixes k lk
         dir        = calcDirection nob c
@@ -1503,7 +1502,7 @@ alter f !k (CritBit root) = CritBit . go $ root
         rewalk i@(Internal left right byte otherBits)
           | byte > n                     = finish i
           | byte == n && otherBits > nob = finish i
-          | direction k i == 0 = case rewalk left of
+          | k `onLeft` i       = case rewalk left of
                                    Empty -> right
                                    nd    -> i { ileft  = nd }
           | otherwise          = case rewalk right of

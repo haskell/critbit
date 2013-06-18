@@ -27,7 +27,7 @@ module Data.CritBit.Core
     , rightmost
     -- * Internal functions
     , calcDirection
-    , direction
+    , onLeft
     , followPrefixes
     , followPrefixesFrom
     , followPrefixesByteFrom
@@ -84,8 +84,8 @@ insertLookupGen :: CritBitKey k
 insertLookupGen ret f !k v (CritBit root) = go root
   where
     go i@(Internal left right _ _)
-      | direction k i == 0 = go left
-      | otherwise          = go right
+      | k `onLeft` i = go left
+      | otherwise    = go right
     go (Leaf lk v')
       | equal diff = wrap (Just v')
       | otherwise  = wrap Nothing
@@ -93,10 +93,10 @@ insertLookupGen ret f !k v (CritBit root) = go root
           wrap val = ret val . CritBit $ rewalk root
 
           rewalk i@(Internal left right _ _)
-            | diff `above` i     = finish i
-            | direction k i == 0 = i { ileft = rewalk left }
-            | otherwise          = i { iright = rewalk right }
-          rewalk i               = finish i
+            | diff `above` i = finish i
+            | k `onLeft` i   = i { ileft = rewalk left }
+            | otherwise      = i { iright = rewalk right }
+          rewalk i           = finish i
 
           finish (Leaf _ v') | equal diff = Leaf k (f k v v')
           finish node = internal diff node (Leaf k v)
@@ -136,8 +136,8 @@ lookupWith :: (CritBitKey k) =>
 lookupWith notFound found k (CritBit root) = go root
   where
     go i@(Internal left right _ _)
-       | direction k i == 0  = go left
-       | otherwise           = go right
+       | k `onLeft` i = go left
+       | otherwise    = go right
     go (Leaf lk v) | k == lk = found v
     go _                     = notFound
 {-# INLINE lookupWith #-}
@@ -166,7 +166,7 @@ updateLookupWithKey f k t@(CritBit root) = top root
     top _ = (Nothing, t)
 
     go i left right cont
-      | direction k i == 0 =
+      | k `onLeft` i =
         case left of
           i'@(Internal left' right' _ _) ->
             go i' left' right' $ \l -> cont $! i { ileft = l }
@@ -192,14 +192,13 @@ updateLookupWithKey f k t@(CritBit root) = top root
 
 {-# INLINABLE updateLookupWithKey #-}
 
--- | Determine which direction we should move down the tree based on
--- the critical bitmask at the current node and the corresponding byte
--- in the key. Left is 0, right is 1.
-direction :: (CritBitKey k) => k -> Node k v -> Int
-direction k (Internal _ _ byte otherBits) =
-    calcDirection otherBits (getByte k byte)
-direction _ _ = error "Data.CritBit.Core.direction: unpossible!"
-{-# INLINE direction #-}
+-- | Determine whether specified key is on the left subtree of the
+-- 'Internal' node.
+onLeft :: (CritBitKey k) => k -> Node k v -> Bool
+onLeft k (Internal _ _ byte bits) =
+  calcDirection bits (getByte k byte) == 0
+onLeft _ _ = error "Data.CritBit.Core.onLeft: Non-Internal node"
+{-# INLINE onLeft #-}
 
 -- Given a critical bitmask and a byte, return 0 to move left, 1 to
 -- move right.
