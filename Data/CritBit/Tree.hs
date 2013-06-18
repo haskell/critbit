@@ -258,12 +258,12 @@ delete k t@(CritBit root) = go root CritBit
                          Leaf lk _
                            | lk == k   -> cont right
                            | otherwise -> t
-                         _ -> go left $ \l -> cont $! i { ileft = l }
+                         _ -> go left ((cont $!) . setLeft i)
       | otherwise    = case right of
                          Leaf lk _
                            | lk == k   -> cont left
                            | otherwise -> t
-                         _ -> go right $ \r -> cont $! i { iright = r }
+                         _ -> go right ((cont $!) . setRight i)
     go (Leaf lk _) _ | k == lk = empty
     go _ _ = t
 {-# INLINABLE delete #-}
@@ -1081,11 +1081,11 @@ split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
   where
     go i@(Internal left right _ _)
       | k `onLeft` i = case go left of
-                         (lt,Empty) -> (lt, right)
-                         (lt,l)     -> (lt, i { ileft = l })
+                         (lt, Empty) -> (lt, right)
+                         (lt, gt)    -> (lt, setLeft i gt)
       | otherwise    = case go right of
-                         (Empty,gt) -> (left, gt)
-                         (r,gt)     -> (i { iright = r }, gt)
+                         (Empty, gt) -> (left, gt)
+                         (lt, gt)    -> (setRight i lt, gt)
     go (Leaf lk lv) =
       case byteCompare lk k of
         LT -> (Leaf lk lv, Empty)
@@ -1109,11 +1109,11 @@ splitLookup k (CritBit root) =
   where
     go i@(Internal left right _ _)
       | k `onLeft` i = case go left of
-                         (lt,res,Empty) -> (lt, res, right)
-                         (lt,res,l)     -> (lt, res, i { ileft = l })
+                         (lt, eq, Empty) -> (lt, eq, right)
+                         (lt, eq, gt   ) -> (lt, eq, setLeft i gt)
       | otherwise    = case go right of
-                         (Empty,res,gt) -> (left, res, gt)
-                         (r,res,gt)     -> (i { iright = r }, res, gt)
+                         (Empty, eq, gt) -> (left, eq, gt)
+                         (lt   , eq, gt) -> (setRight i lt, eq, gt)
     go (Leaf lk lv) =
       case byteCompare lk k of
         LT -> (Leaf lk lv, Nothing, Empty)
@@ -1300,7 +1300,7 @@ minViewWithKey :: CritBit k v -> Maybe ((k, v), CritBit k v)
 minViewWithKey (CritBit root) = go root CritBit
   where
     go (Internal (Leaf lk lv) right _ _) cont = Just ((lk,lv), cont right)
-    go i@(Internal left _ _ _) cont = go left $ \l -> cont $! i { ileft = l }
+    go i@(Internal left _ _ _) cont = go left $ (cont $!) . setLeft i
     go (Leaf lk lv) _ = Just ((lk,lv),empty)
     go _ _ = Nothing
 {-# INLINABLE minViewWithKey #-}
@@ -1314,7 +1314,7 @@ maxViewWithKey :: CritBit k v -> Maybe ((k,v), CritBit k v)
 maxViewWithKey (CritBit root) = go root CritBit
   where
     go (Internal left (Leaf lk lv) _ _) cont = Just ((lk,lv), cont left)
-    go i@(Internal _ right _ _) cont = go right $ \r -> cont $! i { iright = r }
+    go i@(Internal _ right _ _) cont = go right $ (cont $!) . setRight i
     go (Leaf lk lv) _ = Just ((lk,lv),empty)
     go _ _ = Nothing
 {-# INLINABLE maxViewWithKey #-}
@@ -1348,7 +1348,7 @@ updateMinWithKey maybeUpdate (CritBit root) = CritBit $ go root
   where
     go i@(Internal left right _ _) = case go left of
                                        Empty -> right
-                                       l     -> i { ileft = l }
+                                       l     -> setLeft i l
     go (Leaf lk lv) = maybe Empty (Leaf lk) $ maybeUpdate lk lv
     go _ = Empty
 {-# INLINABLE updateMinWithKey #-}
@@ -1362,7 +1362,7 @@ updateMaxWithKey maybeUpdate (CritBit root) = CritBit $ go root
   where
     go i@(Internal left right _ _) = case go right of
                                        Empty -> left
-                                       r     -> i { iright = r }
+                                       r     -> setRight i r
     go (Leaf lk lv) = maybe Empty (Leaf lk) $ maybeUpdate lk lv
     go _ = Empty
 {-# INLINABLE updateMaxWithKey #-}

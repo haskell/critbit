@@ -27,11 +27,17 @@ module Data.CritBit.Core
     , rightmost
     -- * Internal functions
     , calcDirection
-    , onLeft
     , followPrefixes
     , followPrefixesFrom
     , followPrefixesByteFrom
+    -- ** Predicates
+    , onLeft
     , above
+    , equal
+    -- ** Smart constructors
+    , setLeft
+    , setRight
+    , internal
     ) where
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
@@ -94,8 +100,8 @@ insertLookupGen ret f !k v (CritBit root) = go root
 
           rewalk i@(Internal left right _ _)
             | diff `above` i = finish i
-            | k `onLeft` i   = i { ileft = rewalk left }
-            | otherwise      = i { iright = rewalk right }
+            | k `onLeft` i   = setLeft  i $ rewalk left
+            | otherwise      = setRight i $ rewalk right
           rewalk i           = finish i
 
           finish (Leaf _ v') | equal diff = Leaf k (f k v v')
@@ -119,6 +125,16 @@ internal (!byte, !bits, !c) child1 child2
   | otherwise                 = Internal { ileft = child2, iright = child1,
                                            ibyte = byte, iotherBits = bits }
 {-# INLINE internal #-}
+
+setLeft :: Node k v -> Node k v -> Node k v
+setLeft i@(Internal{}) node = i { ileft = node }
+setLeft _ _ = error "Data.CritBit.Core.setLeft: Non-Internal node"
+{-# INLINE setLeft #-}
+
+setRight :: Node k v -> Node k v -> Node k v
+setRight i@(Internal{}) node = i { iright = node }
+setRight _ _ = error "Data.CritBit.Core.setRight: Non-Internal node"
+{-# INLINE setRight #-}
 
 above :: Diff -> Node k v -> Bool
 above (dbyte, dbits, _) (Internal _ _ byte bits) =
