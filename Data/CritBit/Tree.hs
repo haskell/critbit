@@ -1018,16 +1018,14 @@ mapEitherWithKey :: (k -> v -> Either v1 v2)
                  -> CritBit k v -> (CritBit k v1, CritBit k v2)
 mapEitherWithKey f (CritBit root) = (CritBit *** CritBit) $ go root
   where
-    go i@(Internal l r _ _) = (merge m1 m3, merge m2 m4)
+    go i@(Internal l r _ _) = (link i ll rl, link i lr rr)
       where
-        ((m1,m2),(m3,m4)) = (go l, go r)
-        merge m Empty = m
-        merge Empty m = m
-        merge m m'    = i { ileft = m, iright = m' }
+        (ll, lr) = go l
+        (rl, rr) = go r
     go (Leaf k v) = case f k v of
                       Left  v' -> (Leaf k v', Empty)
                       Right v' -> (Empty, Leaf k v')
-    go Empty      = (Empty, Empty)
+    go Empty = (Empty, Empty)
 {-# INLINABLE mapEitherWithKey #-}
 
 -- | /O(log n)/. The expression (@'split' k map@) is a pair
