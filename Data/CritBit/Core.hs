@@ -38,6 +38,8 @@ module Data.CritBit.Core
     -- ** Smart constructors
     , setLeft
     , setRight
+    , setLeft'
+    , setRight'
     , internal
     ) where
 
@@ -145,6 +147,18 @@ setRight :: Node k v -> Node k v -> Node k v
 setRight i@(Internal{}) node = i { iright = node }
 setRight _ _ = error "Data.CritBit.Core.setRight: Non-Internal node"
 {-# INLINE setRight #-}
+
+setLeft' :: Node k v -> Node k v -> Node k v
+setLeft' i@(Internal{}) Empty = iright i
+setLeft' i@(Internal{}) child = i { ileft = child }
+setLeft' _ _ = error "Data.CritBit.Core.setLeft': Non-internal node"
+{-# INLINE setLeft' #-}
+
+setRight' :: Node k v -> Node k v -> Node k v
+setRight' i@(Internal{}) Empty = ileft i
+setRight' i@(Internal{}) child = i { iright = child }
+setRight' _ _ = error "Data.CritBit.Core.alter.setRight': Non-internal node"
+{-# INLINE setRight' #-}
 
 above :: Diff -> Node k v -> Bool
 above (dbyte, dbits, _) (Internal _ _ byte bits) =

@@ -1335,9 +1335,7 @@ updateMax f m = updateMaxWithKey (const f) m
 updateMinWithKey :: (k -> v -> Maybe v) -> CritBit k v -> CritBit k v
 updateMinWithKey maybeUpdate (CritBit root) = CritBit $ go root
   where
-    go i@(Internal left right _ _) = case go left of
-                                       Empty -> right
-                                       l     -> setLeft i l
+    go i@(Internal left _ _ _) = setLeft' i (go left)
     go (Leaf lk lv) = maybe Empty (Leaf lk) $ maybeUpdate lk lv
     go _ = Empty
 {-# INLINABLE updateMinWithKey #-}
@@ -1349,9 +1347,7 @@ updateMinWithKey maybeUpdate (CritBit root) = CritBit $ go root
 updateMaxWithKey :: (k -> v -> Maybe v) -> CritBit k v -> CritBit k v
 updateMaxWithKey maybeUpdate (CritBit root) = CritBit $ go root
   where
-    go i@(Internal left right _ _) = case go right of
-                                       Empty -> left
-                                       r     -> setRight i r
+    go i@(Internal _ right _ _) = setRight' i (go right)
     go (Leaf lk lv) = maybe Empty (Leaf lk) $ maybeUpdate lk lv
     go _ = Empty
 {-# INLINABLE updateMaxWithKey #-}
@@ -1479,14 +1475,6 @@ alter f !k m = findPosition (const CritBit) finish setLeft' setRight' k m
     finish _ Empty = maybe Empty (Leaf k) $ f Nothing
     finish diff (Leaf _ v) | equal diff = maybe Empty (Leaf k) $ f (Just v)
     finish diff node = maybe node (internal diff node . Leaf k) $ f Nothing
-
-    setLeft' i@(Internal{}) Empty = iright i
-    setLeft' i@(Internal{}) child = i { ileft = child }
-    setLeft' _ _ = error "Data.CritBit.Tree.alter.setLeft': Non-internal node"
-
-    setRight' i@(Internal{}) Empty = ileft i
-    setRight' i@(Internal{}) child = i { iright = child }
-    setRight' _ _ = error "Data.CritBit.Tree.alter.setRight': Non-internal node"
 {-# INLINABLE alter #-}
 
 -- | /O(n)/. Partition the map according to a predicate. The first
