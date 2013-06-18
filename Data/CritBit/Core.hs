@@ -192,38 +192,20 @@ updateLookupWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k
 --
 -- (If you want a good little exercise, rewrite this function without
 -- using continuations, and benchmark the two versions.)
-updateLookupWithKey f k t@(CritBit root) = top root
+updateLookupWithKey f k t@(CritBit root) = go root (CritBit Empty) CritBit
   where
-    top i@(Internal left right _ _) = go i left right CritBit
-    top (Leaf lk lv) | k == lk =
-      maybeUpdate lk lv (\v -> CritBit $ Leaf lk v) (CritBit Empty)
-    top _ = (Nothing, t)
-
-    go i left right cont
-      | k `onLeft` i =
-        case left of
-          i'@(Internal left' right' _ _) ->
-            go i' left' right' $ \l -> cont $! i { ileft = l }
-          Leaf lk lv -> maybeUpdate lk lv
-                        (\v -> cont $! i { ileft = (Leaf lk v) })
-                        (cont right)
-          _ -> error "Data.CritBit.Core.updateLookupWithKey: Empty in tree."
-      | otherwise =
-        case right of
-          i'@(Internal left' right' _ _) ->
-            go i' left' right' $ \r -> cont $! i { iright = r }
-          Leaf lk lv -> maybeUpdate lk lv
-                        (\v -> cont $! i { iright = (Leaf lk v) })
-                        (cont left)
-          _ -> error "Data.CritBit.Core.updateLookupWithKey: Empty in tree."
-
-    maybeUpdate lk lv c1 c2
+    go i@(Internal left right _ _) _ cont = dispatch i left right cont
+    go (Leaf lk lv) other cont
       | k == lk = case f lk lv of
-                    Just lv' -> (Just lv', c1 lv')
-                    Nothing  -> (Just lv, c2)
+                    Just lv' -> (Just lv', cont $! Leaf lk lv')
+                    Nothing  -> (Just lv, other)
       | otherwise = (Nothing, t)
-    {-# INLINE maybeUpdate #-}
+    go Empty _ _ = (Nothing, t)
+    {-# INLINE go #-}
 
+    dispatch i left right cont
+      | k `onLeft` i = go left (cont right) $ (cont $!) . setLeft'  i
+      | otherwise    = go right (cont left) $ (cont $!) . setRight' i
 {-# INLINABLE updateLookupWithKey #-}
 
 -- | Determine whether specified key is on the left subtree of the
