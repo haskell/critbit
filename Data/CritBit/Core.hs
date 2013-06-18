@@ -26,7 +26,7 @@ module Data.CritBit.Core
     , leftmost
     , rightmost
     -- * Internal functions
-    , calcDirection
+    , diffOrd
     , followPrefixes
     , followPrefixesFrom
     , followPrefixesByteFrom
@@ -34,7 +34,6 @@ module Data.CritBit.Core
     -- ** Predicates
     , onLeft
     , above
-    , equal
     -- ** Smart constructors
     , setLeft
     , setRight
@@ -93,7 +92,7 @@ insertLookupGen :: CritBitKey k
 insertLookupGen ret f !k v m = findPosition ret' finish setLeft setRight k m
   where
     finish _ Empty = Leaf k v
-    finish diff (Leaf _ v') | equal diff = Leaf k (f k v v')
+    finish diff (Leaf _ v') | diffOrd diff == EQ = Leaf k $ f k v v'
     finish diff node = internal diff node (Leaf k v)
 
     ret' a b = ret a (CritBit b)
@@ -110,8 +109,8 @@ findPosition ret finish toLeft toRight k (CritBit root) = go root
       | k `onLeft` i = go left
       | otherwise    = go right
     go (Leaf lk lv)
-      | equal diff = ret (Just lv) $ rewalk root
-      | otherwise  = ret (Nothing) $ rewalk root
+      | diffOrd diff == EQ = ret (Just lv) $ rewalk root
+      | otherwise          = ret (Nothing) $ rewalk root
       where
         rewalk i@(Internal left right _ _)
           | diff `above` i = finish diff i
@@ -125,17 +124,12 @@ findPosition ret finish toLeft toRight k (CritBit root) = go root
 
 type Diff = (Int, BitMask, BitMask)
 
-equal :: Diff -> Bool
-equal (_, !bits, _) = bits == 0x1ff
-{-# INLINE equal #-}
-
 -- | Smart consturctor for Internal nodes
 internal :: Diff -> Node k v -> Node k v -> Node k v
-internal (!byte, !bits, !c) child1 child2
-  | calcDirection bits c == 0 = Internal { ileft = child1, iright = child2,
-                                           ibyte = byte, iotherBits = bits }
-  | otherwise                 = Internal { ileft = child2, iright = child1,
-                                           ibyte = byte, iotherBits = bits }
+internal diff@(!byte, !bits, !_) child1 child2 = case diffOrd diff of
+  LT -> Internal child1 child2 byte bits
+  GT -> Internal child2 child1 byte bits
+  EQ -> error "Data.CritBit.Cord.internal: Equal."
 {-# INLINE internal #-}
 
 setLeft :: Node k v -> Node k v -> Node k v
@@ -236,15 +230,17 @@ updateLookupWithKey f k t@(CritBit root) = top root
 -- 'Internal' node.
 onLeft :: (CritBitKey k) => k -> Node k v -> Bool
 onLeft k (Internal _ _ byte bits) =
-  calcDirection bits (getByte k byte) == 0
+  (1 + (bits .|. (getByte k byte))) `shiftR` 9 == 0
 onLeft _ _ = error "Data.CritBit.Core.onLeft: Non-Internal node"
 {-# INLINE onLeft #-}
 
--- Given a critical bitmask and a byte, return 0 to move left, 1 to
--- move right.
-calcDirection :: BitMask -> Word16 -> Int
-calcDirection otherBits c = (1 + fromIntegral (otherBits .|. c)) `shiftR` 9
-{-# INLINE calcDirection #-}
+-- | Given a diff of two keys determines result of comparison of them.
+diffOrd :: Diff -> Ordering
+diffOrd (_, !bits, !c)
+  | bits == 0x1ff                      = EQ
+  | (1 + (bits .|. c)) `shiftR` 9 == 0 = LT
+  | otherwise                          = GT
+{-# INLINE diffOrd #-}
 
 -- | Figure out the byte offset at which the key we are interested in
 -- differs from the leaf we reached when we initially walked the tree.

@@ -371,12 +371,13 @@ lookupOrd :: (CritBitKey k) => (Ordering -> Bool) -> k -> CritBit k v -> Maybe (
 lookupOrd accepts k m = findPosition (const id) finish toLeft toRight k m
   where
     finish _ Empty = Nothing
-    finish _ (Leaf lk lv)
-      | accepts (byteCompare lk k) = pair lk lv
-      | otherwise                  = Nothing
-    finish (_, nob, c) i@(Internal{})
-      | calcDirection nob c == 0 = ifLT i
-      | otherwise                = ifGT i
+    finish diff (Leaf lk lv)
+      | accepts (diffOrd diff) = pair lk lv
+      | otherwise              = Nothing
+    finish diff i@(Internal{}) = case diffOrd diff of
+      LT -> ifLT i
+      GT -> ifGT i
+      EQ -> error "Data.CritBit.Tree.lookupOrd.finish: Unpossible."
 
     toLeft  i = (<|> ifGT (iright i))
     toRight i = (<|> ifLT (ileft  i))
@@ -387,15 +388,6 @@ lookupOrd accepts k m = findPosition (const id) finish toLeft toRight k m
       | accepts v = f Nothing pair node
       | otherwise = Nothing
 {-# INLINABLE lookupOrd #-}
-
-byteCompare :: (CritBitKey k) => k -> k -> Ordering
-byteCompare a b = go 0
-  where
-    go i = case ba `compare` getByte b i of
-             EQ | ba /= 0   -> go (i + 1)
-             wat            -> wat
-      where ba = getByte a i
-{-# INLINABLE byteCompare #-}
 
 -- | /O(n*log n)/. Build a map from a list of key\/value pairs.  If
 -- the list contains more than one value for the same key, the last
@@ -605,11 +597,7 @@ unionWithKey f (CritBit lt) (CritBit rt) = CritBit (top lt rt)
       error "Data.CritBit.Tree.unionWithKey.splitB: unpossible"
     {-# INLINE splitB #-}
 
-    fork a ak b bk
-      | calcDirection nob c == 0 = Internal b a n nob
-      | otherwise                = Internal a b n nob
-      where
-        (n, nob, c) = followPrefixes ak bk
+    fork a ak b bk = internal (followPrefixes ak bk) b a
     {-# INLINE fork #-}
 {-# INLINEABLE unionWithKey #-}
 
@@ -1075,10 +1063,10 @@ split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
       | otherwise    = case go right of
                          (Empty, gt) -> (left, gt)
                          (lt, gt)    -> (setRight i lt, gt)
-    go (Leaf lk lv) =
-      case byteCompare lk k of
-        LT -> (Leaf lk lv, Empty)
-        GT -> (Empty, Leaf lk lv)
+    go leaf@(Leaf lk _) =
+      case diffOrd (followPrefixes k lk) of
+        LT -> (leaf , Empty)
+        GT -> (Empty, leaf )
         EQ -> (Empty, Empty)
     go _ = (Empty,Empty)
 {-# INLINABLE split #-}
@@ -1103,10 +1091,10 @@ splitLookup k (CritBit root) =
       | otherwise    = case go right of
                          (Empty, eq, gt) -> (left, eq, gt)
                          (lt   , eq, gt) -> (setRight i lt, eq, gt)
-    go (Leaf lk lv) =
-      case byteCompare lk k of
-        LT -> (Leaf lk lv, Nothing, Empty)
-        GT -> (Empty, Nothing, Leaf lk lv)
+    go leaf@(Leaf lk lv) =
+      case diffOrd (followPrefixes k lk) of
+        LT -> (leaf, Nothing, Empty)
+        GT -> (Empty, Nothing, leaf)
         EQ -> (Empty, Just lv, Empty)
     go _ = (Empty, Nothing, Empty)
 {-# INLINABLE splitLookup #-}
@@ -1473,7 +1461,8 @@ alter :: (CritBitKey k)
 alter f !k m = findPosition (const CritBit) finish setLeft' setRight' k m
   where
     finish _ Empty = maybe Empty (Leaf k) $ f Nothing
-    finish diff (Leaf _ v) | equal diff = maybe Empty (Leaf k) $ f (Just v)
+    finish diff (Leaf _ v) | diffOrd diff == EQ =
+      maybe Empty (Leaf k) $ f (Just v)
     finish diff node = maybe node (internal diff node . Leaf k) $ f Nothing
 {-# INLINABLE alter #-}
 
