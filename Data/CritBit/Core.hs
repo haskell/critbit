@@ -30,6 +30,7 @@ module Data.CritBit.Core
     , followPrefixes
     , followPrefixesFrom
     , followPrefixesByteFrom
+    , findPosition
     -- ** Predicates
     , onLeft
     , above
@@ -87,29 +88,38 @@ insertLookupGen :: CritBitKey k
                 => (Maybe v -> CritBit k v -> a)
                 -> (k -> v -> v -> v)
                 -> k -> v -> CritBit k v -> a
-insertLookupGen ret f !k v (CritBit root) = go root
+insertLookupGen ret f !k v m = findPosition ret' finish setLeft setRight k m
+  where
+    finish _ Empty = Leaf k v
+    finish diff (Leaf _ v') | equal diff = Leaf k (f k v v')
+    finish diff node = internal diff node (Leaf k v)
+
+    ret' a b = ret a (CritBit b)
+{-# INLINE insertLookupGen #-}
+
+-- | Common part of key finding/insert functions
+findPosition :: (CritBitKey k)
+             => (Maybe v -> r -> t) -> (Diff -> Node k v -> r)
+             -> (Node k v -> r -> r) -> (Node k v -> r -> r)
+             -> k -> CritBit k v -> t
+findPosition ret finish toLeft toRight k (CritBit root) = go root
   where
     go i@(Internal left right _ _)
       | k `onLeft` i = go left
       | otherwise    = go right
-    go (Leaf lk v')
-      | equal diff = wrap (Just v')
-      | otherwise  = wrap Nothing
-        where
-          wrap val = ret val . CritBit $ rewalk root
+    go (Leaf lk lv)
+      | equal diff = ret (Just lv) $ rewalk root
+      | otherwise  = ret (Nothing) $ rewalk root
+      where
+        rewalk i@(Internal left right _ _)
+          | diff `above` i = finish diff i
+          | k `onLeft` i   = toLeft  i (rewalk left )
+          | otherwise      = toRight i (rewalk right)
+        rewalk i           = finish diff i
 
-          rewalk i@(Internal left right _ _)
-            | diff `above` i = finish i
-            | k `onLeft` i   = setLeft  i $ rewalk left
-            | otherwise      = setRight i $ rewalk right
-          rewalk i           = finish i
-
-          finish (Leaf _ v') | equal diff = Leaf k (f k v v')
-          finish node = internal diff node (Leaf k v)
-
-          diff = followPrefixes k lk
-    go Empty = ret Nothing . CritBit $ Leaf k v
-{-# INLINE insertLookupGen #-}
+        diff@(!_, !_, !_) = followPrefixes k lk
+    go Empty = ret Nothing $ finish undefined Empty
+{-# INLINE findPosition #-}
 
 type Diff = (Int, BitMask, BitMask)
 

@@ -368,35 +368,24 @@ lookupLE k r = lookupOrd (GT /=) k r
 
 -- | /O(k)/. Common part of lookupXX functions.
 lookupOrd :: (CritBitKey k) => (Ordering -> Bool) -> k -> CritBit k v -> Maybe (k, v)
-lookupOrd accepts k (CritBit root) = go root
+lookupOrd accepts k m = findPosition (const id) finish toLeft toRight k m
   where
-    go Empty = Nothing
-    go i@(Internal left right _ _)
-      | k `onLeft` i = go left
-      | otherwise    = go right
-    go (Leaf lk lv)  = rewalk root
-      where
-        finish (Leaf _ _)
-          | accepts (byteCompare lk k) = Just (lk, lv)
-          | otherwise                  = Nothing
-        finish node
-          | calcDirection nob c == 0 = ifLT node
-          | otherwise                = ifGT node
+    finish _ Empty = Nothing
+    finish _ (Leaf lk lv)
+      | accepts (byteCompare lk k) = pair lk lv
+      | otherwise                  = Nothing
+    finish (_, nob, c) i@(Internal{})
+      | calcDirection nob c == 0 = ifLT i
+      | otherwise                = ifGT i
 
-        rewalk i@(Internal left right byte otherBits)
-          | byte > n                     = finish i
-          | byte == n && otherBits > nob = finish i
-          | k `onLeft` i                 = rewalk left  <|> ifGT right
-          | otherwise                    = rewalk right <|> ifLT left
-        rewalk i                         = finish i
-
-        (n, nob, c) = followPrefixes k lk
-        pair a b = Just (a, b)
-        ifGT = test GT  leftmost
-        ifLT = test LT rightmost
-        test v f node
-          | accepts v = f Nothing pair node
-          | otherwise = Nothing
+    toLeft  i = (<|> ifGT (iright i))
+    toRight i = (<|> ifLT (ileft  i))
+    pair a b = Just (a, b)
+    ifGT = test GT  leftmost
+    ifLT = test LT rightmost
+    test v f node
+      | accepts v = f Nothing pair node
+      | otherwise = Nothing
 {-# INLINABLE lookupOrd #-}
 
 byteCompare :: (CritBitKey k) => k -> k -> Ordering
@@ -1484,39 +1473,21 @@ mapAccumWithKey f start (CritBit root) = second CritBit (go start root)
 -- > alter f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("c",1)]
 -- > alter f "a" (fromList [(5,"a"), (3,"b")]) == fromList [("a",1), ("b",3)]
 alter :: (CritBitKey k)
-      => (Maybe v -> Maybe v)
-      -> k
-      -> CritBit k v
-      -> CritBit k v
-{-# INLINABLE alter #-}
-alter f !k (CritBit root) = CritBit . go $ root
+      => (Maybe v -> Maybe v) -> k -> CritBit k v -> CritBit k v
+alter f !k m = findPosition (const CritBit) finish setLeft' setRight' k m
   where
-    go i@(Internal l r _ _)
-      | k `onLeft` i = go l
-      | otherwise    = go r
-    go (Leaf lk _)   = rewalk root
-      where
-        (n,nob,c)  = followPrefixes k lk
-        dir        = calcDirection nob c
+    finish _ Empty = maybe Empty (Leaf k) $ f Nothing
+    finish diff (Leaf _ v) | equal diff = maybe Empty (Leaf k) $ f (Just v)
+    finish diff node = maybe node (internal diff node . Leaf k) $ f Nothing
 
-        rewalk i@(Internal left right byte otherBits)
-          | byte > n                     = finish i
-          | byte == n && otherBits > nob = finish i
-          | k `onLeft` i       = case rewalk left of
-                                   Empty -> right
-                                   nd    -> i { ileft  = nd }
-          | otherwise          = case rewalk right of
-                                   Empty -> left
-                                   nd    -> i { iright = nd }
-        rewalk i               = finish i
+    setLeft' i@(Internal{}) Empty = iright i
+    setLeft' i@(Internal{}) child = i { ileft = child }
+    setLeft' _ _ = error "Data.CritBit.Tree.alter.setLeft': Non-internal node"
 
-        finish (Leaf _ v)
-          | k == lk   = maybe Empty (Leaf k) . f $ Just v
-        finish i      = maybe i (ins . Leaf k) . f $ Nothing
-            where ins leaf
-                    | dir == 0  = Internal i leaf n nob
-                    | otherwise = Internal leaf i n nob
-    go _ = maybe Empty (Leaf k) $ f Nothing
+    setRight' i@(Internal{}) Empty = ileft i
+    setRight' i@(Internal{}) child = i { iright = child }
+    setRight' _ _ = error "Data.CritBit.Tree.alter.setRight': Non-internal node"
+{-# INLINABLE alter #-}
 
 -- | /O(n)/. Partition the map according to a predicate. The first
 -- map contains all elements that satisfy the predicate, the second all
