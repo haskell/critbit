@@ -146,12 +146,10 @@ module Data.CritBit.Tree
     , maxViewWithKey
     ) where
 
-import Control.Applicative (Applicative(..), (<$>), (*>), (<|>), pure, liftA2)
+import Control.Applicative (Applicative(..), (<$>), (<|>))
 import Control.Arrow (second, (***))
-import Control.Monad (guard)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
-import Data.Maybe (fromMaybe)
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.Array as A
 import qualified Data.Foldable as Foldable
@@ -757,8 +755,7 @@ maxKey n = rightmost
 {-# INLINE maxKey #-}
 
 -- | Link children to the parent node.
-link :: (CritBitKey k)
-     => Node k v -- ^ parent
+link :: Node k v -- ^ parent
      -> Node k w -- ^ left child
      -> Node k w -- ^ right child
      -> Node k w
@@ -972,13 +969,11 @@ filter p m = filterWithKey (const p) m
 --
 -- > filterWithKey (\k _ -> k > "4") (fromList [("5","a"), ("3","b")]) == fromList[("5","a")]
 filterWithKey :: (k -> v -> Bool) -> CritBit k v -> CritBit k v
-filterWithKey p (CritBit root)    = CritBit $ fromMaybe Empty (go root)
-  where go i@(Internal l r _ _)   = liftA2 modInternal ml mr <|> (ml <|> mr)
-          where modInternal nl nr = i { ileft = nl, iright = nr }
-                ml = go l
-                mr = go r
-        go l@(Leaf k v)           = guard (p k v) *> pure l
-        go Empty                  = Nothing
+filterWithKey p (CritBit root) = CritBit $ go root
+  where
+    go i@(Internal left right _ _) = link i (go left) (go right)
+    go leaf@(Leaf k v) | p k v = leaf
+    go _ = Empty
 {-# INLINABLE filterWithKey #-}
 
 -- | /O(n)/. Map values and collect the 'Just' results.
