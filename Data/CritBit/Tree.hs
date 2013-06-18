@@ -762,6 +762,11 @@ link' (Internal _ _ byte bits) a b = Internal a b byte bits
 link' _ _ _ = error "Data.CritBit.Tree.link': unpossible"
 {-# INLINE link' #-}
 
+link :: Node k v -> Node k w -> Node k w -> Node k w
+link (Internal _ _ byte bits) a b = Internal a b byte bits
+link _ _ _ = error "Data.CritBit.Tree.link: unpossible"
+{-# INLINE link #-}
+
 -- | /O(n)/. Apply a function to all values.
 --
 -- > map show (fromList [("b",5), ("a",3)]) == fromList [("b","5"), ("a","3")]
@@ -1358,7 +1363,7 @@ insertWith f = insertLookupGen (flip const) (const f)
 mapWithKey :: (k -> v -> w) -> CritBit k v -> CritBit k w
 mapWithKey f (CritBit root) = CritBit (go root)
   where
-    go i@(Internal l r _ _) = i { ileft = go l, iright = go r }
+    go i@(Internal l r _ _) = link i (go l) (go r)
     go (Leaf k v)           = Leaf k (f k v)
     go  Empty               = Empty
 {-# INLINABLE mapWithKey #-}
@@ -1371,8 +1376,7 @@ mapAccumRWithKey f start (CritBit root) = second CritBit (go start root)
   where
     go a i@(Internal l r _ _) = let (a0, r')  = go a r
                                     (a1, l')  = go a0 l
-                                in (a1, i { ileft = l', iright = r' })
-
+                                in (a1, link i l' r')
     go a (Leaf k v)           = let (a0, w) = f a k v in (a0, Leaf k w)
     go a Empty                = (a, Empty)
 {-# INLINABLE mapAccumRWithKey #-}
@@ -1390,9 +1394,8 @@ traverseWithKey :: (CritBitKey k, Applicative t)
                 -> t (CritBit k w)
 traverseWithKey f (CritBit root) = fmap CritBit (go root)
   where
-    go i@(Internal l r _ _) = let constr l' r' = i { ileft = l', iright = r' }
-                              in constr <$> go l <*> go r
-    go (Leaf k v)           = Leaf k <$> f k v
+    go i@(Internal l r _ _) = link i <$> go l <*> go r
+    go (Leaf k v)           = (Leaf k) <$> f k v
     go Empty                = pure Empty
 {-# INLINABLE traverseWithKey #-}
 
@@ -1423,7 +1426,7 @@ mapAccumWithKey f start (CritBit root) = second CritBit (go start root)
   where
     go a i@(Internal l r _ _) = let (a0, l')  = go a l
                                     (a1, r')  = go a0 r
-                                in (a1, i { ileft = l', iright = r' })
+                                in (a1, link i l' r')
 
     go a (Leaf k v)           = let (a0, w) = f a k v in (a0, Leaf k w)
     go a Empty                = (a, Empty)
