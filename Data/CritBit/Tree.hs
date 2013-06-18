@@ -433,7 +433,7 @@ size :: CritBit k v -> Int
 size (CritBit root) = go root
   where
     go (Internal l r _ _) = go l + go r
-    go (Leaf _ _) = 1
+    go (Leaf{}) = 1
     go Empty      = 0
 
 -- | /O(n)/. Fold the values in the map using the given
@@ -561,9 +561,9 @@ unionWithKey f (CritBit lt) (CritBit rt) = CritBit (top lt rt)
     go a@(Leaf ak av) _ b@(Leaf bk bv) _
         | ak == bk = Leaf ak (f ak av bv)
         | otherwise = fork a ak b bk
-    go a@(Leaf _ _) ak b@(Internal _ _ _ _) bk =
+    go a@(Leaf{}) ak b@(Internal{}) bk =
       leafBranch a b bk (splitB a ak b bk) (fork a ak b bk)
-    go a@(Internal _ _ _ _) ak b@(Leaf _ _) bk =
+    go a@(Internal{}) ak b@(Leaf{}) bk =
       leafBranch b a ak (splitA a ak b bk) (fork a ak b bk)
     go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk
       | (dbyte, dbits) < min (abyte, abits) (bbyte, bbits) = fork a ak b bk
@@ -692,9 +692,9 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
                        Just v  -> Leaf ak v
                        Nothing -> Empty
         | otherwise = left a
-    go a@(Leaf _ _) ak b@(Internal _ _ _ _) bk =
+    go a@(Leaf{}) ak b@(Internal{}) bk =
       leafBranch a b bk (splitB a ak b bk) (left a)
-    go a@(Internal _ _ _ _) ak b@(Leaf _ _) bk =
+    go a@(Internal{}) ak b@(Leaf{}) bk =
       leafBranch b a ak (splitA a ak b bk) (left a)
     go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk =
       case compare (abyte, abits) (bbyte, bbits) of
