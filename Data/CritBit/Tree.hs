@@ -1150,13 +1150,9 @@ submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
     go (Leaf ak av) _ (Leaf bk bv) _
         | ak == bk  = if f av bv then Equal else No
         | otherwise = No
-    go a@(Leaf _ _) ak b@(Internal _ _ bbyte bbits) bk =
-        if dbyte > bbyte || dbyte == bbyte && dbits >= bbits
-        then splitB a ak b bk
-        else No
-      where
-        (dbyte, dbits, _) = followPrefixes ak bk
-    go (Internal _ _ _ _) _ (Leaf _ _) _ = No
+    go a@(Leaf{}) ak b@(Internal{}) bk =
+      leafBranch a b bk (splitB a ak b bk) No
+    go (Internal{}) _ (Leaf{}) _ = No
     go a@(Internal al ar abyte abits) ak b@(Internal bl br bbyte bbits) bk =
       case compare (abyte, abits) (bbyte, bbits) of
         LT -> No
