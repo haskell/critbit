@@ -1178,11 +1178,6 @@ submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
     splitB _ _ _ _ =
         error("Data.CritBit.Tree.isSubmapOfBy.splitB: unpossible")
     {-# INLINE splitB #-}
-
-    minKey n = leftmost
-        (error "Data.CritBit.Tree.isSubmapOfBy.minKey: Empty")
-        (\k _ -> k) n
-    {-# INLINE minKey #-}
 {-# INLINABLE submapTypeBy #-}
 
 -- | /O(log n)/. The minimal key of the map. Calls 'error' if the map
