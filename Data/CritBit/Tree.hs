@@ -577,7 +577,7 @@ unionWithKey f (CritBit lt) (CritBit rt) = CritBit (top lt rt)
            case compare (abyte, abits) (bbyte, bbits) of
              LT -> splitA a ak b bk
              GT -> splitB a ak b bk
-             EQ -> link a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
+             EQ -> link' a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
       where
         (dbyte, dbits, _) = followPrefixes ak bk
     -- Assumes that empty nodes exist only on the top level
@@ -706,7 +706,7 @@ binarySetOpWithKey left both (CritBit lt) (CritBit rt) = CritBit $ top lt rt
       case compare (abyte, abits) (bbyte, bbits) of
         LT -> splitA a ak b bk
         GT -> splitB a ak b bk
-        EQ -> link a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
+        EQ -> link' a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
     -- Assumes that empty nodes exist only on the top level.
     go _ _ _ _ = error "Data.CritBit.Tree.binarySetOpWithKey.go: Empty"
 
@@ -736,8 +736,8 @@ leafBranch _ _ _ _ _ = error "Data.CritBit.Tree.leafBranch: unpossible"
 switch :: (CritBitKey k) => k -> Node k v -> Node k w -> Node k w
        -> Node k w -> Node k w -> Node k w
 switch k n a0 b0 a1 b1
-  | k `onLeft` n = link n a0 b0
-  | otherwise    = link n a1 b1
+  | k `onLeft` n = link' n a0 b0
+  | otherwise    = link' n a1 b1
 {-# INLINE switch #-}
 
 -- | Extract minimum key from the subtree.
@@ -755,15 +755,12 @@ maxKey n = rightmost
 {-# INLINE maxKey #-}
 
 -- | Link children to the parent node.
-link :: Node k v -- ^ parent
-     -> Node k w -- ^ left child
-     -> Node k w -- ^ right child
-     -> Node k w
-link _ Empty b = b
-link _ a Empty = a
-link (Internal _ _ byte bits) a b = Internal a b byte bits
-link _ _ _ = error "Data.CritBit.Tree.link: unpossible"
-{-# INLINE link #-}
+link' :: Node k v -> Node k w -> Node k w -> Node k w
+link' _ Empty b = b
+link' _ a Empty = a
+link' (Internal _ _ byte bits) a b = Internal a b byte bits
+link' _ _ _ = error "Data.CritBit.Tree.link': unpossible"
+{-# INLINE link' #-}
 
 -- | /O(n)/. Apply a function to all values.
 --
@@ -971,7 +968,7 @@ filter p m = filterWithKey (const p) m
 filterWithKey :: (k -> v -> Bool) -> CritBit k v -> CritBit k v
 filterWithKey p (CritBit root) = CritBit $ go root
   where
-    go i@(Internal left right _ _) = link i (go left) (go right)
+    go i@(Internal left right _ _) = link' i (go left) (go right)
     go leaf@(Leaf k v) | p k v = leaf
     go _ = Empty
 {-# INLINABLE filterWithKey #-}
@@ -990,7 +987,7 @@ mapMaybe = mapMaybeWithKey . const
 mapMaybeWithKey :: (k -> v -> Maybe v') -> CritBit k v -> CritBit k v'
 mapMaybeWithKey f (CritBit root) = CritBit $ go root
   where
-    go i@(Internal left right _ _) = link i (go left) (go right)
+    go i@(Internal left right _ _) = link' i (go left) (go right)
     go (Leaf k v) = maybe Empty (Leaf k) $ f k v
     go Empty      = Empty
 {-# INLINABLE mapMaybeWithKey #-}
@@ -1018,7 +1015,7 @@ mapEitherWithKey :: (k -> v -> Either v1 v2)
                  -> CritBit k v -> (CritBit k v1, CritBit k v2)
 mapEitherWithKey f (CritBit root) = (CritBit *** CritBit) $ go root
   where
-    go i@(Internal l r _ _) = (link i ll rl, link i lr rr)
+    go i@(Internal l r _ _) = (link' i ll rl, link' i lr rr)
       where
         (ll, lr) = go l
         (rl, rr) = go r
@@ -1469,7 +1466,7 @@ partitionWithKey f (CritBit root) = CritBit *** CritBit $ go root
     go l@(Leaf k v)
       | f k v     = (l,Empty)
       | otherwise = (Empty,l)
-    go i@(Internal left right _ _) = (link i l1 r1, link i l2 r2)
+    go i@(Internal left right _ _) = (link' i l1 r1, link' i l2 r2)
       where
         (!l1,!l2) = go left
         (!r1,!r2) = go right
