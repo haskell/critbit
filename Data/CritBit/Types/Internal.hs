@@ -12,13 +12,17 @@ module Data.CritBit.Types.Internal
     , CritBit(..)
     , BitMask
     , Node(..)
+    , foldlWithKey
+    , foldlWithKey'
+    , foldrWithKey
+    , foldrWithKey'
     , toList
     ) where
 
 import Control.DeepSeq (NFData(..))
 import Data.Bits ((.|.), (.&.), shiftL, shiftR)
 import Data.ByteString (ByteString)
-import Data.Foldable (Foldable, foldMap)
+import Data.Foldable hiding (toList)
 import Data.Monoid (Monoid(..))
 import Data.Text ()
 import Data.Text.Internal (Text(..))
@@ -62,9 +66,72 @@ instance Functor (Node k) where
     fmap _ Empty                = Empty
 
 instance Foldable (Node k) where
+    foldl f z m = foldlWithKey (\a _ v -> f a v) z (CritBit m)
+    foldr f z m = foldrWithKey (\_ v a -> f v a) z (CritBit m)
+
     foldMap f (Internal l r _ _) = mappend (foldMap f l) (foldMap f r)
     foldMap f (Leaf _ v)         = f v
     foldMap _ Empty              = mempty
+
+-- | /O(n)/. Fold the keys and values in the map using the given
+-- left-associative function, such that
+-- @'foldlWithKey' f z == 'Prelude.foldl' (\\z' (kx, x) -> f z' kx x) z . 'toAscList'@.
+--
+-- Examples:
+--
+-- > keys = reverse . foldlWithKey (\ks k x -> k:ks) []
+--
+-- > let f result k a = result ++ "(" ++ show k ++ ":" ++ a ++ ")"
+-- > foldlWithKey f "Map: " (fromList [("a",5), ("b",3)]) == "Map: (b:3)(a:5)"
+foldlWithKey :: (a -> k -> v -> a) -> a -> CritBit k v -> a
+foldlWithKey f z m = foldlWithKeyWith (\_ b -> b) f z m
+{-# INLINABLE foldlWithKey #-}
+
+-- | /O(n)/. A strict version of 'foldlWithKey'. Each application of
+-- the function is evaluated before using the result in the next
+-- application. This function is strict in the starting value.
+foldlWithKey' :: (a -> k -> v -> a) -> a -> CritBit k v -> a
+foldlWithKey' f z m = foldlWithKeyWith seq f z m
+{-# INLINABLE foldlWithKey' #-}
+
+-- | /O(n)/. Fold the keys and values in the map using the given
+-- right-associative function, such that
+-- @'foldrWithKey' f z == 'Prelude.foldr' ('uncurry' f) z . 'toAscList'@.
+--
+-- Examples:
+--
+-- > keys map = foldrWithKey (\k x ks -> k:ks) [] map
+--
+-- > let f k a result = result ++ "(" ++ show k ++ ":" ++ a ++ ")"
+-- > foldrWithKey f "Map: " (fromList [("a",5), ("b",3)]) == "Map: (a:5)(b:3)"
+foldrWithKey :: (k -> v -> a -> a) -> a -> CritBit k v -> a
+foldrWithKey f z m = foldrWithKeyWith (\_ b -> b) f z m
+{-# INLINABLE foldrWithKey #-}
+
+-- | /O(n)/. A strict version of 'foldrWithKey'. Each application of
+-- the function is evaluated before using the result in the next
+-- application. This function is strict in the starting value.
+foldrWithKey' :: (k -> v -> a -> a) -> a -> CritBit k v -> a
+foldrWithKey' f z m = foldrWithKeyWith seq f z m
+{-# INLINABLE foldrWithKey' #-}
+
+foldlWithKeyWith :: (a -> a -> a) -> (a -> k -> v -> a) -> a -> CritBit k v -> a
+foldlWithKeyWith maybeSeq f z0 (CritBit root) = go z0 root
+  where
+    go z (Internal left right _ _) = let z' = go z left
+                                     in z' `maybeSeq` go z' right
+    go z (Leaf k v)                = f z k v
+    go z Empty                     = z
+{-# INLINE foldlWithKeyWith #-}
+
+foldrWithKeyWith :: (a -> a -> a) -> (k -> v -> a -> a) -> a -> CritBit k v -> a
+foldrWithKeyWith maybeSeq f z0 (CritBit root) = go root z0
+  where
+    go (Internal left right _ _) z = let z' = go right z
+                                     in z' `maybeSeq` go left z'
+    go (Leaf k v) z                = f k v z
+    go Empty z                     = z
+{-# INLINE foldrWithKeyWith #-}
 
 -- | A crit-bit tree.
 newtype CritBit k v = CritBit {
