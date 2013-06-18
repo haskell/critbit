@@ -1469,14 +1469,10 @@ partitionWithKey f (CritBit root) = CritBit *** CritBit $ go root
     go l@(Leaf k v)
       | f k v     = (l,Empty)
       | otherwise = (Empty,l)
-    go i@(Internal left right _ _) = (join l1 r1, join l2 r2)
+    go i@(Internal left right _ _) = (link i l1 r1, link i l2 r2)
       where
         (!l1,!l2) = go left
         (!r1,!r2) = go right
-
-        join Empty r = r
-        join l Empty = l
-        join l r     = i { ileft = l, iright = r }
     go _ = (Empty,Empty)
 {-# INLINABLE partitionWithKey #-}
 
