@@ -990,14 +990,8 @@ mapMaybe = mapMaybeWithKey . const
 mapMaybeWithKey :: (k -> v -> Maybe v') -> CritBit k v -> CritBit k v'
 mapMaybeWithKey f (CritBit root) = CritBit $ go root
   where
-    go i@(Internal l r _ _) =
-      case (go l, go r) of
-        (m, Empty) -> m
-        (Empty, m) -> m
-        (m1,   m2) -> i { ileft = m1, iright = m2 }
-    go (Leaf k v) = case f k v of
-                      Nothing -> Empty
-                      Just v' -> Leaf k v'
+    go i@(Internal left right _ _) = link i (go left) (go right)
+    go (Leaf k v) = maybe Empty (Leaf k) $ f k v
     go Empty      = Empty
 {-# INLINABLE mapMaybeWithKey #-}
 
