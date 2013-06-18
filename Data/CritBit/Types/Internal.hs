@@ -136,9 +136,8 @@ foldrWithKeyWith maybeSeq f z0 (CritBit root) = go root z0
 {-# INLINE foldrWithKeyWith #-}
 
 -- | A crit-bit tree.
-newtype CritBit k v = CritBit {
-      cbRoot :: Node k v
-    } deriving (Eq, NFData, Functor, Foldable)
+newtype CritBit k v = CritBit (Node k v)
+                      deriving (Eq, NFData, Functor, Foldable)
 
 instance (Show k, Show v) => Show (CritBit k v) where
     show t = "fromList " ++ show (toList t)

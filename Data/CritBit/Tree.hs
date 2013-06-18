@@ -185,7 +185,7 @@ null _               = False
 -- > empty      == fromList []
 -- > size empty == 0
 empty :: CritBit k v
-empty = CritBit { cbRoot = Empty }
+empty = CritBit Empty
 
 -- | /O(log n)/. Is the key a member of the map?
 --
