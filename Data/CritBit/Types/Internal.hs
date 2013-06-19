@@ -72,6 +72,7 @@ instance Foldable (Node k) where
     foldMap f (Internal l r _ _) = mappend (foldMap f l) (foldMap f r)
     foldMap f (Leaf _ v)         = f v
     foldMap _ Empty              = mempty
+    {-# INLINABLE foldMap #-}
 
 -- | /O(n)/. Fold the keys and values in the map using the given
 -- left-associative function, such that

@@ -210,7 +210,7 @@ t_update_general :: (CritBitKey k)
 t_update_general h k0 v0 (CB m0) = C.update f k0 m1 == naiveUpdate f k0 m1
   where
     m1 = h k0 v0 m0
-    naiveUpdate g k = snd . naiveUpdateLookupWithKey (\_ v -> g v) k
+    naiveUpdate g k = snd . naiveUpdateLookupWithKey (const g) k
     f x
       | even (fromIntegral x :: Int) = Just (x * 10)
       | otherwise                    = Nothing

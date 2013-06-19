@@ -427,8 +427,7 @@ fromList = List.foldl' ins empty
 -- >                        fromList [("a",13), ("b",8)]
 -- > fromListWith (+) [] == empty
 fromListWith :: (CritBitKey k) => (v -> v -> v) -> [(k,v)] -> CritBit k v
-fromListWith f xs
-  = fromListWithKey (\_ x y -> f x y) xs
+fromListWith f xs = fromListWithKey (const f) xs
 {-# INLINABLE fromListWith #-}
 
 -- | /O(n*log n)/. Build a map from a list of key\/value pairs
@@ -499,7 +498,7 @@ foldr f z m = Foldable.foldr f z m
 -- function is evaluated before using the result in the next
 -- application. This function is strict in the starting value.
 foldr' :: (v -> a -> a) -> a -> CritBit k v -> a
-foldr' f z m = foldrWithKey' (\_ v a -> f v a) z m
+foldr' f z m = foldrWithKey' (const f) z m
 {-# INLINABLE foldr' #-}
 
 -- | /O(n)/. Return all the elements of the map in ascending order of
@@ -825,7 +824,7 @@ fromAscList = fromAscListWithKey (\_ x _ -> x)
 -- > valid (fromAscListWith (++) [(3,"b"), (5,"a"), (5,"b")]) == True
 -- > valid (fromAscListWith (++) [(5,"a"), (3,"b"), (5,"b")]) == False
 fromAscListWith :: (CritBitKey k) => (a -> a -> a) -> [(k,a)] -> CritBit k a
-fromAscListWith f = fromAscListWithKey (\_ x y -> f x y)
+fromAscListWith f = fromAscListWithKey (const f)
 {-# INLINABLE fromAscListWith #-}
 
 -- | /O(n)/. Build a map from an ascending list in linear time with a
@@ -1108,7 +1107,7 @@ submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
         GT -> splitB a ak b bk
         EQ -> min (go al ak bl bk) (go ar (minKey ar) br (minKey br))
     -- Assumes that empty nodes exist only on the top level
-    go _ _ _ _ = error "Data.CritBit.Tree.isSubmapOfBy.go: Empty" 
+    go _ _ _ _ = error "Data.CritBit.Tree.isSubmapOfBy.go: Empty"
 
     splitB a ak b@(Internal bl br _ _) bk = if t == No then No else Yes
       where
@@ -1295,8 +1294,9 @@ insert = insertWithKey (\_ v _ -> v)
 -- > insertWith (+) "c" 7 (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3), ("c",7)]
 -- > insertWith (+) "x" 5 empty                         == singleton "x" 5
 --
-insertWith :: CritBitKey k => (v -> v -> v) -> k -> v -> CritBit k v -> CritBit k v
-insertWith f = insertWithKey (\_ v v' -> f v v')
+insertWith :: CritBitKey k =>
+              (v -> v -> v) -> k -> v -> CritBit k v -> CritBit k v
+insertWith f = insertWithKey (const f)
 {-# INLINABLE insertWith #-}
 
 -- | /O(n)/. Apply a function to all values.
@@ -1461,5 +1461,5 @@ partition :: (CritBitKey k)
           => (v -> Bool)
           -> CritBit k v
           -> (CritBit k v, CritBit k v)
-partition f m = partitionWithKey (\_ v -> f v) m
+partition f m = partitionWithKey (const f) m
 {-# INLINABLE partition #-}
