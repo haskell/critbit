@@ -141,22 +141,12 @@ t_updateLookupWithKey = C.updateLookupWithKey f =??= Map.updateLookupWithKey f
         Just (x + fromIntegral (C.byteCount k))
       | otherwise = Nothing
 
-t_update_general :: (CritBitKey k)
-                 => (k -> V -> CritBit k V -> CritBit k V)
-                 -> k -> V -> CB k -> Bool
-t_update_general h k0 v0 (CB m0) = C.update f k0 m1 == naiveUpdate f k0 m1
+t_update :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_update = C.update f =??= Map.update f
   where
-    m1 = h k0 v0 m0
-    naiveUpdate g k = snd . naiveUpdateLookupWithKey (const g) k
     f x
       | even (fromIntegral x :: Int) = Just (x * 10)
       | otherwise                    = Nothing
-
-t_update_present :: (CritBitKey k) => k -> V -> CB k -> Bool
-t_update_present = t_update_general C.insert
-
-t_update_missing :: (CritBitKey k) => k -> V -> CB k -> Bool
-t_update_missing = t_update_general (\k _v m -> C.delete k m)
 
 t_updateWithKey_general :: (CritBitKey k)
                         => (k -> V -> CritBit k V -> CritBit k V)
@@ -599,8 +589,7 @@ propertiesFor t = [
   ] ++ presentMissingProperty "t_adjustWithKey" t_adjustWithKey t ++ [
     testProperty "t_updateWithKey_present" $ t_updateWithKey_present t
   , testProperty "t_updateWithKey_missing" $ t_updateWithKey_missing t
-  , testProperty "t_update_present" $ t_update_present t
-  , testProperty "t_update_missing" $ t_update_missing t
+  ] ++ presentMissingProperty "t_update" t_update t ++ [
   ] ++ presentMissingProperty "t_updateLookupWithKey" t_updateLookupWithKey t ++ [
     testProperty "t_mapMaybe" $ t_mapMaybe t
   , testProperty "t_mapMaybeWithKey" $ t_mapMaybeWithKey t
