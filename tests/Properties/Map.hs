@@ -3,7 +3,7 @@
 module Properties.Map
     where
 
-import Control.Arrow (second, (***))
+import Control.Arrow ((***))
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit, byteCount)
 import Data.Foldable (foldMap)
 import Data.Function (on)
@@ -236,15 +236,6 @@ t_fromSet = (C.fromSet f . C.keysSet) =*= (Map.fromSet f . Map.keysSet)
 t_map :: CBProp
 t_map = C.map (+3) =*= Map.map (+3)
 
-type M m a k v w = ((a -> k -> v -> (a, w)) -> a -> m k v -> (a, m k w))
-
-mapAccumWithKey :: (w ~ String, v ~ V, a ~ Int, Ord k, CritBitKey k) =>
-                   M CritBit a k v w -> M Map a k v w -> k -> KV k -> Bool
-mapAccumWithKey critbitF mapF _ (KV kvs) = mappedC == mappedM
-  where fun i _ v = (i + 1, show $ v + 3)
-        mappedC = second C.toList . critbitF fun 0 $ (C.fromList kvs)
-        mappedM = second Map.toList . mapF fun 0 $ (Map.fromList kvs)
-
 prepends :: (CritBitKey k, Ord k, IsString k, Monoid k) => k -> k
 prepends = mappend "test"
 
@@ -259,10 +250,12 @@ t_mapKeysMonotonic =
   C.mapKeysMonotonic prepends =*= Map.mapKeysMonotonic prepends
 
 t_mapAccumRWithKey :: CBProp
-t_mapAccumRWithKey = mapAccumWithKey C.mapAccumRWithKey Map.mapAccumRWithKey
+t_mapAccumRWithKey = C.mapAccumRWithKey f 0 =*= Map.mapAccumRWithKey f 0
+  where f i _ v = (i + 1 :: Int, show $ v + 3)
 
 t_mapAccumWithKey :: CBProp
-t_mapAccumWithKey = mapAccumWithKey C.mapAccumWithKey Map.mapAccumWithKey
+t_mapAccumWithKey = C.mapAccumWithKey f 0 =*= Map.mapAccumWithKey f 0
+  where f i _ v = (i + 1 :: Int, show $ v + 3)
 
 t_toAscList :: CBProp
 t_toAscList = C.toAscList =*= Map.toAscList
