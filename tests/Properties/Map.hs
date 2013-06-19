@@ -124,15 +124,6 @@ t_adjustWithKey k kvs k0 =
     (C.adjustWithKey f k0 === Map.adjustWithKey f k0) k kvs
   where f k v = v + fromIntegral (C.byteCount k)
 
-naiveUpdateLookupWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k
-                         -> CritBit k v -> (Maybe v, CritBit k v)
-naiveUpdateLookupWithKey g k m =
-  case C.lookup k m of
-    Just v  -> case g k v of
-      Just v' -> (Just v', C.insert k v' m)
-      Nothing -> (Just v, C.delete k m)
-    Nothing -> (Nothing, m)
-
 t_updateLookupWithKey :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
 t_updateLookupWithKey = C.updateLookupWithKey f =??= Map.updateLookupWithKey f
   where
@@ -148,24 +139,13 @@ t_update = C.update f =??= Map.update f
       | even (fromIntegral x :: Int) = Just (x * 10)
       | otherwise                    = Nothing
 
-t_updateWithKey_general :: (CritBitKey k)
-                        => (k -> V -> CritBit k V -> CritBit k V)
-                        -> k -> V -> CB k -> Bool
-t_updateWithKey_general h k0 v0 (CB m0) =
-    C.updateWithKey f k0 m1 == naiveUpdateWithKey f k0 m1
+t_updateWithKey :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_updateWithKey = C.updateWithKey f =??= Map.updateWithKey f
   where
-    m1 = h k0 v0 m0
-    naiveUpdateWithKey g k = snd . naiveUpdateLookupWithKey g k
     f k x
       | even (fromIntegral x :: Int) =
         Just (x + fromIntegral (C.byteCount k))
       | otherwise = Nothing
-
-t_updateWithKey_present :: (CritBitKey k) => k -> V -> CB k -> Bool
-t_updateWithKey_present = t_updateWithKey_general C.insert
-
-t_updateWithKey_missing :: (CritBitKey k) => k -> V -> CB k -> Bool
-t_updateWithKey_missing = t_updateWithKey_general (\k _v m -> C.delete k m)
 
 t_mapMaybe :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_mapMaybe = C.mapMaybe f === Map.mapMaybe f
@@ -587,9 +567,8 @@ propertiesFor t = [
   ] ++ presentMissingProperty "t_delete" t_delete t ++ [
   ] ++ presentMissingProperty "t_adjust" t_adjust t ++ [
   ] ++ presentMissingProperty "t_adjustWithKey" t_adjustWithKey t ++ [
-    testProperty "t_updateWithKey_present" $ t_updateWithKey_present t
-  , testProperty "t_updateWithKey_missing" $ t_updateWithKey_missing t
   ] ++ presentMissingProperty "t_update" t_update t ++ [
+  ] ++ presentMissingProperty "t_updateWithKey" t_updateWithKey t ++ [
   ] ++ presentMissingProperty "t_updateLookupWithKey" t_updateLookupWithKey t ++ [
     testProperty "t_mapMaybe" $ t_mapMaybe t
   , testProperty "t_mapMaybeWithKey" $ t_mapMaybeWithKey t
