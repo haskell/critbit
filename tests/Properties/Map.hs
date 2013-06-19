@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings #-}
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, Rank2Types #-}
 module Properties.Map
     where
 
@@ -29,6 +29,15 @@ import qualified Data.Text as T
 import Data.Functor.Identity (Identity(..))
 #endif
 
+type CBProp           = (CritBitKey k, Ord k, Show k, IsString k, Monoid k)
+                      => k -> KV k -> Bool
+type WithKeyProp      = (CritBitKey k, Ord k, Show k, IsString k, Monoid k)
+                      => k -> KV k -> k -> Bool
+type WithKeyValueProp = (CritBitKey k, Ord k, Show k, IsString k, Monoid k)
+                      => k -> KV k -> k -> V -> Bool
+type WithMapProp      = (CritBitKey k, Ord k, Show k, IsString k, Monoid k)
+                      => k -> KV k -> KV k -> Bool
+
 newtype CB k = CB (CritBit k V)
     deriving (Show, Eq, Arbitrary)
 
@@ -44,10 +53,10 @@ presentMissingProperty name t w = [
     present k v (KV kvs) = t w (KV ((k, v):kvs)) k
     missing k   (KV kvs) = t w (KV (filter ((/= k) . fst) kvs)) k
 
-t_null :: (CritBitKey k) => k -> KV k -> Bool
+t_null :: CBProp
 t_null _ (KV kvs) = C.null (C.fromList kvs) == null kvs
 
-t_lookup :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_lookup :: WithKeyProp
 t_lookup = C.lookup =??= Map.lookup
 
 #if MIN_VERSION_containers(0,5,0)
@@ -85,46 +94,46 @@ isoWith f g critbitf mapf _ (KV kvs) =
       -> k -> KV k -> Bool
 (===) = isoWith C.toList Map.toList
 
-t_fromList_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromList_toList :: CBProp
 t_fromList_toList = id === id
 
-t_fromList_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromList_size :: CBProp
 t_fromList_size = isoWith C.size Map.size id id
 
-t_fromListWith_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWith_toList :: CBProp
 t_fromListWith_toList _ (KV kvs) =
     Map.toList (Map.fromListWith (+) kvsDup) == C.toList (C.fromListWith (+) kvsDup)
     where kvsDup = concatMap (replicate 2) kvs
 
-t_fromListWith_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWith_size :: CBProp
 t_fromListWith_size _ (KV kvs) =
     Map.size (Map.fromListWith (+) kvsDup) == C.size (C.fromListWith (+) kvsDup)
     where kvsDup = concatMap (replicate 2) kvs
 
-t_fromListWithKey_toList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWithKey_toList :: CBProp
 t_fromListWithKey_toList _ (KV kvs) =
     Map.toList (Map.fromListWithKey f kvsDup) == C.toList (C.fromListWithKey f kvsDup)
     where kvsDup = concatMap (replicate 2) kvs
           f key a1 a2 = toEnum (byteCount key) + a1 + a2
 
-t_fromListWithKey_size :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromListWithKey_size :: CBProp
 t_fromListWithKey_size _ (KV kvs) =
     Map.size (Map.fromListWithKey f kvsDup) == C.size (C.fromListWithKey f kvsDup)
     where kvsDup = concatMap (replicate 2) kvs
           f key a1 a2 = toEnum (byteCount key) + a1 + a2
 
-t_delete :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_delete :: WithKeyProp
 t_delete = C.delete =??= Map.delete
 
-t_adjust :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_adjust :: WithKeyProp
 t_adjust k kvs k0 = (C.adjust (+3) k0 === Map.adjust (+3) k0) k kvs
 
-t_adjustWithKey :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_adjustWithKey :: WithKeyProp
 t_adjustWithKey k kvs k0 =
     (C.adjustWithKey f k0 === Map.adjustWithKey f k0) k kvs
   where f k v = v + fromIntegral (C.byteCount k)
 
-t_updateLookupWithKey :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_updateLookupWithKey :: WithKeyProp
 t_updateLookupWithKey = C.updateLookupWithKey f =??= Map.updateLookupWithKey f
   where
     f k x
@@ -132,14 +141,14 @@ t_updateLookupWithKey = C.updateLookupWithKey f =??= Map.updateLookupWithKey f
         Just (x + fromIntegral (C.byteCount k))
       | otherwise = Nothing
 
-t_update :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_update :: WithKeyProp
 t_update = C.update f =??= Map.update f
   where
     f x
       | even (fromIntegral x :: Int) = Just (x * 10)
       | otherwise                    = Nothing
 
-t_updateWithKey :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_updateWithKey :: WithKeyProp
 t_updateWithKey = C.updateWithKey f =??= Map.updateWithKey f
   where
     f k x
@@ -147,12 +156,12 @@ t_updateWithKey = C.updateWithKey f =??= Map.updateWithKey f
         Just (x + fromIntegral (C.byteCount k))
       | otherwise = Nothing
 
-t_mapMaybe :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapMaybe :: CBProp
 t_mapMaybe = C.mapMaybe f === Map.mapMaybe f
   where
     f x = if even x then Just (2 * x) else Nothing
 
-t_mapMaybeWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapMaybeWithKey :: CBProp
 t_mapMaybeWithKey = C.mapMaybeWithKey f === Map.mapMaybeWithKey f
   where
     f k x
@@ -160,14 +169,14 @@ t_mapMaybeWithKey = C.mapMaybeWithKey f === Map.mapMaybeWithKey f
         Just (x + fromIntegral (C.byteCount k))
       | otherwise = Nothing
 
-t_mapEither :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapEither :: CBProp
 t_mapEither =
     isoWith (C.toList *** C.toList) (Map.toList *** Map.toList)
             (C.mapEither f) (Map.mapEither f)
   where
     f x = if even x then Left (2 * x) else Right (3 * x)
 
-t_mapEitherWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapEitherWithKey :: CBProp
 t_mapEitherWithKey =
     isoWith (C.toList *** C.toList) (Map.toList *** Map.toList)
             (C.mapEitherWithKey f) (Map.mapEitherWithKey f)
@@ -177,19 +186,19 @@ t_mapEitherWithKey =
         Left (x + fromIntegral (C.byteCount k))
       | otherwise = Right (2 * x)
 
-t_unionL :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_unionL :: WithMapProp
 t_unionL k (KV kvs) =
     (C.unionL (C.fromList kvs) === Map.union (Map.fromList kvs)) k
 
-t_unionR :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_unionR :: WithMapProp
 t_unionR k (KV kvs) =
     (C.unionR (C.fromList kvs) === flip Map.union (Map.fromList kvs)) k
 
-t_unionWith :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_unionWith :: WithMapProp
 t_unionWith k (KV kvs) = (C.unionWith (-) (C.fromList kvs) ===
                           Map.unionWith (-) (Map.fromList kvs)) k
 
-t_unionWithKey :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_unionWithKey :: WithMapProp
 t_unionWithKey k (KV kvs) = (C.unionWithKey f (C.fromList kvs) ===
                              Map.unionWithKey f (Map.fromList kvs)) k
   where
@@ -209,11 +218,11 @@ t_unionsWith _ (Small kvs0) =
   where
     kvs = map fromKV kvs0
 
-t_difference :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_difference :: WithMapProp
 t_difference k (KV kvs) = (C.difference (C.fromList kvs) ===
     Map.difference (Map.fromList kvs)) k
 
-t_differenceWith :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_differenceWith :: WithMapProp
 t_differenceWith k (KV kvs) =
     (C.differenceWith f (C.fromList kvs) ===
         Map.differenceWith f (Map.fromList kvs)) k
@@ -222,7 +231,7 @@ t_differenceWith k (KV kvs) =
               then Nothing
               else Just (v1 - v2)
 
-t_differenceWithKey :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_differenceWithKey :: WithMapProp
 t_differenceWithKey k (KV kvs) =
     (C.differenceWithKey f (C.fromList kvs) ===
         Map.differenceWithKey f (Map.fromList kvs)) k
@@ -231,56 +240,56 @@ t_differenceWithKey k (KV kvs) =
                   then Nothing
                   else Just (fromIntegral (C.byteCount key) + v1 - v2)
 
-t_intersection :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_intersection :: WithMapProp
 t_intersection k (KV kvs) = (C.intersection (C.fromList kvs) ===
     Map.intersection (Map.fromList kvs)) k
 
-t_intersectionWith :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_intersectionWith :: WithMapProp
 t_intersectionWith k (KV kvs) =
     (C.intersectionWith (-) (C.fromList kvs) ===
         Map.intersectionWith (-) (Map.fromList kvs)) k
 
-t_intersectionWithKey :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_intersectionWithKey :: WithMapProp
 t_intersectionWithKey k (KV kvs) =
     (C.intersectionWithKey f (C.fromList kvs) ===
         Map.intersectionWithKey f (Map.fromList kvs)) k
   where
     f key v1 v2 = fromIntegral (C.byteCount key) + v1 - v2
 
-t_foldl :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldl :: CBProp
 t_foldl = isoWith id id (C.foldl (-) 0) (Map.foldl (-) 0)
 
-t_foldlWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldlWithKey :: CBProp
 t_foldlWithKey = isoWith id id (C.foldlWithKey f ([], 0))
                                (Map.foldlWithKey f ([], 0))
   where
     f (l,s) k v = (k:l,s+v)
 
-t_foldl' :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldl' :: CBProp
 t_foldl' = isoWith id id (C.foldl' (-) 0) (Map.foldl' (-) 0)
 
-t_foldlWithKey' :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldlWithKey' :: CBProp
 t_foldlWithKey' = isoWith id id (C.foldlWithKey' f ([], 0))
                                 (Map.foldlWithKey' f ([], 0))
   where
     f (l,s) k v = (k:l,s+v)
 
-t_elems :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_elems :: CBProp
 t_elems = isoWith id id C.elems Map.elems
 
-t_keys :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_keys :: CBProp
 t_keys = isoWith id id C.keys Map.keys
 
-t_keysSet :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_keysSet :: CBProp
 t_keysSet = isoWith CSet.toList Set.toList C.keysSet Map.keysSet
 
 #if MIN_VERSION_containers(0,5,0)
-t_fromSet :: (CritBitKey k, Ord k, Show k) => k -> KV k -> Bool
+t_fromSet :: CBProp
 t_fromSet = (C.fromSet f . C.keysSet) === (Map.fromSet f . Map.keysSet)
   where f = length . show
 #endif
 
-t_map :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_map :: CBProp
 t_map = C.map (+3) === Map.map (+3)
 
 type M m a k v w = ((a -> k -> v -> (a, w)) -> a -> m k v -> (a, m k w))
@@ -295,7 +304,7 @@ mapAccumWithKey critbitF mapF _ (KV kvs) = mappedC == mappedM
 prepends :: (CritBitKey k, Ord k, IsString k, Monoid k) => k -> k
 prepends = mappend "test"
 
-t_mapKeys :: (CritBitKey k, Ord k, IsString k, Monoid k) => k -> KV k -> Bool
+t_mapKeys :: CBProp
 t_mapKeys = C.mapKeys prepends === Map.mapKeys prepends
 
 t_mapKeysWith :: (CritBitKey k, Ord k, IsString k, Monoid k)
@@ -308,16 +317,16 @@ t_mapKeysMonotonic :: (CritBitKey k, Ord k, IsString k, Monoid k)
 t_mapKeysMonotonic =
   C.mapKeysMonotonic prepends === Map.mapKeysMonotonic prepends
 
-t_mapAccumRWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapAccumRWithKey :: CBProp
 t_mapAccumRWithKey = mapAccumWithKey C.mapAccumRWithKey Map.mapAccumRWithKey
 
-t_mapAccumWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapAccumWithKey :: CBProp
 t_mapAccumWithKey = mapAccumWithKey C.mapAccumWithKey Map.mapAccumWithKey
 
-t_toAscList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_toAscList :: CBProp
 t_toAscList = isoWith C.toAscList Map.toAscList id id
 
-t_toDescList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_toDescList :: CBProp
 t_toDescList = isoWith C.toDescList Map.toDescList id id
 
 -- Check that 'toList's are equal, with input preprocessing
@@ -328,14 +337,14 @@ t_toDescList = isoWith C.toDescList Map.toDescList id id
   where
     kvs' = p kvs
 
-t_fromAscList :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromAscList :: CBProp
 t_fromAscList _ = (C.fromAscList ==== Map.fromAscList) sort
 
-t_fromAscListWith :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromAscListWith :: CBProp
 t_fromAscListWith _ =
     (C.fromAscListWith (+) ==== Map.fromAscListWith (+)) sort
 
-t_fromAscListWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_fromAscListWithKey :: CBProp
 t_fromAscListWithKey _ =
     (C.fromAscListWithKey f ==== Map.fromAscListWithKey f) sort
   where
@@ -347,15 +356,15 @@ t_fromDistinctAscList _ k v =
     ((Map.insert k v) . Map.fromDistinctAscList))
     (nubBy ((==) `on` fst) . sort)
 
-t_filter :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_filter :: CBProp
 t_filter = C.filter p === Map.filter p
   where p = (> (maxBound - minBound) `div` 2)
 
-t_split :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_split :: WithKeyProp
 t_split k' kvs k = isoWith (C.toList *** C.toList) (Map.toList *** Map.toList)
                     (C.split k) (Map.split k) k' kvs
 
-t_splitLookup :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_splitLookup :: WithKeyProp
 t_splitLookup = C.splitLookup =??= Map.splitLookup
 
 t_submap_general :: (CritBitKey k, Ord k) =>
@@ -366,43 +375,41 @@ t_submap_general cf mf (KV kvs1) (KV kvs2) =
   cf (C.fromList kvs1) (C.fromList kvs2) ==
   mf (Map.fromList kvs1) (Map.fromList kvs2)
 
-t_isSubmap_ambiguous :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_isSubmap_ambiguous :: WithMapProp
 t_isSubmap_ambiguous _ kvs1 kvs2 =
   t_submap_general C.isSubmapOf Map.isSubmapOf kvs1 kvs2
 
-t_isSubmapOfBy_true :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_isSubmapOfBy_true :: WithMapProp
 t_isSubmapOfBy_true _ (KV kvs1) (KV kvs2) =
   C.isSubmapOfBy (<=) (C.fromList kvs1)
                       (C.fromList $ kvs2 ++ (fmap (second (+1)) kvs1))
 
-t_isSubmapOfBy_ambiguous :: (CritBitKey k, Ord k) => k -> KV k -> KV k -> Bool
+t_isSubmapOfBy_ambiguous :: WithMapProp
 t_isSubmapOfBy_ambiguous _ kvs1 kvs2 =
   t_submap_general (C.isSubmapOfBy (<=)) (Map.isSubmapOfBy (<=)) kvs1 kvs2
 
-t_isProperSubmapOf_ambiguous :: (CritBitKey k, Ord k) =>
-                              k -> KV k -> KV k -> Bool
+t_isProperSubmapOf_ambiguous :: WithMapProp
 t_isProperSubmapOf_ambiguous _ kvs1 kvs2 =
   t_submap_general C.isProperSubmapOf Map.isProperSubmapOf kvs1 kvs2
 
-t_isProperSubmapOfBy_ambiguous :: (CritBitKey k, Ord k) =>
-                                  k -> KV k -> KV k -> Bool
+t_isProperSubmapOfBy_ambiguous :: WithMapProp
 t_isProperSubmapOfBy_ambiguous _ kvs1 kvs2 =
   t_submap_general (C.isProperSubmapOfBy (<=))
                    (Map.isProperSubmapOfBy (<=))
                    kvs1 kvs2
 
-t_findMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_findMin :: CBProp
 t_findMin k w@(KV kvs) =
   null kvs || isoWith id id C.findMin Map.findMin k w
 
-t_findMax :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_findMax :: CBProp
 t_findMax k w@(KV kvs) =
   null kvs || isoWith id id C.findMax Map.findMax k w
 
-t_deleteMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_deleteMin :: CBProp
 t_deleteMin = C.deleteMin === Map.deleteMin
 
-t_deleteMax :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_deleteMax :: CBProp
 t_deleteMax = C.deleteMax === Map.deleteMax
 
 deleteFindAll :: (m -> Bool) -> (m -> (a, m)) -> m -> [a]
@@ -411,32 +418,32 @@ deleteFindAll isEmpty deleteFind m0 = unfoldr maybeDeleteFind m0
           | isEmpty m = Nothing
           | otherwise = Just . deleteFind $ m
 
-t_deleteFindMin :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_deleteFindMin :: CBProp
 t_deleteFindMin _ (KV kvs) =
     deleteFindAll C.null C.deleteFindMin (C.fromList kvs) ==
     deleteFindAll Map.null Map.deleteFindMin (Map.fromList kvs)
 
-t_deleteFindMax :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_deleteFindMax :: CBProp
 t_deleteFindMax _ (KV kvs) =
     deleteFindAll C.null C.deleteFindMax (C.fromList kvs) ==
     deleteFindAll Map.null Map.deleteFindMax (Map.fromList kvs)
 
-t_minView :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_minView :: CBProp
 t_minView _ (KV kvs) =
   unfoldr C.minView (C.fromList kvs) ==
   unfoldr Map.minView (Map.fromList kvs)
 
-t_maxView :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_maxView :: CBProp
 t_maxView _ (KV kvs) =
   unfoldr C.maxView (C.fromList kvs) ==
   unfoldr Map.maxView (Map.fromList kvs)
 
-t_minViewWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_minViewWithKey :: CBProp
 t_minViewWithKey _ (KV kvs) =
   unfoldr C.minViewWithKey (C.fromList kvs) ==
   unfoldr Map.minViewWithKey (Map.fromList kvs)
 
-t_maxViewWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_maxViewWithKey :: CBProp
 t_maxViewWithKey _ (KV kvs) =
   unfoldr C.maxViewWithKey (C.fromList kvs) ==
   unfoldr Map.maxViewWithKey (Map.fromList kvs)
@@ -446,42 +453,24 @@ updateFun _ v
   | v `rem` 2 == 0 = Nothing
   | otherwise = Just (v + 1)
 
-t_updateMinWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_updateMinWithKey :: CBProp
 t_updateMinWithKey =
     C.updateMinWithKey updateFun === Map.updateMinWithKey updateFun
 
-t_updateMaxWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_updateMaxWithKey :: CBProp
 t_updateMaxWithKey =
     C.updateMaxWithKey updateFun === Map.updateMaxWithKey updateFun
 
-t_insert_present :: (CritBitKey k, Ord k) => k -> V -> V -> KV k -> Bool
-t_insert_present k v v' =
-    ((C.insert k v' . C.insert k v) === (Map.insert k v' . Map.insert k v)) k
+t_insert :: WithKeyValueProp
+t_insert = C.insert =???= Map.insert
 
-t_insert_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_insert_missing k v kvs = (C.insert k v === Map.insert k v) k kvs
+t_insertWith :: WithKeyValueProp
+t_insertWith = C.insertWith (-) =???= Map.insertWith (-)
 
-t_insertWith_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_insertWith_present k v = ((C.insertWith (+) k v . C.insert k v) ===
-                            (Map.insertWith (+) k v . Map.insert k v)) k
-
-t_insertWith_missing :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_insertWith_missing k v = ((C.insertWith (+) k v . C.delete k) ===
-                            (Map.insertWith (+) k v . Map.delete k)) k
-
-t_insertWithKey_present :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
-t_insertWithKey_present _ k v (KV kvs) = Map.toList m == C.toList c
+t_insertWithKey :: WithKeyValueProp
+t_insertWithKey = C.insertWithKey f =???= Map.insertWithKey f
   where
-    f key v1 v2 = fromIntegral (C.byteCount key) + v1 + v2
-    m = Map.insertWithKey f k v $ Map.insert k v $ Map.fromList kvs
-    c =   C.insertWithKey f k v $   C.insert k v $   C.fromList kvs
-
-t_insertWithKey_missing :: (CritBitKey k, Ord k) => k -> k -> V -> KV k -> Bool
-t_insertWithKey_missing _ k v (KV kvs) = Map.toList m == C.toList c
-  where
-    f key v1 v2 = fromIntegral (C.byteCount key) + v1 + v2
-    m = Map.insertWithKey f k v $ Map.fromList kvs
-    c =   C.insertWithKey f k v $   C.fromList kvs
+    f key v1 v2 = fromIntegral (C.byteCount key) * v1 - v2
 
 t_insertLookupWithKey :: (CritBitKey k, Ord k)
                       => k -> k -> V -> KV k -> Bool
@@ -492,15 +481,15 @@ t_insertLookupWithKey _ k v (KV kvs) = m == c
     m = fixup Map.toList . Map.insertLookupWithKey f k v $ Map.fromList kvs
     c = fixup C.toList . C.insertLookupWithKey f k v $ C.fromList kvs
 
-t_foldMap :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_foldMap :: CBProp
 t_foldMap = isoWith (foldMap Sum) (foldMap Sum) id id
 
-t_mapWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_mapWithKey :: CBProp
 t_mapWithKey = C.mapWithKey f === Map.mapWithKey f
   where f _ = show . (+3)
 
 #if MIN_VERSION_containers(0,5,0)
-t_traverseWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_traverseWithKey :: CBProp
 t_traverseWithKey _ (KV kvs) = mappedC == mappedM
   where fun _   = Identity . show . (+3)
         mappedC = C.toList . runIdentity . C.traverseWithKey fun $
@@ -513,16 +502,16 @@ alter :: (CritBitKey k, Ord k) =>
          (Maybe Word8 -> Maybe Word8) -> k -> KV k -> Bool
 alter f k = (C.alter f k === Map.alter f k) k
 
-t_alter :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_alter :: CBProp
 t_alter = alter f
   where
     f Nothing = Just 1
     f j       = fmap (+ 1) j
 
-t_alter_delete :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_alter_delete :: CBProp
 t_alter_delete = alter (const Nothing)
 
-t_partitionWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_partitionWithKey :: CBProp
 t_partitionWithKey _ (KV kvs) = partCrit == partMap
   where
     fixup f (a,b) = (f a, f b)
@@ -530,7 +519,7 @@ t_partitionWithKey _ (KV kvs) = partCrit == partMap
     partCrit = fixup C.toList . C.partitionWithKey predicate . C.fromList $ kvs
     partMap  = fixup Map.toList . Map.partitionWithKey predicate . Map.fromList $ kvs
 
-t_partition :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_partition :: CBProp
 t_partition _ (KV kvs) = partCrit == partMap
   where
     fixup f (a,b) = (f a, f b)
@@ -598,8 +587,6 @@ propertiesFor t = [
   , testProperty "t_fromAscListWith" $ t_fromAscListWith t
   , testProperty "t_fromAscListWithKey" $ t_fromAscListWithKey t
   , testProperty "t_fromDistinctAscList" $ t_fromDistinctAscList t
-  , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
-  , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   , testProperty "t_insertLookupWithKey" $ t_insertLookupWithKey t
   , testProperty "t_filter" $ t_filter t
   ] ++ presentMissingProperty "t_split" t_split t ++ [
@@ -623,13 +610,10 @@ propertiesFor t = [
   , testProperty "t_maxViewWithKey" $ t_maxViewWithKey t
   , testProperty "t_updateMinWithKey" $ t_updateMinWithKey t
   , testProperty "t_updateMaxWithKey" $ t_updateMaxWithKey t
-  , testProperty "t_insert_present" $ t_insert_present t
-  , testProperty "t_insert_missing" $ t_insert_missing t
-  , testProperty "t_insertWith_present" $ t_insertWith_present t
-  , testProperty "t_insertWith_missing" $ t_insertWith_missing t
-  , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
-  , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
-  , testProperty "t_insertLookupWithKey" $ t_insertLookupWithKey t
+  ] ++ presentMissingProperty "t_insert" t_insert t ++ [
+  ] ++ presentMissingProperty "t_insertWith" t_insertWith t ++ [
+  ] ++ presentMissingProperty "t_insertWithKey" t_insertWithKey t ++ [
+    testProperty "t_insertLookupWithKey" $ t_insertLookupWithKey t
 #if MIN_VERSION_containers(0,5,0)
   , testProperty "t_traverseWithKey" $ t_traverseWithKey t
 #endif
