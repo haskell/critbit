@@ -54,7 +54,7 @@ presentMissingProperty name t w = [
     missing k   (KV kvs) = t w (KV (filter ((/= k) . fst) kvs)) k
 
 t_null :: CBProp
-t_null _ (KV kvs) = C.null (C.fromList kvs) == null kvs
+t_null = C.null =?= Map.null
 
 t_lookup :: WithKeyProp
 t_lookup = C.lookup =??= Map.lookup
