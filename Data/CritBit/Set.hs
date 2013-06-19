@@ -85,7 +85,6 @@ module Data.CritBit.Set
     , fromDistinctAscList
     ) where
 
-import Control.DeepSeq (NFData)
 import Control.Arrow ((***))
 import Data.CritBit.Types.Internal (CritBit(..), Set(..), CritBitKey, Node(..))
 import Data.Foldable (Foldable, foldMap)
