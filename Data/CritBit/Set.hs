@@ -88,11 +88,11 @@ module Data.CritBit.Set
 import Control.Arrow ((***))
 import Data.CritBit.Types.Internal (CritBit(..), Set(..), CritBitKey, Node(..))
 import Data.Foldable (Foldable, foldMap)
-import Data.Monoid (Monoid(..))
 import Data.Maybe (isJust)
+import Data.Monoid (Monoid(..))
 import Prelude hiding (null, filter, map, foldl, foldr)
-import qualified Data.List as List
 import qualified Data.CritBit.Tree as T
+import qualified Data.List as List
 
 instance (Show a) => Show (Set a) where
     show s = "fromList " ++ show (toList s)

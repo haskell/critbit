@@ -151,11 +151,11 @@ import Control.Arrow (second, (***))
 import Control.Monad (guard)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
-import qualified Data.Foldable as Foldable
 import Data.Maybe (fromMaybe)
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
-import qualified Data.List as List
 import qualified Data.Array as A
+import qualified Data.Foldable as Foldable
+import qualified Data.List as List
 
 infixl 9 !, \\
 
