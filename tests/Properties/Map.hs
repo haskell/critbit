@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, TypeFamilies, OverloadedStrings #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 module Properties.Map
     where
 
@@ -15,6 +16,7 @@ import Properties.Common
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck (Arbitrary(..))
+import Test.QuickCheck.Property (Testable)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.CritBit.Map.Lazy as C
 import qualified Data.CritBit.Set as CSet
@@ -30,14 +32,23 @@ import Data.Functor.Identity (Identity(..))
 newtype CB k = CB (CritBit k V)
     deriving (Show, Eq, Arbitrary)
 
+presentMissingProperty :: (Eq k, Arbitrary k, Show k, IsString k, Testable t)
+                       => String -> (k -> KV k -> k -> t) -> k -> [Test]
+presentMissingProperty name t w = [
+    testProperty (name ++ "_general") $ general
+  , testProperty (name ++ "_present") $ present
+  , testProperty (name ++ "_missing") $ missing
+  ]
+  where
+    general k   kvs = t w kvs k
+    present k v (KV kvs) = t w (KV ((k, v):kvs)) k
+    missing k   (KV kvs) = t w (KV (filter ((/= k) . fst) kvs)) k
+
 t_null :: (CritBitKey k) => k -> KV k -> Bool
 t_null _ (KV kvs) = C.null (C.fromList kvs) == null kvs
 
-t_lookup_present :: (CritBitKey k) => k -> k -> V -> CB k -> Bool
-t_lookup_present _ k v (CB m) = C.lookup k (C.insert k v m) == Just v
-
-t_lookup_missing :: (CritBitKey k) => k -> k -> CB k -> Bool
-t_lookup_missing _ k (CB m) = C.lookup k (C.delete k m) == Nothing
+t_lookup :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_lookup = C.lookup =??= Map.lookup
 
 #if MIN_VERSION_containers(0,5,0)
 t_lookupGT :: (Ord k, CritBitKey k) => k -> k -> KV k -> Bool
@@ -102,35 +113,16 @@ t_fromListWithKey_size _ (KV kvs) =
     where kvsDup = concatMap (replicate 2) kvs
           f key a1 a2 = toEnum (byteCount key) + a1 + a2
 
-t_delete_present :: (CritBitKey k, Ord k) => k -> KV k -> k -> V -> Bool
-t_delete_present _ (KV kvs) k v =
-    C.toList (C.delete k c) == Map.toList (Map.delete k m)
-  where
-    c = C.insert k v $ C.fromList kvs
-    m = Map.insert k v $ Map.fromList kvs
+t_delete :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_delete = C.delete =??= Map.delete
 
-t_adjust_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_adjust_general k = (C.adjust (+3) k === Map.adjust (+3) k) k
+t_adjust :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_adjust k kvs k0 = (C.adjust (+3) k0 === Map.adjust (+3) k0) k kvs
 
-t_adjust_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_adjust_present k v (KV kvs) = t_adjust_general k (KV ((k,v):kvs))
-
-t_adjust_missing :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_adjust_missing k (KV kvs) =
-    t_adjust_general k (KV $ filter ((/=k) . fst) kvs)
-
-t_adjustWithKey_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_adjustWithKey_general k0 =
-    (C.adjustWithKey f k0 === Map.adjustWithKey f k0) k0
+t_adjustWithKey :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_adjustWithKey k kvs k0 =
+    (C.adjustWithKey f k0 === Map.adjustWithKey f k0) k kvs
   where f k v = v + fromIntegral (C.byteCount k)
-
-t_adjustWithKey_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_adjustWithKey_present k v (KV kvs) =
-  t_adjustWithKey_general k (KV ((k,v):kvs))
-
-t_adjustWithKey_missing :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_adjustWithKey_missing k (KV kvs) =
-  t_adjustWithKey_general k (KV $ filter ((/=k) . fst) kvs)
 
 naiveUpdateLookupWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k
                          -> CritBit k v -> (Maybe v, CritBit k v)
@@ -401,15 +393,9 @@ t_filter :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_filter = C.filter p === Map.filter p
   where p = (> (maxBound - minBound) `div` 2)
 
-t_split_general :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_split_general k = isoWith (C.toList *** C.toList) (Map.toList *** Map.toList)
-                            (C.split k) (Map.split k) k
-
-t_split_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_split_present k v (KV kvs) = t_split_general k (KV ((k,v):kvs))
-
-t_split_missing :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_split_missing k (KV kvs) = t_split_general k (KV (filter ((/=k) . fst) kvs))
+t_split :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_split k' kvs k = isoWith (C.toList *** C.toList) (Map.toList *** Map.toList)
+                    (C.split k) (Map.split k) k' kvs
 
 unpack3 :: (m -> a) -> (m, b, m) -> (a, b, a)
 unpack3 f (a, k, b) = (f a, k, f b)
@@ -613,22 +599,17 @@ propertiesFor t = [
   , testProperty "t_fromListWithKey_toList" $ t_fromListWithKey_toList t
   , testProperty "t_fromListWithKey_size" $ t_fromListWithKey_size t
   , testProperty "t_null" $ t_null t
-  , testProperty "t_lookup_present" $ t_lookup_present t
-  , testProperty "t_lookup_missing" $ t_lookup_missing t
 #if MIN_VERSION_containers(0,5,0)
   , testProperty "t_lookupGT" $ t_lookupGT t
   , testProperty "t_lookupGE" $ t_lookupGE t
   , testProperty "t_lookupLT" $ t_lookupLT t
   , testProperty "t_lookupLE" $ t_lookupLE t
 #endif
-  , testProperty "t_delete_present" $ t_delete_present t
-  , testProperty "t_adjust_general" $ t_adjust_general t
-  , testProperty "t_adjust_present" $ t_adjust_present t
-  , testProperty "t_adjust_missing" $ t_adjust_missing t
-  , testProperty "t_adjustWithKey_general" $ t_adjustWithKey_general t
-  , testProperty "t_adjustWithKey_present" $ t_adjustWithKey_present t
-  , testProperty "t_adjustWithKey_missing" $ t_adjustWithKey_missing t
-  , testProperty "t_updateWithKey_present" $ t_updateWithKey_present t
+  ] ++ presentMissingProperty "t_lookup" t_lookup t ++ [
+  ] ++ presentMissingProperty "t_delete" t_delete t ++ [
+  ] ++ presentMissingProperty "t_adjust" t_adjust t ++ [
+  ] ++ presentMissingProperty "t_adjustWithKey" t_adjustWithKey t ++ [
+    testProperty "t_updateWithKey_present" $ t_updateWithKey_present t
   , testProperty "t_updateWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_update_present" $ t_update_present t
   , testProperty "t_update_missing" $ t_update_missing t
@@ -677,10 +658,8 @@ propertiesFor t = [
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   , testProperty "t_insertLookupWithKey" $ t_insertLookupWithKey t
   , testProperty "t_filter" $ t_filter t
-  , testProperty "t_split_general" $ t_split_general t
-  , testProperty "t_split_present" $ t_split_present t
-  , testProperty "t_split_missing" $ t_split_missing t
-  , testProperty "t_splitLookup_present" $ t_splitLookup_present t
+  ] ++ presentMissingProperty "t_splut" t_split t ++ [
+    testProperty "t_splitLookup_present" $ t_splitLookup_present t
   , testProperty "t_splitLookup_missing" $ t_splitLookup_missing t
   , testProperty "t_isSubmap_ambiguous" $ t_isSubmap_ambiguous t
   , testProperty "t_isSubmapOfBy_true" $ t_isSubmapOfBy_true t
@@ -724,13 +703,44 @@ properties = [
   , testGroup "bytestring" $ propertiesFor B.empty
   ]
 
+infix 4 =*=, =?=, =??=, =???=
+class Eq' f g where
+  (=*=) :: f -> g -> Bool
+
+instance (Eq t) => Eq' t t where
+  (=*=) = (==)
+
+instance (Eq k, Eq v) => Eq' (CritBit k v) (Map k v) where
+   c =*= m = C.toList c =*= Map.toList m
+
+instance (Eq' af bf, Eq' as bs) => Eq' (af, as) (bf, bs) where
+  (af, as) =*= (bf, bs) = af =*= bf && as =*= bs
+
+-- | Compares (map -> result) functions
+(=?=) :: (Ord k, CritBitKey k, Eq' a b)
+      => (CritBit k V -> a) -> (Map k V -> b)
+      -> k -> KV k -> Bool
+f =?= g = const $ \(KV kvs) -> f (C.fromList kvs) =*= g (Map.fromList kvs)
+
+-- | Compares (key -> map -> result) functions
+(=??=) :: (Ord k, CritBitKey k, Eq' a b)
+       => (t -> CritBit k V -> a) -> (t -> Map k V -> b)
+       -> k -> KV k -> t -> Bool
+f =??= g = \k kvs t -> (f t =?= g t) k kvs
+
+-- | Compares (key -> value -> map -> result) functions
+(=???=) :: (Ord k, CritBitKey k, Eq' a b)
+        => (t -> s -> CritBit k V -> a) -> (t -> s -> Map k V -> b)
+        -> k -> KV k -> t -> s -> Bool
+f =???= g = \k kvs t s -> (f t s =?= g t s) k kvs
+
 -- Handy functions for fiddling with from ghci.
 
-blist :: [ByteString] -> CritBit ByteString Word8
+blist :: [B.ByteString] -> CritBit B.ByteString Word8
 blist = C.fromList . flip zip [0..]
 
-tlist :: [Text] -> CritBit Text Word8
+tlist :: [T.Text] -> CritBit T.Text Word8
 tlist = C.fromList . flip zip [0..]
 
-mlist :: [ByteString] -> Map ByteString Word8
+mlist :: [B.ByteString] -> Map B.ByteString Word8
 mlist = Map.fromList . flip zip [0..]
