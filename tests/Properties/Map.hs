@@ -86,33 +86,15 @@ isoWith :: (CritBitKey k, Ord k, Eq a) =>
 isoWith f g critbitf mapf _ (KV kvs) =
     (f . critbitf . C.fromList) kvs == (g . mapf . Map.fromList) kvs
 
-t_fromList_toList :: CBProp
-t_fromList_toList = id =?= id
+t_fromList :: CBProp
+t_fromList _ (KV kvs) = C.fromList kvs =*= Map.fromList kvs
 
-t_fromList_size :: CBProp
-t_fromList_size = isoWith C.size Map.size id id
+t_fromListWith :: CBProp
+t_fromListWith _ (KV kvs) = C.fromListWith (+) kvs =*= Map.fromListWith (+) kvs
 
-t_fromListWith_toList :: CBProp
-t_fromListWith_toList _ (KV kvs) =
-    Map.toList (Map.fromListWith (+) kvsDup) == C.toList (C.fromListWith (+) kvsDup)
-    where kvsDup = concatMap (replicate 2) kvs
-
-t_fromListWith_size :: CBProp
-t_fromListWith_size _ (KV kvs) =
-    Map.size (Map.fromListWith (+) kvsDup) == C.size (C.fromListWith (+) kvsDup)
-    where kvsDup = concatMap (replicate 2) kvs
-
-t_fromListWithKey_toList :: CBProp
-t_fromListWithKey_toList _ (KV kvs) =
-    Map.toList (Map.fromListWithKey f kvsDup) == C.toList (C.fromListWithKey f kvsDup)
-    where kvsDup = concatMap (replicate 2) kvs
-          f key a1 a2 = toEnum (byteCount key) + a1 + a2
-
-t_fromListWithKey_size :: CBProp
-t_fromListWithKey_size _ (KV kvs) =
-    Map.size (Map.fromListWithKey f kvsDup) == C.size (C.fromListWithKey f kvsDup)
-    where kvsDup = concatMap (replicate 2) kvs
-          f key a1 a2 = toEnum (byteCount key) + a1 + a2
+t_fromListWithKey :: CBProp
+t_fromListWithKey _ (KV kvs) = C.fromListWithKey f kvs =*= Map.fromListWithKey f kvs
+  where f key a1 a2 = toEnum (byteCount key) * 2 + a1 - a2
 
 t_delete :: WithKeyProp
 t_delete = C.delete =??= Map.delete
@@ -520,12 +502,9 @@ t_partition _ (KV kvs) = partCrit == partMap
 
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, IsString k, Monoid k, Show k) => k -> [Test]
 propertiesFor t = [
-    testProperty "t_fromList_toList" $ t_fromList_toList t
-  , testProperty "t_fromList_size" $ t_fromList_size t
-  , testProperty "t_fromListWith_toList" $ t_fromListWith_toList t
-  , testProperty "t_fromListWith_size" $ t_fromListWith_size t
-  , testProperty "t_fromListWithKey_toList" $ t_fromListWithKey_toList t
-  , testProperty "t_fromListWithKey_size" $ t_fromListWithKey_size t
+    testProperty "t_fromList" $ t_fromList t
+  , testProperty "t_fromListWith" $ t_fromListWith t
+  , testProperty "t_fromListWithKey" $ t_fromListWithKey t
   , testProperty "t_null" $ t_null t
   , testProperty "t_size" $ t_size t
 #if MIN_VERSION_containers(0,5,0)
