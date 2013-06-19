@@ -162,19 +162,17 @@ t_unionWithKey = C.unionWithKey f =**= Map.unionWithKey f
   where
     f key v1 v2 = fromIntegral (C.byteCount key) + v1 - v2
 
+cbs :: CritBitKey k => Small [KV k] -> [CritBit k V]
+cbs = map C.fromList . map fromKV . fromSmall
+
+maps :: Ord k => Small [KV k] -> [Map k V]
+maps = map Map.fromList . map fromKV . fromSmall
+
 t_unions :: (CritBitKey k, Ord k) => k -> Small [KV k] -> Bool
-t_unions _ (Small kvs0) =
-    Map.toList (Map.unions (map Map.fromList kvs)) ==
-    C.toList (C.unions (map C.fromList kvs))
-  where
-    kvs = map fromKV kvs0
+t_unions = C.unions . cbs =?= Map.unions . maps
 
 t_unionsWith :: (CritBitKey k, Ord k) => k -> Small [KV k] -> Bool
-t_unionsWith _ (Small kvs0) =
-    Map.toList (Map.unionsWith (-) (map Map.fromList kvs)) ==
-    C.toList (C.unionsWith (-) (map C.fromList kvs))
-  where
-    kvs = map fromKV kvs0
+t_unionsWith = C.unionsWith (-) . cbs =?= Map.unionsWith (-) . maps
 
 t_difference :: WithMapProp
 t_difference = C.difference =**= Map.difference
