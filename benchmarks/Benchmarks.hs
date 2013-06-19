@@ -23,8 +23,10 @@ import System.Random.MWC (GenIO, GenST, asGenST, create, uniform, uniformR)
 import qualified Control.Exception as Exc
 import qualified Data.ByteString.Char8 as B
 import qualified Data.CritBit.Map.Lazy as C
+import qualified Data.CritBit.Set as CSet
 import qualified Data.HashMap.Lazy as H
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Trie as Trie
 import qualified Data.Trie.Convenience as TC
@@ -329,6 +331,18 @@ main = do
                           (H.foldl' (+) 0) id
       , bgroup "elems" $ function nf C.elems Map.elems H.elems Trie.elems
       , bgroup "keys" $ function nf C.keys Map.keys H.keys Trie.keys
+      , bgroup "keysSet" [
+          bench "critbit" $ nf C.keysSet b_critbit
+        , bench "map" $ nf Map.keysSet b_map
+        ]
+      , bgroup "fromSet" $
+        let
+          keys = map fst t_ordKVs
+          f = length . show
+        in [
+          bench "critbit" $ nf (C.fromSet f) (CSet.fromList keys)
+        , bench "map" $ nf (Map.fromSet f) (Set.fromList keys)
+        ]
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
       , bgroup "mapWithKey" $ [

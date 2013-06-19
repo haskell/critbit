@@ -7,6 +7,7 @@ import Control.Applicative ((<$>))
 import Control.Arrow (second, (***))
 import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit, byteCount)
+import qualified Data.CritBit.Set as CSet
 import Data.Foldable (foldMap)
 
 --only needed for a test requiring containers >= 0.5
@@ -30,6 +31,7 @@ import qualified Data.ByteString as BB
 import qualified Data.ByteString.Char8 as B
 import qualified Data.CritBit.Map.Lazy as C
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import qualified Data.Text as T
 
 instance Arbitrary ByteString where
@@ -364,6 +366,13 @@ t_elems = isoWith id id C.elems Map.elems
 t_keys :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_keys = isoWith id id C.keys Map.keys
 
+t_keysSet :: (CritBitKey k, Ord k) => k -> KV k -> Bool
+t_keysSet = isoWith CSet.toList Set.toList C.keysSet Map.keysSet
+
+t_fromSet :: (CritBitKey k, Ord k, Show k) => k -> KV k -> Bool
+t_fromSet = (C.fromSet f . C.keysSet) === (Map.fromSet f . Map.keysSet)
+  where f = length . show
+
 t_map :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_map = C.map (+3) === Map.map (+3)
 
@@ -669,6 +678,8 @@ propertiesFor t = [
   , testProperty "t_foldlWithKey'" $ t_foldlWithKey' t
   , testProperty "t_elems" $ t_elems t
   , testProperty "t_keys" $ t_keys t
+  , testProperty "t_keysSet" $ t_keysSet t
+  , testProperty "t_fromSet" $ t_fromSet t
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapWithKey" $ t_mapWithKey t
   , testProperty "t_mapKeys" $ t_map t

@@ -10,6 +10,7 @@ module Data.CritBit.Types.Internal
     (
       CritBitKey(..)
     , CritBit(..)
+    , Set(..)
     , BitMask
     , Node(..)
     , foldlWithKey
@@ -198,3 +199,8 @@ toList (CritBit root) = go root []
     go (Internal l r _ _) next = go l (go r next)
     go (Leaf k v) next         = (k,v) : next
     go Empty next              = next
+
+
+-- | A set based on crit-bit trees.
+newtype Set a = Set (CritBit a ())
+    deriving (Eq, NFData)
