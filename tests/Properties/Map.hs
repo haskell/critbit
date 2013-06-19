@@ -355,19 +355,8 @@ t_split :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
 t_split k' kvs k = isoWith (C.toList *** C.toList) (Map.toList *** Map.toList)
                     (C.split k) (Map.split k) k' kvs
 
-unpack3 :: (m -> a) -> (m, b, m) -> (a, b, a)
-unpack3 f (a, k, b) = (f a, k, f b)
-
-t_splitLookup_present :: (CritBitKey k, Ord k) => k -> V -> KV k -> Bool
-t_splitLookup_present k v (KV kvs) =
-    isoWith (unpack3 C.toList) (unpack3 Map.toList)
-            (C.splitLookup k) (Map.splitLookup k) k (KV ((k,v):kvs))
-
-t_splitLookup_missing :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_splitLookup_missing k (KV kvs) =
-    isoWith (unpack3 C.toList) (unpack3 Map.toList)
-            (C.splitLookup k) (Map.splitLookup k) k
-            (KV (filter ((/=k) . fst) kvs))
+t_splitLookup :: (CritBitKey k, Ord k) => k -> KV k -> k -> Bool
+t_splitLookup = C.splitLookup =??= Map.splitLookup
 
 t_submap_general :: (CritBitKey k, Ord k) =>
                     (CritBit k V -> CritBit k V -> Bool)
@@ -613,10 +602,9 @@ propertiesFor t = [
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   , testProperty "t_insertLookupWithKey" $ t_insertLookupWithKey t
   , testProperty "t_filter" $ t_filter t
-  ] ++ presentMissingProperty "t_splut" t_split t ++ [
-    testProperty "t_splitLookup_present" $ t_splitLookup_present t
-  , testProperty "t_splitLookup_missing" $ t_splitLookup_missing t
-  , testProperty "t_isSubmap_ambiguous" $ t_isSubmap_ambiguous t
+  ] ++ presentMissingProperty "t_split" t_split t ++ [
+  ] ++ presentMissingProperty "t_splitLookup" t_splitLookup t ++ [
+    testProperty "t_isSubmap_ambiguous" $ t_isSubmap_ambiguous t
   , testProperty "t_isSubmapOfBy_true" $ t_isSubmapOfBy_true t
   , testProperty "t_isSubmapOfBy_ambiguous" $ t_isSubmapOfBy_ambiguous t
   , testProperty "t_isProperSubmapOf_ambiguous" $
@@ -668,8 +656,11 @@ instance (Eq t) => Eq' t t where
 instance (Eq k, Eq v) => Eq' (CritBit k v) (Map k v) where
    c =*= m = C.toList c =*= Map.toList m
 
-instance (Eq' af bf, Eq' as bs) => Eq' (af, as) (bf, bs) where
-  (af, as) =*= (bf, bs) = af =*= bf && as =*= bs
+instance (Eq' a1 b1, Eq' a2 b2) => Eq' (a1, a2) (b1, b2) where
+  (a1, a2) =*= (b1, b2) = a1 =*= b1 && a2 =*= b2
+
+instance (Eq' a1 b1, Eq' a2 b2, Eq' a3 b3) => Eq' (a1, a2, a3) (b1, b2, b3)
+  where (a1, a2, a3) =*= (b1, b2, b3) = a1 =*= b1 && a2 =*= b2 && a3 =*= b3
 
 -- | Compares (map -> result) functions
 (=?=) :: (Ord k, CritBitKey k, Eq' a b)
