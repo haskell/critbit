@@ -61,7 +61,7 @@ test-suite tests
   hs-source-dirs: tests
   main-is:        Main.hs
   if impl(ghc >= 7.4)
-    other-modules:  Properties
+    other-modules:  Properties.Map
 
   ghc-options:
     -Wall -threaded -rtsopts -with-rtsopts=-N

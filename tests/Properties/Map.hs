@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Properties
+module Properties.Map
     where
 
 import Control.Applicative ((<$>))
@@ -256,7 +256,7 @@ t_mapMaybeWithKey = C.mapMaybeWithKey f === Map.mapMaybeWithKey f
       | otherwise = Nothing
 
 t_mapEither :: (CritBitKey k, Ord k) => k -> KV k -> Bool
-t_mapEither = 
+t_mapEither =
     isoWith (C.toList *** C.toList) (Map.toList *** Map.toList)
             (C.mapEither f) (Map.mapEither f)
   where

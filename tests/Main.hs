@@ -4,7 +4,10 @@ module Main (main) where
 import Test.Framework
 
 #if MIN_VERSION_base(4,5,0)
-import Properties (properties)
+import qualified Properties.Map as Map
+
+properties :: [Test]
+properties = concat [ Map.properties ]
 #else
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
