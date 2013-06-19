@@ -3,7 +3,6 @@ module Properties.Map
     where
 
 import Control.Arrow (second, (***))
-import Data.ByteString (ByteString)
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit, byteCount)
 import Data.Foldable (foldMap)
 import Data.Function (on)
@@ -11,7 +10,6 @@ import Data.List (unfoldr, sort, nubBy)
 import Data.Map (Map)
 import Data.Monoid (Monoid,Sum(..),mappend)
 import Data.String (IsString)
-import Data.Text (Text)
 import Data.Word (Word8)
 import Properties.Common
 import Test.Framework (Test, testGroup)
@@ -624,16 +622,18 @@ propertiesFor t = [
   , testProperty "t_lookupLE" $ t_lookupLE t
 #endif
   , testProperty "t_delete_present" $ t_delete_present t
-  , testProperty "t_adjust_present" $ t_updateWithKey_present t
-  , testProperty "t_adjust_missing" $ t_updateWithKey_missing t
-  , testProperty "t_adjustWithKey_present" $ t_updateWithKey_present t
-  , testProperty "t_adjustWithKey_missing" $ t_updateWithKey_missing t
+  , testProperty "t_adjust_general" $ t_adjust_general t
+  , testProperty "t_adjust_present" $ t_adjust_present t
+  , testProperty "t_adjust_missing" $ t_adjust_missing t
+  , testProperty "t_adjustWithKey_general" $ t_adjustWithKey_general t
+  , testProperty "t_adjustWithKey_present" $ t_adjustWithKey_present t
+  , testProperty "t_adjustWithKey_missing" $ t_adjustWithKey_missing t
   , testProperty "t_updateWithKey_present" $ t_updateWithKey_present t
   , testProperty "t_updateWithKey_missing" $ t_updateWithKey_missing t
   , testProperty "t_update_present" $ t_update_present t
   , testProperty "t_update_missing" $ t_update_missing t
-  , testProperty "t_updateLookupWithKey_present" $ t_updateWithKey_present t
-  , testProperty "t_updateLookupWithKey_missing" $ t_updateWithKey_missing t
+  , testProperty "t_updateLookupWithKey_present" $ t_updateLookupWithKey_present t
+  , testProperty "t_updateLookupWithKey_missing" $ t_updateLookupWithKey_missing t
   , testProperty "t_mapMaybe" $ t_mapMaybe t
   , testProperty "t_mapMaybeWithKey" $ t_mapMaybeWithKey t
   , testProperty "t_mapEither" $ t_mapEither t
@@ -665,8 +665,8 @@ propertiesFor t = [
   , testProperty "t_mapKeys" $ t_mapKeys t
   , testProperty "t_mapKeysWith" $ t_mapKeysWith t
   , testProperty "t_mapKeysMonotonic" $ t_mapKeysMonotonic t
-  , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t
-  , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t
+  , testProperty "t_mapAccumWithKey" $ t_mapAccumWithKey t
+  , testProperty "t_mapAccumRWithKey" $ t_mapAccumRWithKey t
   , testProperty "t_toAscList" $ t_toAscList t
   , testProperty "t_toDescList" $ t_toDescList t
   , testProperty "t_fromAscList" $ t_fromAscList t
@@ -677,11 +677,12 @@ propertiesFor t = [
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
   , testProperty "t_insertLookupWithKey" $ t_insertLookupWithKey t
   , testProperty "t_filter" $ t_filter t
+  , testProperty "t_split_general" $ t_split_general t
   , testProperty "t_split_present" $ t_split_present t
   , testProperty "t_split_missing" $ t_split_missing t
-  , testProperty "t_splitLookup_present" $ t_split_present t
-  , testProperty "t_splitLookup_missing" $ t_split_missing t
-  , testProperty "t_isSubmapOf_ambiguous" $ t_isSubmapOfBy_ambiguous t
+  , testProperty "t_splitLookup_present" $ t_splitLookup_present t
+  , testProperty "t_splitLookup_missing" $ t_splitLookup_missing t
+  , testProperty "t_isSubmap_ambiguous" $ t_isSubmap_ambiguous t
   , testProperty "t_isSubmapOfBy_true" $ t_isSubmapOfBy_true t
   , testProperty "t_isSubmapOfBy_ambiguous" $ t_isSubmapOfBy_ambiguous t
   , testProperty "t_isProperSubmapOf_ambiguous" $
