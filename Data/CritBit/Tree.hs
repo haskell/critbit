@@ -73,8 +73,8 @@ module Data.CritBit.Tree
     , mapAccumWithKey
     , mapAccumRWithKey
     , mapKeys
-    -- , mapKeysWith
-    -- , mapKeysMonotonic
+    , mapKeysWith
+    , mapKeysMonotonic
 
     -- * Folds
     , foldl
@@ -792,7 +792,7 @@ link _ _ _ = error "Data.CritBit.Tree.link: unpossible"
 map :: (CritBitKey k) => (v -> w) -> CritBit k v -> CritBit k w
 map = fmap
 
--- | /O(n*log n)/.
+-- | /O(K)/.
 -- @mapKeys f@ applies the function @f@ to the keys of the map.
 --
 -- If @f@ maps multiple keys to the same new key, the new key is
@@ -802,8 +802,42 @@ map = fmap
 -- > mapKeys f (fromList [("a", 5), ("b", 3)])            == fromList ([("a1", 5), ("b1", 3)])
 -- > mapKeys (\ _ -> "a") (fromList [("a", 5), ("b", 3)]) == singleton "a" 3
 mapKeys :: (CritBitKey k2) => (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
-mapKeys f = foldrWithKey g empty
-  where g k x m = insertWithKey (\_ _ x0 -> x0) (f k) x m
+mapKeys f = mapKeysWith const f
+
+-- | /O(K)/.
+-- @'mapKeysWith' c f s@ is the map obtained by applying @f@ to each key of @s@.
+--
+-- The size of the result may be smaller if @f@ maps two or more distinct
+-- keys to the same new key.  In this case the associated values will be
+-- combined using @c@.
+--
+-- > mapKeysWith (++) (\ _ -> 1) (fromList [(1,"b"), (2,"a"), (3,"d"), (4,"c")]) == singleton 1 "cdab"
+-- > mapKeysWith (++) (\ _ -> 3) (fromList [(1,"b"), (2,"a"), (3,"d"), (4,"c")]) == singleton 3 "cdab"
+mapKeysWith :: (CritBitKey k2) => (v -> v -> v) -> (k1 -> k2)
+            -> CritBit k1 v -> CritBit k2 v
+mapKeysWith c f = foldlWithKey (\m k v -> insertWith c (f k) v m) empty
+
+-- | /O(K)/.
+-- @'mapKeysMonotonic' f s == 'mapKeys' f s@, but works only when @f@
+-- is strictly monotonic.
+-- That is, for any values @x@ and @y@, if @x@ < @y@ then @f x@ < @f y@.
+-- /The precondition is not checked./
+-- Semi-formally, we have:
+--
+-- > and [x < y ==> f x < f y | x <- ls, y <- ls]
+-- >                     ==> mapKeysMonotonic f s == mapKeys f s
+-- >     where ls = keys s
+--
+-- This means that @f@ maps distinct original keys to distinct resulting keys.
+-- This function has better performance than 'mapKeys'.
+--
+-- > mapKeysMonotonic (\ k -> k ++ k) (fromList [("a",5), ("b",3)]) == fromList [("aa",5), ("bb",3)]
+-- > valid (mapKeysMonotonic (\ k -> k ++ k) (fromList [("a",5), ("b",3)])) == True
+-- > valid (mapKeysMonotonic (\ _ -> "1")    (fromList [("a",5), ("b",3)])) == False
+
+mapKeysMonotonic :: (CritBitKey k1, CritBitKey k2)
+                 => (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
+mapKeysMonotonic f m = fromDistinctAscList $ List.map (first f) $ toList m
 
 -- | /O(n)/. Convert the map to a list of key/value pairs where the keys are in
 -- ascending order.

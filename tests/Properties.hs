@@ -389,7 +389,19 @@ t_mapKeys :: (CritBitKey k, Ord k, IsString k, Show k) => k -> KV k -> Bool
 t_mapKeys = C.mapKeys f === Map.mapKeys f
   where
     f :: (CritBitKey k, Ord k, IsString k, Show k) => k -> k
-    f = fromString . (++ "test") . show
+    f = fromString . (++ "test") . drop 2 . show
+
+t_mapKeysWith :: (CritBitKey k, Ord k, IsString k, Show k) => k -> KV k -> Bool
+t_mapKeysWith = C.mapKeysWith c f === Map.mapKeysWith c f
+  where
+    f = fromString . (++ "test") . drop 2 . show
+    c v1 v2 = v1 * 17 + v2
+
+t_mapKeysMonotonic :: (CritBitKey k, Ord k, IsString k, Show k)
+                   => k -> KV k -> Bool
+t_mapKeysMonotonic = C.mapKeysMonotonic f === Map.mapKeysMonotonic f
+  where
+    f = fromString . ("test" ++) . read . show
 
 t_mapAccumRWithKey :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_mapAccumRWithKey = mapAccumWithKey C.mapAccumRWithKey Map.mapAccumRWithKey
@@ -637,7 +649,8 @@ t_partition _ (KV kvs) = partCrit == partMap
     partCrit = fixup C.toList . C.partition odd . C.fromList $ kvs
     partMap  = fixup Map.toList . Map.partition odd . Map.fromList $ kvs
 
-propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k) => k -> [Test]
+propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Show k, IsString k)
+              => k -> [Test]
 propertiesFor t = [
     testProperty "t_fromList_toList" $ t_fromList_toList t
   , testProperty "t_fromList_size" $ t_fromList_size t
@@ -691,7 +704,9 @@ propertiesFor t = [
   , testProperty "t_fromSet" $ t_fromSet t
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapWithKey" $ t_mapWithKey t
-  , testProperty "t_mapKeys" $ t_map t
+  , testProperty "t_mapKeys" $ t_mapKeys t
+  , testProperty "t_mapKeysWith" $ t_mapKeysWith t
+  , testProperty "t_mapKeysMonotonic" $ t_mapKeysMonotonic t
   , testProperty "t_mapAccumWithKey"$ t_mapAccumWithKey t
   , testProperty "t_mapAccumRWithKey"$ t_mapAccumRWithKey t
   , testProperty "t_toAscList" $ t_toAscList t
