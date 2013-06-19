@@ -115,9 +115,9 @@ module Data.CritBit.Tree
     , partition
     , partitionWithKey
 
-    -- , mapMaybe
+    , mapMaybe
     , mapMaybeWithKey
-    -- , mapEither
+    , mapEither
     , mapEitherWithKey
 
     , split
@@ -927,6 +927,13 @@ filterWithKey p (CritBit root)    = CritBit $ fromMaybe Empty (go root)
         go Empty                  = Nothing
 {-# INLINABLE filterWithKey #-}
 
+-- | /O(n)/. Map values and collect the 'Just' results.
+--
+-- > let f x = if x == 5 then Just 10 else Nothing
+-- > mapMaybe f (fromList [("a",5), ("b",3)]) == singleton "a" 10
+mapMaybe :: (a -> Maybe b) -> CritBit k a -> CritBit k b
+mapMaybe = mapMaybeWithKey . const
+
 -- | /O(n)/. Map keys\/values and collect the 'Just' results.
 --
 -- > let f k v = if k == "a" then Just ("k,v: " ++ show k ++ "," ++ show v) else Nothing
@@ -944,6 +951,17 @@ mapMaybeWithKey f (CritBit root) = CritBit $ go root
                       Just v' -> Leaf k v'
     go Empty      = Empty
 {-# INLINABLE mapMaybeWithKey #-}
+
+-- | /O(n)/. Map values and separate the 'Left' and 'Right' results.
+--
+-- > let f a = if a < 5 then Left a else Right a
+-- > mapEither f (fromList [("a",5), ("b",3), ("x",1), ("z",7)])
+-- >     == (fromList [("b",3), ("x",1)], fromList [("a",5), ("z",7)])
+-- >
+-- > mapEither (\ a -> Right a) (fromList [("a",5), ("b",3), ("x",1), ("z",7)])
+-- >     == (empty, fromList [("a",5), ("b",3), ("x",1), ("z",7)])
+mapEither :: (a -> Either b c) -> CritBit k a -> (CritBit k b, CritBit k c)
+mapEither = mapEitherWithKey . const
 
 -- | /O(n)/. Map keys\/values and separate the 'Left' and 'Right' results.
 --
