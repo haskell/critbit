@@ -161,20 +161,16 @@ t_mapEitherWithKey =
       | otherwise = Right (2 * x)
 
 t_unionL :: WithMapProp
-t_unionL k (KV kvs) =
-    (C.unionL (C.fromList kvs) =?= Map.union (Map.fromList kvs)) k
+t_unionL = C.unionL =**= Map.union
 
 t_unionR :: WithMapProp
-t_unionR k (KV kvs) =
-    (C.unionR (C.fromList kvs) =?= flip Map.union (Map.fromList kvs)) k
+t_unionR = C.unionR =**= flip Map.union
 
 t_unionWith :: WithMapProp
-t_unionWith k (KV kvs) = (C.unionWith (-) (C.fromList kvs) =?=
-                          Map.unionWith (-) (Map.fromList kvs)) k
+t_unionWith = C.unionWith (-) =**= Map.unionWith (-)
 
 t_unionWithKey :: WithMapProp
-t_unionWithKey k (KV kvs) = (C.unionWithKey f (C.fromList kvs) =?=
-                             Map.unionWithKey f (Map.fromList kvs)) k
+t_unionWithKey = C.unionWithKey f =**= Map.unionWithKey f
   where
     f key v1 v2 = fromIntegral (C.byteCount key) + v1 - v2
 
@@ -193,40 +189,30 @@ t_unionsWith _ (Small kvs0) =
     kvs = map fromKV kvs0
 
 t_difference :: WithMapProp
-t_difference k (KV kvs) = (C.difference (C.fromList kvs) =?=
-    Map.difference (Map.fromList kvs)) k
+t_difference = C.difference =**= Map.difference
 
 t_differenceWith :: WithMapProp
-t_differenceWith k (KV kvs) =
-    (C.differenceWith f (C.fromList kvs) =?=
-        Map.differenceWith f (Map.fromList kvs)) k
+t_differenceWith = C.differenceWith f =**= Map.differenceWith f
   where
     f v1 v2 = if v1 `mod` 4 == 0
               then Nothing
               else Just (v1 - v2)
 
 t_differenceWithKey :: WithMapProp
-t_differenceWithKey k (KV kvs) =
-    (C.differenceWithKey f (C.fromList kvs) =?=
-        Map.differenceWithKey f (Map.fromList kvs)) k
+t_differenceWithKey = C.differenceWithKey f =**= Map.differenceWithKey f
   where
     f key v1 v2 = if C.byteCount key == 2
                   then Nothing
                   else Just (fromIntegral (C.byteCount key) + v1 - v2)
 
 t_intersection :: WithMapProp
-t_intersection k (KV kvs) = (C.intersection (C.fromList kvs) =?=
-    Map.intersection (Map.fromList kvs)) k
+t_intersection = C.intersection =**= Map.intersection
 
 t_intersectionWith :: WithMapProp
-t_intersectionWith k (KV kvs) =
-    (C.intersectionWith (-) (C.fromList kvs) =?=
-        Map.intersectionWith (-) (Map.fromList kvs)) k
+t_intersectionWith = C.intersectionWith (-) =**= Map.intersectionWith (-)
 
 t_intersectionWithKey :: WithMapProp
-t_intersectionWithKey k (KV kvs) =
-    (C.intersectionWithKey f (C.fromList kvs) =?=
-        Map.intersectionWithKey f (Map.fromList kvs)) k
+t_intersectionWithKey = C.intersectionWithKey f =**= Map.intersectionWithKey f
   where
     f key v1 v2 = fromIntegral (C.byteCount key) + v1 - v2
 
@@ -635,6 +621,13 @@ f =??= g = \k kvs t -> (f t =?= g t) k kvs
         => (t -> s -> CritBit k V -> a) -> (t -> s -> Map k V -> b)
         -> k -> KV k -> t -> s -> Bool
 f =???= g = \k kvs t s -> (f t s =?= g t s) k kvs
+
+-- | Compares (map -> map -> result) functions
+(=**=) :: (Ord k, CritBitKey k, Eq' a b)
+        => (CritBit k V -> CritBit k V -> a) -> (Map k V -> Map k V -> b)
+        -> k -> KV k -> KV k -> Bool
+f =**= g = \k kvs (KV kvs2)
+           -> (f (C.fromList kvs2) =?= g (Map.fromList kvs2)) k kvs
 
 -- Handy functions for fiddling with from ghci.
 
