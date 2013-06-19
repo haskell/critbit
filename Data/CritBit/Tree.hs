@@ -92,8 +92,8 @@ module Data.CritBit.Tree
     , elems
     , keys
     , assocs
-    -- , keysSet
-    -- , fromSet
+    , keysSet
+    , fromSet
 
     -- ** Lists
     , toList
@@ -519,6 +519,23 @@ elems m = foldr (:) [] m
 assocs :: CritBit k v -> [(k,v)]
 assocs m = toAscList m
 
+-- | /O(n)/. Return set of all keys of the map.
+--
+-- > keysSet (fromList [("b",5), ("a",3)]) == Set.fromList ["a", "b"]
+-- > keysSet empty == []
+keysSet :: CritBit k v -> Set k
+keysSet m = Set (fmap (const ()) m)
+{-# INLINABLE keysSet #-}
+
+-- | /O(n)/. Build a map from a set of keys and a function which for each key
+-- computes its value.
+--
+-- > fromSet (\k -> length k) (Data.IntSet.fromList ["a", "bb"]) == fromList [("a",1), ("bb",2)]
+-- > fromSet undefined Data.IntSet.empty == empty
+fromSet :: (k -> v) -> Set k -> CritBit k v
+fromSet f (Set s) = mapWithKey (const . f) s
+{-# INLINABLE fromSet #-}
+
 -- | /O(n)/. Return all keys of the map in ascending order.
 --
 -- > keys (fromList [("b",5), ("a",3)]) == ["a","b"]
@@ -785,8 +802,7 @@ map = fmap
 -- > let f = fromString . (++ "1") . show
 -- > mapKeys f (fromList [("a", 5), ("b", 3)])            == fromList ([("a1", 5), ("b1", 3)])
 -- > mapKeys (\ _ -> "a") (fromList [("a", 5), ("b", 3)]) == singleton "a" 3
-mapKeys :: (CritBitKey k1, CritBitKey k2) =>
-           (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
+mapKeys :: (CritBitKey k2) => (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
 mapKeys f = foldrWithKey g empty
   where g k x m = insertWithKey (\_ _ x0 -> x0) (f k) x m
 
@@ -1020,11 +1036,11 @@ split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
 -- | /O(log n)/. The expression (@'splitLookup' k map@) splits a map just
 -- like 'split' but also returns @'lookup' k map@.
 --
--- > split "a" (fromList [("b",1), ("d",2)]) == (empty, Nothing, fromList [("b",1), ("d",2)])
--- > split "b" (fromList [("b",1), ("d",2)]) == (empty, Just 1, singleton "d" 2)
--- > split "c" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Nothing, singleton "d" 2)
--- > split "d" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Just 2, empty)
--- > split "e" (fromList [("b",1), ("d",2)]) == (fromList [("b",1), ("d",2)], Nothing, empty)
+-- > splitLookup "a" (fromList [("b",1), ("d",2)]) == (empty, Nothing, fromList [("b",1), ("d",2)])
+-- > splitLookup "b" (fromList [("b",1), ("d",2)]) == (empty, Just 1, singleton "d" 2)
+-- > splitLookup "c" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Nothing, singleton "d" 2)
+-- > splitLookup "d" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Just 2, empty)
+-- > splitLookup "e" (fromList [("b",1), ("d",2)]) == (fromList [("b",1), ("d",2)], Nothing, empty)
 splitLookup :: (CritBitKey k) => k -> CritBit k v
                -> (CritBit k v, Maybe v, CritBit k v)
 splitLookup k (CritBit root) =
@@ -1321,7 +1337,7 @@ insertWith f = insertWithKey (\_ v v' -> f v v')
 --
 -- >  let f key x = show key ++ ":" ++ show x
 -- >  mapWithKey f (fromList [("a",5), ("b",3)]) == fromList [("a","a:5"), ("b","b:3")]
-mapWithKey :: (CritBitKey k) => (k -> v -> w) -> CritBit k v -> CritBit k w
+mapWithKey :: (k -> v -> w) -> CritBit k v -> CritBit k w
 mapWithKey f (CritBit root) = CritBit (go root)
   where
     go i@(Internal l r _ _) = i { ileft = go l, iright = go r }
