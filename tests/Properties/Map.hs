@@ -30,29 +30,33 @@ import qualified Data.Text as T
 import Data.Functor.Identity (Identity(..))
 #endif
 
+type KV k = [(k, V)]
+
+type SA k = SameAs (CritBit k V) (Map k V) (KV k)
+
 type CBProp           = (CritBitKey k, Ord k, Show k, IsString k, Monoid k)
-                      => k -> KV k -> Bool
+                      => SA k -> KV k -> Bool
 type WithKeyProp      = (CritBitKey k, Ord k, Show k, IsString k, Monoid k)
-                      => k -> KV k -> k -> Bool
+                      => SA k -> KV k -> k -> Bool
 type WithKeyValueProp = (CritBitKey k, Ord k, Show k, IsString k, Monoid k)
-                      => k -> KV k -> k -> V -> Bool
+                      => SA k -> KV k -> k -> V -> Bool
 type WithMapProp      = (CritBitKey k, Ord k, Show k, IsString k, Monoid k)
-                      => k -> KV k -> KV k -> Bool
+                      => SA k -> KV k -> KV k -> Bool
 
 newtype CB k = CB (CritBit k V)
     deriving (Show, Eq, Arbitrary)
 
 presentMissingProperty :: (Eq k, Arbitrary k, Show k, IsString k, Testable t)
-                       => String -> (k -> KV k -> k -> t) -> k -> [Test]
-presentMissingProperty name t w = [
+                       => String -> (SA k -> KV k -> k -> t) -> SA k -> [Test]
+presentMissingProperty name t sa = [
     testProperty (name ++ "_general") $ general
   , testProperty (name ++ "_present") $ present
   , testProperty (name ++ "_missing") $ missing
   ]
   where
-    general k   kvs = t w kvs k
-    present k v (KV kvs) = t w (KV ((k, v):kvs)) k
-    missing k   (KV kvs) = t w (KV (filter ((/= k) . fst) kvs)) k
+    general k   kvs = t sa kvs k
+    present k v kvs = t sa ((k, v):kvs) k
+    missing k   kvs = t sa (filter ((/= k) . fst) kvs) k
 
 -- * Common modifier functions
 
@@ -100,14 +104,13 @@ t_lookupLE = C.lookupLE =?*= Map.lookupLE
 #endif
 
 t_fromList :: CBProp
-t_fromList = C.fromList . fromKV =?= Map.fromList . fromKV
+t_fromList = C.fromList =?= Map.fromList
 
 t_fromListWith :: CBProp
-t_fromListWith = C.fromListWith (-) . fromKV =?= Map.fromListWith (-) . fromKV
+t_fromListWith = C.fromListWith (-) =?= Map.fromListWith (-)
 
 t_fromListWithKey :: CBProp
-t_fromListWithKey = C.fromListWithKey kvvf . fromKV =?=
-                    Map.fromListWithKey kvvf . fromKV
+t_fromListWithKey = C.fromListWithKey kvvf =?= Map.fromListWithKey kvvf
 
 t_delete :: WithKeyProp
 t_delete = C.delete =?*= Map.delete
@@ -157,17 +160,13 @@ t_unionWith = C.unionWith (-) =**= Map.unionWith (-)
 t_unionWithKey :: WithMapProp
 t_unionWithKey = C.unionWithKey kvvf =**= Map.unionWithKey kvvf
 
-cbs :: CritBitKey k => Small [KV k] -> [CritBit k V]
-cbs = map C.fromList . map fromKV . fromSmall
+t_unions :: (CritBitKey k, Ord k) => SA k -> Small [KV k] -> Bool
+t_unions = (C.unions . map C.fromList =*==
+          Map.unions . map Map.fromList) fromSmall
 
-maps :: Ord k => Small [KV k] -> [Map k V]
-maps = map Map.fromList . map fromKV . fromSmall
-
-t_unions :: (CritBitKey k, Ord k) => k -> Small [KV k] -> Bool
-t_unions = C.unions . cbs =?= Map.unions . maps
-
-t_unionsWith :: (CritBitKey k, Ord k) => k -> Small [KV k] -> Bool
-t_unionsWith = C.unionsWith (-) . cbs =?= Map.unionsWith (-) . maps
+t_unionsWith :: (CritBitKey k, Ord k) => SA k -> Small [KV k] -> Bool
+t_unionsWith = (C.unionsWith (-) . map C.fromList =*==
+              Map.unionsWith (-) . map Map.fromList) fromSmall
 
 t_difference :: WithMapProp
 t_difference = C.difference =**= Map.difference
@@ -248,14 +247,6 @@ t_toAscList = C.toAscList =*= Map.toAscList
 
 t_toDescList :: CBProp
 t_toDescList = C.toDescList =*= Map.toDescList
-
--- Check that 'toList's are equal, with input preprocessing
-(=*==) :: (CritBitKey k, Ord k) =>
-          ([(k, V)] -> CritBit k V) -> ([(k, V)] -> Map k V)
-       -> ([(k, V)] -> [(k, V)]) -> k -> KV k -> Bool
-(=*==) f g p _ (KV kvs) = C.toList (f kvs') == Map.toList (g kvs')
-  where
-    kvs' = p kvs
 
 t_fromAscList :: CBProp
 t_fromAscList = (C.fromAscList =*== Map.fromAscList) sort
@@ -371,7 +362,7 @@ t_partition :: CBProp
 t_partition = C.partition odd =*= Map.partition odd
 
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, IsString k, Monoid k, Show k) => k -> [Test]
-propertiesFor t = [
+propertiesFor w = [
     testProperty "t_fromList" $ t_fromList t
   , testProperty "t_fromListWith" $ t_fromListWith t
   , testProperty "t_fromListWithKey" $ t_fromListWithKey t
@@ -462,6 +453,11 @@ propertiesFor t = [
   , testProperty "t_partition" $ t_partition t
   , testProperty "t_partitionWithKey" $ t_partitionWithKey t
   ]
+  where
+    t = sameAs w
+
+    sameAs :: (CritBitKey k, Ord k) => k -> SA k
+    sameAs _ = SameAs C.fromList C.toList Map.fromList Map.toList
 
 properties :: [Test]
 properties = [
@@ -469,41 +465,11 @@ properties = [
   , testGroup "bytestring" $ propertiesFor B.empty
   ]
 
-infix 4 =*=, =?*=, =??*=
-
 instance (Eq k, Eq v) => Eq' (CritBit k v) (Map k v) where
    c =^= m = C.toList c =^= Map.toList m
 
 instance (Eq' a1 b1, Eq k, Eq v) => Eq' (a1, CritBit k v) (b1, Map k v) where
   (a1, a2) =^= (b1, b2) = a1 =^= b1 && a2 =^= b2
-
--- | Compares functions taking one map
-(=*=) :: (Ord k, CritBitKey k, Eq' a b)
-      => (CritBit k V -> a) -> (Map k V -> b)
-      -> k -> KV k -> Bool
-f =*= g = const $ \(KV kvs) -> f (C.fromList kvs) =^= g (Map.fromList kvs)
-
--- | Compares functions taking one scalar and one map
-(=?*=) :: (Ord k, CritBitKey k, Eq' a b)
-       => (t -> CritBit k V -> a) -> (t -> Map k V -> b)
-       -> k -> KV k -> t -> Bool
-f =?*= g = \k kvs t -> (f t =*= g t) k kvs
-
--- | Compares functions taking two scalars and one map
-(=??*=) :: (Ord k, CritBitKey k, Eq' a b)
-        => (t -> s -> CritBit k V -> a) -> (t -> s -> Map k V -> b)
-        -> k -> KV k -> t -> s -> Bool
-f =??*= g = \k kvs t s -> (f t s =*= g t s) k kvs
-
--- | Compares functions taking two maps
-(=**=) :: (Ord k, CritBitKey k, Eq' a b)
-        => (CritBit k V -> CritBit k V -> a) -> (Map k V -> Map k V -> b)
-        -> k -> KV k -> KV k -> Bool
-f =**= g = \k kvs (KV kvs2)
-           -> (f (C.fromList kvs2) =*= g (Map.fromList kvs2)) k kvs
-
-notEmpty :: (k -> KV k -> Bool) -> k -> KV k -> Bool
-notEmpty f k w@(KV kvs) = null kvs || f k w
 
 -- Handy functions for fiddling with from ghci.
 

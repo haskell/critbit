@@ -326,9 +326,8 @@ map = wrapVS Set T.mapKeys
 -- > and [x < y ==> f x < f y | x <- ls, y <- ls]
 -- >                     ==> mapMonotonic f s == map f s
 -- >     where ls = toList s
-mapMonotonic :: (CritBitKey a2) => (a1 -> a2) -> Set a1 -> Set a2
-mapMonotonic = error "Depends on T.mapKeysMonotonic"
---mapMonotonic = wrapVS Set T.mapKeysMonotonic
+mapMonotonic :: (CritBitKey a1, CritBitKey a2) => (a1 -> a2) -> Set a1 -> Set a2
+mapMonotonic = wrapVS Set T.mapKeysMonotonic
 {-# INLINABLE mapMonotonic #-}
 
 -- | /O(n)/. Fold the elements in the set using the given left-associative
