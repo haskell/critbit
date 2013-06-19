@@ -56,6 +56,9 @@ presentMissingProperty name t w = [
 t_null :: CBProp
 t_null = C.null =?= Map.null
 
+t_size :: CBProp
+t_size = C.size =?= Map.size
+
 t_lookup :: WithKeyProp
 t_lookup = C.lookup =??= Map.lookup
 
@@ -535,6 +538,7 @@ propertiesFor t = [
   , testProperty "t_fromListWithKey_toList" $ t_fromListWithKey_toList t
   , testProperty "t_fromListWithKey_size" $ t_fromListWithKey_size t
   , testProperty "t_null" $ t_null t
+  , testProperty "t_size" $ t_size t
 #if MIN_VERSION_containers(0,5,0)
   , testProperty "t_lookupGT" $ t_lookupGT t
   , testProperty "t_lookupGE" $ t_lookupGE t
