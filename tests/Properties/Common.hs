@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Properties.Common
@@ -8,6 +9,8 @@ module Properties.Common
     , unsquare
     , smallArbitrary
     , qc
+    , Eq'(..)
+    , (=?=)
     ) where
 
 import Control.Applicative ((<$>))
@@ -67,7 +70,24 @@ instance (Show a, Arbitrary a) => Arbitrary (Small a) where
     arbitrary = Small <$> smallArbitrary
     shrink = map Small . shrink . fromSmall
 
+infix 4 =^=, =?=
+
+-- | Compares heterogeneous values
+class Eq' f g where
+  (=^=) :: f -> g -> Bool
+
+instance (Eq t) => Eq' t t where
+  (=^=) = (==)
+
+instance (Eq' a1 b1, Eq' a2 b2, Eq' a3 b3) => Eq' (a1, a2, a3) (b1, b2, b3)
+  where (a1, a2, a3) =^= (b1, b2, b3) = a1 =^= b1 && a2 =^= b2 && a3 =^= b3
+
+-- | Compares functions taking one scalar
+(=?=) :: Eq' a b => (t -> a) -> (t -> b) -> k -> t -> Bool
+f =?= g = const $ \t -> f t =^= g t
+
 -- Handy functions for fiddling with from ghci.
 
 qc :: Testable prop => Int -> prop -> IO ()
 qc n = quickCheckWith stdArgs { maxSuccess = n }
+
