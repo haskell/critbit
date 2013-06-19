@@ -49,7 +49,7 @@ instance NFData B.ByteString
 instance (NFData a) => NFData (Trie.Trie a) where
     rnf = rnf . Trie.toList
 
-forcePair:: (a,a) -> ()
+forcePair:: (a,b) -> ()
 forcePair (a,b) = a `seq` b `seq` ()
 
 every k = go 0
@@ -234,6 +234,20 @@ main = do
         , bgroup "missing" [
             bench "critbit" $ whnf (C.insertWithKey f key 1) b_critbit_1
           , bench "map" $ whnf (Map.insertWithKey f key 1) b_map_1
+          ]
+        ]
+      , bgroup "insertLookupWithKey" $ let f _ a b = a + b in [
+          bgroup "present" [
+            bench "critbit" $
+                whnf (forcePair . C.insertLookupWithKey f key 1) b_critbit
+          , bench "map" $
+                whnf (forcePair . Map.insertLookupWithKey f key 1) b_map
+          ]
+        , bgroup "missing" [
+            bench "critbit" $
+                whnf (forcePair . C.insertLookupWithKey f key 1) b_critbit_1
+          , bench "map" $
+                whnf (forcePair . Map.insertLookupWithKey f key 1) b_map_1
           ]
         ]
       , bgroup "adjust" $

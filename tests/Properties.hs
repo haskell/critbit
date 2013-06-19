@@ -583,6 +583,15 @@ t_insertWithKey_missing _ k v (KV kvs) = Map.toList m == C.toList c
     m = Map.insertWithKey f k v $ Map.fromList kvs
     c =   C.insertWithKey f k v $   C.fromList kvs
 
+t_insertLookupWithKey :: (CritBitKey k, Ord k)
+                      => k -> k -> V -> KV k -> Bool
+t_insertLookupWithKey _ k v (KV kvs) = m == c
+  where
+    fixup tl (a,b) = (a,tl b)
+    f _ v1 v2 = v1 + v2
+    m = fixup Map.toList . Map.insertLookupWithKey f k v $ Map.fromList kvs
+    c = fixup C.toList . C.insertLookupWithKey f k v $ C.fromList kvs
+
 t_foldMap :: (CritBitKey k, Ord k) => k -> KV k -> Bool
 t_foldMap = isoWith (foldMap Sum) (foldMap Sum) id id
 
@@ -693,6 +702,7 @@ propertiesFor t = [
   , testProperty "t_fromDistinctAscList" $ t_fromDistinctAscList t
   , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
+  , testProperty "t_insertLookupWithKey" $ t_insertLookupWithKey t
   , testProperty "t_filter" $ t_filter t
   , testProperty "t_split_present" $ t_split_present t
   , testProperty "t_split_missing" $ t_split_missing t
@@ -723,6 +733,7 @@ propertiesFor t = [
   , testProperty "t_insertWith_missing" $ t_insertWith_missing t
   , testProperty "t_insertWithKey_present" $ t_insertWithKey_present t
   , testProperty "t_insertWithKey_missing" $ t_insertWithKey_missing t
+  , testProperty "t_insertLookupWithKey" $ t_insertLookupWithKey t
 #if MIN_VERSION_containers(0,5,0)
   , testProperty "t_traverseWithKey" $ t_traverseWithKey t
 #endif
