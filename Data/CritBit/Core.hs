@@ -44,7 +44,6 @@ module Data.CritBit.Core
 
 import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
 import Data.CritBit.Types.Internal
-import Data.Word (Word16)
 
 -- | /O(log n)/. Insert with a function, combining key, new value and old value.
 -- @'insertWithKey' f key value cb@
@@ -232,7 +231,7 @@ diffOrd (_, !bits, !c)
 followPrefixes :: (CritBitKey k) =>
                   k             -- ^ The key from "outside" the tree.
                -> k             -- ^ Key from the leaf we reached.
-               -> (Int, BitMask, Word16)
+               -> Diff
 followPrefixes = followPrefixesFrom 0
 {-# INLINE followPrefixes #-}
 
@@ -245,14 +244,13 @@ followPrefixesFrom :: (CritBitKey k) =>
                       Int           -- ^ Positition to start from
                    -> k             -- ^ First key.
                    -> k             -- ^ Second key.
-                   -> (Int, BitMask, Word16)
+                   -> Diff
 followPrefixesFrom !position !k !l = (n, maskLowerBits (b `xor` c), c)
   where
     n = followPrefixesByteFrom position k l
     b = getByte k n
     c = getByte l n
 
-    maskLowerBits :: Word16 -> Word16
     maskLowerBits v = (n3 .&. (complement (n3 `shiftR` 1))) `xor` 0x1FF
       where
         n3 = n2 .|. (n2 `shiftR` 8)
