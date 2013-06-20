@@ -258,13 +258,13 @@ unions = List.foldl' union empty
 
 -- | /O(K)/. The difference of two sets.
 difference :: (CritBitKey a) => Set a -> Set a -> Set a
-difference = wrapSS Set T.union
+difference = wrapSS Set T.difference
 {-# INLINABLE difference #-}
 
 -- | /O(K)/. The intersection of two sets. Elements of the
 -- result come from the first set.
 intersection :: (CritBitKey a) => Set a -> Set a -> Set a
-intersection = wrapSS Set T.union
+intersection = wrapSS Set T.intersection
 {-# INLINABLE intersection #-}
 
 -- | /O(n)/. Filter all elements that satisfy the predicate.
@@ -441,7 +441,7 @@ wrapVS f g a (Set s) = f $ g a s
 
 -- | Wraps (tree, tree) operation to (set, set) operation
 wrapSS :: (r -> q) -> (CritBit a () -> CritBit a () -> r) -> Set a -> Set a -> q
-wrapSS f g (Set s1) (Set s2) = f $ g s1 s1
+wrapSS f g (Set s1) (Set s2) = f $ g s1 s2
 {-# INLINE wrapSS #-}
 
 liftFromList :: ([(a, ())] -> CritBit a ()) -> [a] -> Set a
