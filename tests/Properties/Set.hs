@@ -106,8 +106,10 @@ t_map = CS.map (<>"a") === Set.map (<>"a")
 t_toAscList :: (CritBitKey k, Ord k) => k -> [k] -> Bool
 t_toAscList = isoWith CS.toAscList Set.toAscList id id
 
+#if MIN_VERSION_containers(0,5,0)
 t_toDescList :: (CritBitKey k, Ord k) => k -> [k] -> Bool
 t_toDescList = isoWith CS.toDescList Set.toDescList id id
+#endif
 
 -- Check that 'toList's are equal, with input preprocessing
 (====) :: Eq a =>
@@ -248,7 +250,9 @@ propertiesFor t = [
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapKeys" $ t_map t
   , testProperty "t_toAscList" $ t_toAscList t
+#if MIN_VERSION_containers(0,5,0)
   , testProperty "t_toDescList" $ t_toDescList t
+#endif
   , testProperty "t_fromAscList" $ t_fromAscList t
   , testProperty "t_fromDistinctAscList" $ t_fromDistinctAscList t
   , testProperty "t_filter" $ t_filter t
