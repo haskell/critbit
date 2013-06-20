@@ -1,7 +1,14 @@
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving, TypeFamilies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Properties.Common
-    where
+    (
+      V
+    , KV(..)
+    , Small(..)
+    , unsquare
+    , smallArbitrary
+    , qc
+    ) where
 
 import Control.Applicative ((<$>))
 import Data.ByteString (ByteString)
@@ -14,6 +21,7 @@ import Test.QuickCheck.Property (Property, Testable, forAll)
 import qualified Data.ByteString as BB
 import qualified Data.ByteString.Char8 as B
 import qualified Data.CritBit.Map.Lazy as C
+import qualified Data.CritBit.Set as CS
 import qualified Data.Text as T
 
 instance Arbitrary ByteString where
@@ -37,6 +45,11 @@ instance (CritBitKey k, Arbitrary k, Arbitrary v) =>
   Arbitrary (CritBit k v) where
     arbitrary = C.fromList <$> arbitrary
     shrink = map C.fromList . shrink . C.toList
+
+instance (CritBitKey k, Arbitrary k) =>
+  Arbitrary (CS.Set k) where
+    arbitrary = CS.fromList <$> arbitrary
+    shrink = map CS.fromList . shrink . CS.toList
 
 -- For tests that have O(n^2) running times or input sizes, resize
 -- their inputs to the square root of the originals.

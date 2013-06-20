@@ -5,9 +5,11 @@ import Test.Framework
 
 #if MIN_VERSION_base(4,5,0)
 import qualified Properties.Map as Map
+import qualified Properties.Set as Set
 
 properties :: [Test]
-properties = concat [ Map.properties ]
+properties = [ testGroup "map" Map.properties,
+               testGroup "set" Set.properties ]
 #else
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
