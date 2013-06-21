@@ -825,16 +825,14 @@ insertRight f (CritBit root) ok v
   | otherwise     = CritBit $ go root
   where
     k = f ok
-    go i@(Internal _ right byte otherBits)
-      | byte > n  = append i
-      | byte == n && otherBits > nob = append i
-      | otherwise = i { iright = go right }
+    go i@(Internal _ right _ _)
+      | diff `above` i = append i
+      | otherwise      = setRight' i $ go right
     go i = append i
-    
-    append Empty = error "CritBit.mapKeysMonotonic : Empty in tree."
-    append i     = Internal i (Leaf k v) n nob
-    
-    (n, nob, _) = followPrefixes k $ maxKey root
+
+    append i = internal diff i (Leaf k v)
+
+    diff = followPrefixes k $ maxKey root
 {-# INLINE insertRight #-}
 
 -- | /O(n)/. Convert the map to a list of key/value pairs where the keys are in
