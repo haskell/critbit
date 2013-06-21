@@ -9,8 +9,8 @@ import Data.Foldable (foldMap)
 import Data.Function (on)
 import Data.List (unfoldr, sort, nubBy)
 import Data.Map (Map)
-import Data.Monoid (Monoid,Sum(..),mappend)
-import Data.String (IsString)
+import Data.Monoid (Monoid, Sum(..), mappend)
+import Data.String (IsString(..))
 import Data.Text (Text)
 import Data.Word (Word8)
 import Properties.Common
@@ -347,13 +347,16 @@ mapAccumWithKey critbitF mapF _ (KV kvs) = mappedC == mappedM
 prepends :: (CritBitKey k, Ord k, IsString k, Monoid k) => k -> k
 prepends = mappend "test"
 
-t_mapKeys :: (CritBitKey k, Ord k, IsString k, Monoid k) => k -> KV k -> Bool
-t_mapKeys = C.mapKeys prepends === Map.mapKeys prepends
+tweakKey :: (Show a, IsString b) => a -> b
+tweakKey = fromString . reverse . drop 2 . show
 
-t_mapKeysWith :: (CritBitKey k, Ord k, IsString k, Monoid k)
+t_mapKeys :: (CritBitKey k, Ord k, IsString k, Show k) => k -> KV k -> Bool
+t_mapKeys = C.mapKeys tweakKey === Map.mapKeys tweakKey
+
+t_mapKeysWith :: (CritBitKey k, Ord k, IsString k, Show k)
               => k -> KV k -> Bool
 t_mapKeysWith =
-  C.mapKeysWith (+) prepends === Map.mapKeysWith (+) prepends
+  C.mapKeysWith (+) tweakKey === Map.mapKeysWith (+) tweakKey
 
 t_mapKeysMonotonic :: (CritBitKey k, Ord k, IsString k, Monoid k)
                    => k -> KV k -> Bool
