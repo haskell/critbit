@@ -2,13 +2,10 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Properties.Common
     (
-      V
-    , Small(..)
-    , unsquare
-    , smallArbitrary
+      Small(..)
     , qc
     , Eq'(..)
-    , SameAs (..)
+    , SameAs(..)
     , (=?=)
     , (=??=)
     , (=*=)
@@ -20,14 +17,10 @@ module Properties.Common
   ) where
 
 import Control.Applicative ((<$>))
-import Data.CritBit.Map.Lazy (CritBitKey, CritBit)
-import Data.Word (Word8)
 import Test.QuickCheck (Arbitrary(..), Args(..), quickCheckWith, stdArgs)
-import Test.QuickCheck.Gen (Gen, resize, sized)
-import Test.QuickCheck.Property (Property, Testable, forAll)
+import Test.QuickCheck.Gen (resize, sized)
+import Test.QuickCheck.Property (Testable)
 import qualified Data.ByteString.Char8 as B
-import qualified Data.CritBit.Map.Lazy as C
-import qualified Data.CritBit.Set as CS
 import qualified Data.Text as T
 
 instance Arbitrary B.ByteString where
@@ -37,27 +30,6 @@ instance Arbitrary B.ByteString where
 instance Arbitrary T.Text where
     arbitrary = T.pack <$> arbitrary
     shrink    = map T.pack . shrink . T.unpack
-
-type V = Word8
-
-instance (CritBitKey k, Arbitrary k, Arbitrary v) =>
-  Arbitrary (CritBit k v) where
-    arbitrary = C.fromList <$> arbitrary
-    shrink = map C.fromList . shrink . C.toList
-
-instance (CritBitKey k, Arbitrary k) =>
-  Arbitrary (CS.Set k) where
-    arbitrary = CS.fromList <$> arbitrary
-    shrink = map CS.fromList . shrink . CS.toList
-
--- For tests that have O(n^2) running times or input sizes, resize
--- their inputs to the square root of the originals.
-unsquare :: (Arbitrary a, Show a, Testable b) => (a -> b) -> Property
-unsquare = forAll smallArbitrary
-
-smallArbitrary :: (Arbitrary a, Show a) => Gen a
-smallArbitrary = sized $ \n -> resize (smallish n) arbitrary
-  where smallish = round . (sqrt :: Double -> Double) . fromIntegral . abs
 
 newtype Small a = Small { fromSmall :: a }
     deriving (Eq, Ord, Show)

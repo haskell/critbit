@@ -30,6 +30,7 @@ import qualified Data.Text as T
 import Data.Functor.Identity (Identity(..))
 #endif
 
+type V = Word8
 type KV k = [(k, V)]
 
 type SA k = SameAs (CritBit k V) (Map k V) (KV k)
@@ -42,9 +43,6 @@ type WithKeyValueProp = (CritBitKey k, Ord k, Show k, IsString k, Monoid k)
                       => SA k -> KV k -> k -> V -> Bool
 type WithMapProp      = (CritBitKey k, Ord k, Show k, IsString k, Monoid k)
                       => SA k -> KV k -> KV k -> Bool
-
-newtype CB k = CB (CritBit k V)
-    deriving (Show, Eq, Arbitrary)
 
 presentMissingProperty :: (Eq k, Arbitrary k, Show k, IsString k, Testable t)
                        => String -> (SA k -> KV k -> k -> t) -> SA k -> [Test]
