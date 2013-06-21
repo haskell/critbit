@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, Rank2Types, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, Rank2Types, ScopedTypeVariables, OverloadedStrings #-}
 module Main (main) where
 
 import Control.Applicative ((<$>))
@@ -12,7 +12,7 @@ import Data.Foldable (foldMap)
 import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..), hashByteArray)
 import Data.Maybe (fromMaybe, fromJust)
-import Data.Monoid (Sum(..))
+import Data.Monoid (Sum(..),mappend)
 import Data.Text.Array (aBA)
 import Data.Text.Encoding (decodeUtf8)
 import Data.Text.Internal (Text(..))
@@ -366,6 +366,14 @@ main = do
       , bgroup "mapKeys" $ let f k = B.pack (show k ++ "test") in [
           bench "critbit" $ nf (C.mapKeys f) b_critbit
         , bench "map" $ nf (Map.mapKeys f) b_map
+        ]
+	  , bgroup "mapKeysWith" $ let f k = B.pack (show k ++ "test") in [
+          bench "critbit" $ nf (C.mapKeysWith (+) f) b_critbit
+        , bench "map" $ nf (Map.mapKeysWith (+) f) b_map
+        ]
+      , bgroup "mapKeysMonotonic" $ let f = mappend "test" in [
+          bench "critbit" $ nf (C.mapKeysMonotonic f) b_critbit
+        , bench "map" $ nf (Map.mapKeysMonotonic f) b_map
         ]
       , bgroup "mapAccumWithKey" $ [
           bench "critbit" $ whnf (C.mapAccumWithKey mapAccumFKey 0) b_critbit
