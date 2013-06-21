@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, IncoherentInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Properties.Common
     (
@@ -14,8 +15,11 @@ module Properties.Common
     , (=**=)
     , (=*==)
     , notEmpty
+    , prepends
   ) where
 
+import Data.String (IsString)
+import Data.Monoid (Monoid, mappend)
 import Control.Applicative ((<$>))
 import Test.QuickCheck (Arbitrary(..), Args(..), quickCheckWith, stdArgs)
 import Test.QuickCheck.Gen (resize, sized)
@@ -100,8 +104,10 @@ data SameAs f g r = SameAs {
 notEmpty :: (SameAs c1 c2 [i] -> [i] -> Bool) -> SameAs c1 c2 [i] -> [i] -> Bool
 notEmpty f t items = null items || f t items
 
+prepends :: (IsString k, Monoid k) => k -> k
+prepends = mappend "test"
+
 -- Handy functions for fiddling with from ghci.
 
 qc :: Testable prop => Int -> prop -> IO ()
 qc n = quickCheckWith stdArgs { maxSuccess = n }
-

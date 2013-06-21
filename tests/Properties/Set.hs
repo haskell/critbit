@@ -8,11 +8,12 @@ import Data.CritBit.Map.Lazy (CritBitKey, byteCount)
 import qualified Data.CritBit.Set as C
 import qualified Data.Set as S
 
-import Test.QuickCheck (Arbitrary(..))
+import Test.QuickCheck (Arbitrary)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Data.String (IsString, fromString)
 import Data.List (unfoldr, sort, nub)
+import Data.Monoid (Monoid)
 
 import qualified Data.Text as T
 import qualified Data.ByteString.Char8 as B
@@ -26,11 +27,7 @@ kf k = fromString $ show (byteCount k) ++ show k
 kii :: (CritBitKey k, Show k, IsString k) => k -> Int -> Int
 kii k v = byteCount k * 13 + v
 
-fmono :: (CritBitKey k, Show k, IsString k) => k -> k
-fmono k = fromString $ "test" ++ show k
-
-propertiesFor :: (Arbitrary k, CritBitKey k, Eq k, Ord k, Show k, IsString k)
-              => k -> [Test]
+propertiesFor :: (Arbitrary k, CritBitKey k, Eq k, Ord k, Show k, IsString k, Monoid k) => k -> [Test]
 propertiesFor t = concat [[]
   -- * Operators
   , prop "t_diff" $ (C.\\) =**= (S.\\)
@@ -70,7 +67,7 @@ propertiesFor t = concat [[]
 
   -- * Map
   , prop "t_map" $ C.map kf =*= S.map kf
-  , prop "t_mapMonotonic" $ C.mapMonotonic fmono =*= S.mapMonotonic fmono
+  , prop "t_mapMonotonic" $ C.mapMonotonic prepends =*= S.mapMonotonic prepends
 
   -- * Folds
   , prop "t_foldr" $ C.foldr kii 0 =*= S.foldr kii 0

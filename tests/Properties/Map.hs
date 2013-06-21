@@ -10,13 +10,13 @@ import Data.Foldable (foldMap)
 import Data.Function (on)
 import Data.List (unfoldr, sort, nubBy)
 import Data.Map (Map)
-import Data.Monoid (Monoid,Sum(..),mappend)
+import Data.Monoid (Monoid, Sum(..))
 import Data.String (IsString)
 import Data.Word (Word8)
 import Properties.Common
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck (Arbitrary(..))
+import Test.QuickCheck (Arbitrary)
 import Test.QuickCheck.Property (Testable)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.CritBit.Map.Lazy as C
@@ -218,9 +218,6 @@ t_fromSet = (C.fromSet f . C.keysSet) =*= (Map.fromSet f . Map.keysSet)
 
 t_map :: CBProp
 t_map = C.map (+3) =*= Map.map (+3)
-
-prepends :: (CritBitKey k, Ord k, IsString k, Monoid k) => k -> k
-prepends = mappend "test"
 
 t_mapKeys :: CBProp
 t_mapKeys = C.mapKeys prepends =*= Map.mapKeys prepends
