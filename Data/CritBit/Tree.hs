@@ -73,8 +73,8 @@ module Data.CritBit.Tree
     , mapAccumWithKey
     , mapAccumRWithKey
     , mapKeys
-    -- , mapKeysWith
-    -- , mapKeysMonotonic
+    , mapKeysWith
+    , mapKeysMonotonic
 
     -- * Folds
     , foldl
@@ -774,6 +774,13 @@ minKey n = leftmost
     const n
 {-# INLINE minKey #-}
 
+-- | Extract maximum key from the subtree.
+maxKey :: (CritBitKey k) => Node k v -> k
+maxKey n = rightmost
+    (error "Data.CritBit.Tree.maxKey: Empty")
+    const n
+{-# INLINE maxKey #-}
+
 -- | Link children to the parent node.
 link :: (CritBitKey k)
      => Node k v -- ^ parent
@@ -801,9 +808,66 @@ map = fmap
 -- > let f = fromString . (++ "1") . show
 -- > mapKeys f (fromList [("a", 5), ("b", 3)])            == fromList ([("a1", 5), ("b1", 3)])
 -- > mapKeys (\ _ -> "a") (fromList [("a", 5), ("b", 3)]) == singleton "a" 3
-mapKeys :: (CritBitKey k2) => (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
-mapKeys f = foldrWithKey g empty
-  where g k x m = insertWithKey (\_ _ x0 -> x0) (f k) x m
+mapKeys :: (CritBitKey k2)
+        => (k1 -> k2)
+        -> CritBit k1 v -> CritBit k2 v
+mapKeys f m = mapKeysWith (\_ v -> v) f m
+{-# INLINABLE mapKeys #-}
+
+-- | /O(n*log n)/.
+-- @'mapKeysWith' c f s@ is the map obtained by applying @f@ to each key of @s@.
+--
+-- The size of the result may be smaller if @f@ maps two or more distinct
+-- keys to the same new key.  In this case the associated values will be
+-- combined using @c@.
+--
+-- > mapKeysWith (+) (\ _ -> "a") (fromList [("b",1), ("a",2), ("d",3), ("c",4)]) == singleton "a" 10
+mapKeysWith :: (CritBitKey k2)
+            => (v -> v -> v)
+            -> (k1 -> k2)
+            -> CritBit k1 v -> CritBit k2 v
+mapKeysWith c f m = foldrWithKey ins empty m
+  where ins k v nm = insertWith c (f k) v nm
+{-# INLINABLE mapKeysWith #-}
+
+-- | /O(K)/.
+-- @'mapKeysMonotonic' f s == 'mapKeys' f s@, but works only when @f@
+-- is strictly monotonic.
+-- That is, for any values @x@ and @y@, if @x@ < @y@ then @f x@ < @f y@.
+-- /The precondition is not checked./
+-- Semi-formally, we have:
+--
+-- > and [x < y ==> f x < f y | x <- ls, y <- ls]
+-- >                     ==> mapKeysMonotonic f s == mapKeys f s
+-- >     where ls = keys s
+--
+-- This means that @f@ maps distinct original keys to distinct resulting keys.
+-- This function has slightly better performance than 'mapKeys'.
+--
+-- > mapKeysMonotonic (\ k -> succ k) (fromList [("a",5), ("b",3)]) == fromList [("b",5), ("c",3)]
+mapKeysMonotonic :: (CritBitKey k1, CritBitKey k2)
+                 => (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
+mapKeysMonotonic f m = foldlWithKey (insertRight f) empty m
+{-# INLINABLE mapKeysMonotonic #-}
+
+insertRight :: CritBitKey k
+            => (a -> k) -> CritBit k v -> a -> v -> CritBit k v
+insertRight f (CritBit root) ok v
+  | Empty <- root = CritBit $ Leaf k v
+  | otherwise     = CritBit $ go root
+  where
+    k = f ok
+    go i@(Internal _ right byte otherBits)
+      | byte > n  = append i
+      | byte == n && otherBits > nob = append i
+      | otherwise = i { iright = go right }
+    go i = append i
+    
+    append Empty = error "CritBit.mapKeysMonotonic : Empty in tree."
+    append i     = Internal i (Leaf k v) n nob
+    
+    (n, nob, _) = followPrefixes k $ maxKey root
+{-# INLINE insertRight #-}
 
 -- | /O(n)/. Convert the map to a list of key/value pairs where the keys are in
 -- ascending order.
