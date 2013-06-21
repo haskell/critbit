@@ -345,7 +345,7 @@ mapAccumWithKey critbitF mapF _ (KV kvs) = mappedC == mappedM
         mappedM = second Map.toList . mapF fun 0 $ (Map.fromList kvs)
 
 prepends :: (CritBitKey k, Ord k, IsString k, Monoid k) => k -> k
-prepends = mappend "test"
+prepends = flip mappend "test"
 
 tweakKey :: (Show a, IsString b) => a -> b
 tweakKey = fromString . reverse . drop 2 . show
