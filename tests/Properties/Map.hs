@@ -9,13 +9,11 @@ import Data.Foldable (foldMap)
 import Data.Function (on)
 import Data.List (unfoldr, sort, nubBy)
 import Data.Map (Map)
-import Data.Monoid (Monoid, Sum(..))
-import Data.String (IsString)
+import Data.Monoid (Sum(..))
 import Data.Word (Word8)
 import Properties.Common
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck (Arbitrary)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.CritBit.Map.Lazy as C
 import qualified Data.CritBit.Set as CSet
@@ -50,7 +48,7 @@ vvfm = kvvfm ("" :: T.Text)
 vfm :: V -> Maybe V
 vfm = kvfm ("" :: T.Text)
 
-propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, IsString k, Monoid k, Show k) => k -> [Test]
+propertiesFor :: Props k
 propertiesFor w = concat [[]
   -- ** Lists
   , prop sa "t_fromList" $

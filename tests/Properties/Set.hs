@@ -8,12 +8,10 @@ import Data.CritBit.Map.Lazy (CritBitKey, byteCount)
 import qualified Data.CritBit.Set as C
 import qualified Data.Set as S
 
-import Test.QuickCheck (Arbitrary)
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Data.String (IsString)
 import Data.List (unfoldr, sort, nub)
-import Data.Monoid (Monoid)
 
 import qualified Data.Text as T
 import qualified Data.ByteString.Char8 as B
@@ -24,7 +22,7 @@ kp = even . byteCount
 kii :: (CritBitKey k, Show k, IsString k) => k -> Int -> Int
 kii k v = byteCount k * 13 + v
 
-propertiesFor :: (Arbitrary k, CritBitKey k, Eq k, Ord k, Show k, IsString k, Monoid k) => k -> [Test]
+propertiesFor :: Props k
 propertiesFor t = concat [[]
   -- * Operators
   , prop "t_diff" $ (C.\\) =**= (S.\\)

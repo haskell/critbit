@@ -1,10 +1,11 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, IncoherentInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, Rank2Types #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Properties.Common
     (
       Small(..)
     , qc
+    , Props
     , Eq'(..)
     , SameAs(..)
     , (=?=)
@@ -23,6 +24,7 @@ import Data.CritBit.Map.Lazy (CritBitKey, byteCount)
 import Data.String (IsString, fromString)
 import Data.Monoid (Monoid, mappend)
 import Control.Applicative ((<$>))
+import Test.Framework (Test)
 import Test.QuickCheck (Arbitrary(..), Args(..), quickCheckWith, stdArgs)
 import Test.QuickCheck.Gen (resize, sized)
 import Test.QuickCheck.Property (Testable)
@@ -45,6 +47,8 @@ instance (Show a, Arbitrary a) => Arbitrary (Small a) where
       where
         smallish = round . (sqrt :: Double -> Double) . fromIntegral . abs
     shrink = map Small . shrink . fromSmall
+
+type Props k = (Arbitrary k, CritBitKey k, Ord k, IsString k, Monoid k, Show k) => k -> [Test]
 
 infix 4 =^=, =?=, =??=
 
