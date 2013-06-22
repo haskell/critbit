@@ -16,9 +16,11 @@ module Properties.Common
     , (=*==)
     , notEmpty
     , prepends
+    , kf
   ) where
 
-import Data.String (IsString)
+import Data.CritBit.Map.Lazy (CritBitKey, byteCount)
+import Data.String (IsString, fromString)
 import Data.Monoid (Monoid, mappend)
 import Control.Applicative ((<$>))
 import Test.QuickCheck (Arbitrary(..), Args(..), quickCheckWith, stdArgs)
@@ -106,6 +108,10 @@ notEmpty f t items = null items || f t items
 
 prepends :: (IsString k, Monoid k) => k -> k
 prepends = mappend "test"
+
+-- | Keys mapping function
+kf :: (CritBitKey k, IsString k, Monoid k) => k -> k
+kf k = fromString (show (byteCount k)) `mappend` k
 
 -- Handy functions for fiddling with from ghci.
 
