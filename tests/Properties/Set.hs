@@ -204,7 +204,7 @@ t_maxView _ ks =
 
 updateFun :: Integral v => k -> v -> Maybe v
 updateFun _ v
-  | v `rem` 2 == 0 = Nothing
+  | even v    = Nothing
   | otherwise = Just (v + 1)
 
 t_insert_present :: (CritBitKey k, Ord k) => k -> [k] -> Bool

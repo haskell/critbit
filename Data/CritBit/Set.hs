@@ -129,7 +129,7 @@ null (Set a) = T.null a
 -- > empty      == fromList []
 -- > size empty == 0
 empty :: Set a
-empty = Set $ T.empty
+empty = Set T.empty
 {-# INLINABLE empty #-}
 
 -- | /O(1)/. A set with a single element.
@@ -242,7 +242,7 @@ isProperSubsetOf = wrapSS id T.isProperSubmapOf
 -- If the set already contains an element equal to the given value,
 -- it is replaced with the new value.
 insert :: (CritBitKey a) => a -> Set a -> Set a
-insert = wrapVS Set (flip T.insert ())
+insert = wrapVS Set (`T.insert` ())
 {-# INLINABLE insert #-}
 
 -- | /O(log n)/. Delete an element from a set.
