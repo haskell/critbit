@@ -845,8 +845,8 @@ mapKeysWith c f m = foldrWithKey ins empty m
 -- This function has slightly better performance than 'mapKeys'.
 --
 -- > mapKeysMonotonic (\ k -> succ k) (fromList [("a",5), ("b",3)]) == fromList [("b",5), ("c",3)]
-mapKeysMonotonic :: (CritBitKey k1, CritBitKey k2)
-                 => (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
+mapKeysMonotonic :: CritBitKey k
+                 => (a -> k) -> CritBit a v -> CritBit k v
 mapKeysMonotonic f m = foldlWithKey (insertRight f) empty m
 {-# INLINABLE mapKeysMonotonic #-}
 

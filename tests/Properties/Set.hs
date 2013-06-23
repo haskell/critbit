@@ -226,6 +226,11 @@ t_partition _ ks = partCrit == partMap
     partMap  = fixup Set.toList . Set.partition foo . Set.fromList $ ks
     foo = odd . byteCount
 
+t_mapMonotonic :: (CritBitKey k, Ord k, Monoid k, IsString k)
+               => k -> [k] -> Bool
+t_mapMonotonic = CS.mapMonotonic preps === Set.mapMonotonic preps
+  where preps = ("test" <>)
+
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Monoid k, Show k,
                   IsString k) => k -> [Test]
 propertiesFor t = [
@@ -249,6 +254,7 @@ propertiesFor t = [
   , testProperty "t_elems" $ t_elems t
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapKeys" $ t_map t
+  , testProperty "t_mapMonotonic" $ t_mapMonotonic t
   , testProperty "t_toAscList" $ t_toAscList t
 #if MIN_VERSION_containers(0,5,0)
   , testProperty "t_toDescList" $ t_toDescList t
