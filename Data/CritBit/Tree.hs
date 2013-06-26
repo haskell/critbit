@@ -465,11 +465,12 @@ singleton k v = CritBit (Leaf k v)
 -- > size (singleton "a" 1)                      == 1
 -- > size (fromList [("a",1), ("c",2), ("b",3)]) == 3
 size :: CritBit k v -> Int
-size (CritBit root) = go root
+size (CritBit root) = go root 0
   where
-    go (Internal {..}) = go ileft + go iright
-    go (Leaf {}) = 1
-    go Empty     = 0
+    go (Internal {..}) c = let c' = go ileft c
+                           in go iright c'
+    go (Leaf {}) c = c + 1
+    go Empty     c = c
 
 -- | /O(n)/. Fold the values in the map using the given
 -- left-associative function, such that
