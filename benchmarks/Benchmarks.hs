@@ -52,6 +52,9 @@ instance (NFData a) => NFData (Trie.Trie a) where
 forcePair:: (a,b) -> ()
 forcePair (a,b) = a `seq` b `seq` ()
 
+addvs :: (Num v) => k -> v -> v -> v
+addvs _ v1 v2 = v1 + v2
+
 every k = go 0
   where
     go i (x:xs)
@@ -151,8 +154,8 @@ main = do
         , bench "trie" $ whnf (TC.fromListWith (+)) kvs
         ]
       fromListWithKey kvs = [
-          bench "critbit" $ whnf (C.fromListWithKey (\k a b -> a + b)) kvs
-        , bench "map" $ whnf (Map.fromListWithKey (\k a b -> a+b)) kvs
+          bench "critbit" $ whnf (C.fromListWithKey addvs) kvs
+        , bench "map" $ whnf (Map.fromListWithKey addvs) kvs
         -- , bench "hashmap" $ whnf (H.fromListWithKey (\a b -> a+b)) kvs
         -- , bench "trie" $ whnf (TC.fromListWithKey (\a b -> a+b)) kvs
         ]
@@ -226,28 +229,28 @@ main = do
           , bench "hashmap" $ whnf (H.insertWith (+) key 1) b_hashmap_1
           ]
         ]
-      , bgroup "insertWithKey" $ let f _ a b = a + b in [
+      , bgroup "insertWithKey" [
           bgroup "present" [
-            bench "critbit" $ whnf (C.insertWithKey f key 1) b_critbit
-          , bench "map" $ whnf (Map.insertWithKey f key 1) b_map
+            bench "critbit" $ whnf (C.insertWithKey addvs key 1) b_critbit
+          , bench "map" $ whnf (Map.insertWithKey addvs key 1) b_map
           ]
         , bgroup "missing" [
-            bench "critbit" $ whnf (C.insertWithKey f key 1) b_critbit_1
-          , bench "map" $ whnf (Map.insertWithKey f key 1) b_map_1
+            bench "critbit" $ whnf (C.insertWithKey addvs key 1) b_critbit_1
+          , bench "map" $ whnf (Map.insertWithKey addvs key 1) b_map_1
           ]
         ]
-      , bgroup "insertLookupWithKey" $ let f _ a b = a + b in [
+      , bgroup "insertLookupWithKey" [
           bgroup "present" [
             bench "critbit" $
-                whnf (forcePair . C.insertLookupWithKey f key 1) b_critbit
+                whnf (forcePair . C.insertLookupWithKey addvs key 1) b_critbit
           , bench "map" $
-                whnf (forcePair . Map.insertLookupWithKey f key 1) b_map
+                whnf (forcePair . Map.insertLookupWithKey addvs key 1) b_map
           ]
         , bgroup "missing" [
             bench "critbit" $
-                whnf (forcePair . C.insertLookupWithKey f key 1) b_critbit_1
+                whnf (forcePair . C.insertLookupWithKey addvs key 1) b_critbit_1
           , bench "map" $
-                whnf (forcePair . Map.insertLookupWithKey f key 1) b_map_1
+                whnf (forcePair . Map.insertLookupWithKey addvs key 1) b_map_1
           ]
         ]
       , bgroup "adjust" $
@@ -388,9 +391,9 @@ main = do
           bench "critbit" $ whnf (C.unionWith (+) b_critbit_13) b_critbit_23
         , bench "map" $ whnf (Map.unionWith (+) b_map_13) b_map_23
         ]
-      , bgroup "unionWithKey" $ let f _ a b = a + b in [
-          bench "critbit" $ whnf (C.unionWithKey f b_critbit_13) b_critbit_23
-        , bench "map" $ whnf (Map.unionWithKey f b_map_13) b_map_23
+      , bgroup "unionWithKey" [
+          bench "critbit" $ whnf (C.unionWithKey addvs b_critbit_13) b_critbit_23
+        , bench "map" $ whnf (Map.unionWithKey addvs b_map_13) b_map_23
         ]
       , bgroup "unions" [
           bench "critbit" $ whnf C.unions [b_critbit_13, b_critbit_23]
@@ -423,9 +426,11 @@ main = do
         , bench "map" $ whnf (Map.intersectionWith (+) b_map_13) b_map_23
         , bench "hashmap" $ whnf (H.intersectionWith (+) b_hashmap_13) b_hashmap_23
         ]
-      , bgroup "intersectionWithKey" $ let f _ a b = a + b in [
-          bench "critbit" $ whnf (C.intersectionWithKey f b_critbit_13) b_critbit_23
-        , bench "map" $ whnf (Map.intersectionWithKey f b_map_13) b_map_23
+      , bgroup "intersectionWithKey" [
+          bench "critbit" $
+              whnf (C.intersectionWithKey addvs b_critbit_13) b_critbit_23
+        , bench "map" $
+              whnf (Map.intersectionWithKey addvs b_map_13) b_map_23
         ]
       , bgroup "toAscList" $ function nf C.toAscList Map.toAscList id id
       , bgroup "toDescList" $ function nf C.toDescList Map.toDescList id id
