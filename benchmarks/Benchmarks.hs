@@ -214,13 +214,13 @@ main = do
       , bgroup "delete" $ keyed C.delete Map.delete H.delete Trie.delete
       , bgroup "insert" $ keyed (flip C.insert 1) (flip Map.insert 1)
                                 (flip H.insert 1) (flip Trie.insert 1)
-      , bgroup "insertWith" $ [
-          bgroup "present" $ [
+      , bgroup "insertWith" [
+          bgroup "present" [
             bench "critbit" $ whnf (C.insertWith (+) key 1) b_critbit
           , bench "map" $ whnf (Map.insertWith (+) key 1) b_map
           , bench "hashmap" $ whnf (H.insertWith (+) key 1) b_hashmap
           ]
-        , bgroup "missing" $ [
+        , bgroup "missing" [
             bench "critbit" $ whnf (C.insertWith (+) key 1) b_critbit_1
           , bench "map" $ whnf (Map.insertWith (+) key 1) b_map_1
           , bench "hashmap" $ whnf (H.insertWith (+) key 1) b_hashmap_1
@@ -359,7 +359,7 @@ main = do
         ]
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
-      , bgroup "mapWithKey" $ [
+      , bgroup "mapWithKey" [
           bench "critbit" $ whnf (C.mapWithKey mapFKey) b_critbit
         , bench "map" $ whnf (Map.mapWithKey mapFKey) b_map
         ]
@@ -375,11 +375,11 @@ main = do
           bench "critbit" $ nf (C.mapKeysMonotonic f) b_critbit
         , bench "map" $ nf (Map.mapKeysMonotonic f) b_map
         ]
-      , bgroup "mapAccumWithKey" $ [
+      , bgroup "mapAccumWithKey" [
           bench "critbit" $ whnf (C.mapAccumWithKey mapAccumFKey 0) b_critbit
         , bench "map" $ whnf (Map.mapAccumWithKey mapAccumFKey 0) b_map
         ]
-      , bgroup "mapAccumRWithKey" $ [
+      , bgroup "mapAccumRWithKey" [
           bench "critbit" $ whnf (C.mapAccumRWithKey mapAccumFKey 0) b_critbit
         , bench "map" $ whnf (Map.mapAccumRWithKey mapAccumFKey 0) b_map
         ]
@@ -446,12 +446,12 @@ main = do
         , bench "map"     $ nf (Map.fromAscListWithKey (const (+))) b_ordKVs
         ]
       , bgroup "fromAscDistinctList_short" [
-          bench "critbit" $ nf (  C.fromDistinctAscList) b_ordKVs
-        , bench "map"     $ nf (Map.fromDistinctAscList) b_ordKVs
+          bench "critbit" $ nf   C.fromDistinctAscList b_ordKVs
+        , bench "map"     $ nf Map.fromDistinctAscList b_ordKVs
         ]
       , bgroup "fromAscDistinctList_long" [
-          bench "critbit" $ nf (  C.fromDistinctAscList) b_longKVs
-        , bench "map"     $ nf (Map.fromDistinctAscList) b_longKVs
+          bench "critbit" $ nf    C.fromDistinctAscList b_longKVs
+        , bench "map"     $ nf  Map.fromDistinctAscList b_longKVs
         ]
       , bgroup "filter" $ let p  = (< 128)
                               p' = \e -> if p e then Just e else Nothing
@@ -485,7 +485,7 @@ main = do
           bench "critbit" $ nf (C.mapEitherWithKey f) b_critbit
         , bench "map" $ nf (Map.mapEitherWithKey f) b_map
         ]
-      , bgroup "split" $ [
+      , bgroup "split" [
           bench "critbit" $ whnf (forcePair . C.split key) b_critbit
         , bench "map" $ whnf (forcePair . Map.split key) b_map
         ]
@@ -495,69 +495,69 @@ main = do
           bench "critbit" $ whnf (forceTriple . C.splitLookup key) b_critbit
         , bench "map" $ whnf (forceTriple . Map.splitLookup key) b_map
         ]
-      , bgroup "isSubmapOf" $ [
+      , bgroup "isSubmapOf" [
           bench "critbit" $ whnf (C.isSubmapOf b_critbit_1) b_critbit
         , bench "map" $ whnf (Map.isSubmapOf b_map_1) b_map
         ]
-      , bgroup "isSubmapOfBy" $ [
+      , bgroup "isSubmapOfBy" [
           bench "critbit" $ whnf (C.isSubmapOfBy (<=) b_critbit_1) b_critbit
         , bench "map" $ whnf (Map.isSubmapOfBy (<=) b_map_1) b_map
         ]
-      , bgroup "isProperSubmapOf" $ [
+      , bgroup "isProperSubmapOf" [
           bench "critbit" $ whnf (C.isProperSubmapOf b_critbit_1) b_critbit
         , bench "map" $ whnf (Map.isProperSubmapOf b_map_1) b_map
         ]
-      , bgroup "isProperSubmapOfBy" $ [
+      , bgroup "isProperSubmapOfBy" [
           bench "critbit" $
             whnf (C.isProperSubmapOfBy (<=) b_critbit_1) b_critbit
         , bench "map" $
             whnf (Map.isProperSubmapOfBy (<=) b_map_1) b_map
         ]
-      , bgroup "findMin" $ [
-          bench "critbit" $ whnf (C.findMin) b_critbit
-        , bench "map" $ whnf (Map.findMin) b_map
+      , bgroup "findMin" [
+          bench "critbit" $ whnf C.findMin b_critbit
+        , bench "map" $ whnf Map.findMin b_map
         ]
-      , bgroup "findMax" $ [
-          bench "critbit" $ whnf (C.findMax) b_critbit
-        , bench "map" $ whnf (Map.findMax) b_map
+      , bgroup "findMax" [
+          bench "critbit" $ whnf C.findMax b_critbit
+        , bench "map" $ whnf Map.findMax b_map
         ]
-      , bgroup "deleteMin" $ [
-          bench "critbit" $ whnf (C.deleteMin) b_critbit
-        , bench "map" $ whnf (Map.deleteMin) b_map
+      , bgroup "deleteMin" [
+          bench "critbit" $ whnf C.deleteMin b_critbit
+        , bench "map" $ whnf Map.deleteMin b_map
         ]
-      , bgroup "deleteMax" $ [
-          bench "critbit" $ whnf (C.deleteMax) b_critbit
-        , bench "map" $ whnf (Map.deleteMax) b_map
+      , bgroup "deleteMax" [
+          bench "critbit" $ whnf C.deleteMax b_critbit
+        , bench "map" $ whnf Map.deleteMax b_map
        ]
-      , bgroup "deleteFindMin" $ [
+      , bgroup "deleteFindMin" [
           bench "critbit" $ whnf (snd . C.deleteFindMin) b_critbit
         , bench "map" $ whnf (snd . Map.deleteFindMin) b_map
         ]
-      , bgroup "deleteFindMax" $ [
+      , bgroup "deleteFindMax" [
           bench "critbit" $ whnf (snd . C.deleteFindMax) b_critbit
         , bench "map" $ whnf (snd . Map.deleteFindMax) b_map
         ]
-      , bgroup "minView" $ [
+      , bgroup "minView" [
           bench "critbit" $ whnf (snd . fromJust . C.minView) b_critbit
         , bench "map" $ whnf (snd . fromJust . Map.minView) b_map
         ]
-      , bgroup "maxView" $ [
+      , bgroup "maxView" [
           bench "critbit" $ whnf (snd . fromJust . C.maxView) b_critbit
         , bench "map" $ whnf (snd . fromJust . Map.maxView) b_map
         ]
-      , bgroup "minViewWithKey" $ [
+      , bgroup "minViewWithKey" [
           bench "critbit" $ whnf (snd . fromJust . C.minViewWithKey) b_critbit
         , bench "map" $ whnf (snd . fromJust . Map.minViewWithKey) b_map
         ]
-      , bgroup "maxViewWithKey" $ [
+      , bgroup "maxViewWithKey" [
           bench "critbit" $ whnf (snd . fromJust . C.minViewWithKey) b_critbit
         , bench "map" $ whnf (snd . fromJust . Map.minViewWithKey) b_map
         ]
-      , bgroup "updateMin" $ [
+      , bgroup "updateMin" [
           bench "critbit" $ whnf (C.updateMin updateFVal) b_critbit
         , bench "map" $ whnf (Map.updateMin updateFVal) b_map
         ]
-      , bgroup "updateMax" $ [
+      , bgroup "updateMax" [
           bench "critbit" $ whnf (C.updateMax updateFVal) b_critbit
         , bench "map" $ whnf (Map.updateMax updateFVal) b_map
         ]
@@ -569,15 +569,15 @@ main = do
         , bench "hashmap" $ nf (runIdentity . H.traverseWithKey f) b_hashmap
         , bench "trie" $ nf (fmap f) b_trie
         ]
-      , bgroup "updateMinWithKey" $ [
+      , bgroup "updateMinWithKey" [
           bench "critbit" $ whnf (C.updateMinWithKey updateFKey) b_critbit
         , bench "map" $ whnf (Map.updateMinWithKey updateFKey) b_map
         ]
-      , bgroup "updateMaxWithKey" $ [
+      , bgroup "updateMaxWithKey" [
           bench "critbit" $ whnf (C.updateMaxWithKey updateFKey) b_critbit
         , bench "map" $ whnf (Map.updateMaxWithKey updateFKey) b_map
         ]
-      , bgroup "foldMap" $ [
+      , bgroup "foldMap" [
           bench "critbit" $ let c_foldmap :: (C.CritBitKey k, Num v)
                                           => C.CritBit k v
                                           -> Sum v
@@ -604,7 +604,7 @@ main = do
           bench "critbit" $ whnf (forcePair . C.partitionWithKey predicate) b_critbit
         , bench "map" $ whnf (forcePair . Map.partitionWithKey predicate) b_map
      ]
-     , bgroup "partition" $ [
+     , bgroup "partition" [
           bench "critbit" $ whnf (forcePair . C.partition odd) b_critbit
         , bench "map" $ whnf (forcePair . Map.partition odd) b_map
      ]
