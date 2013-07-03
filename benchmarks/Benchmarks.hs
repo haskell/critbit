@@ -603,9 +603,7 @@ main = do
           bench "critbit" $  whnf (C.alter altF key) b_critbit
         , bench "map" $ whnf (Map.alter altF key) b_map
         ]
-     , bgroup "partitionWithKey" $ let predicate k _ = odd $ C.byteCount k
-                                       forcePair (a,b) = a `seq` b `seq` (a,b)
-                                   in [
+     , bgroup "partitionWithKey" $ let predicate k _ = odd $ C.byteCount k in [
           bench "critbit" $ whnf (forcePair . C.partitionWithKey predicate) b_critbit
         , bench "map" $ whnf (forcePair . Map.partitionWithKey predicate) b_map
      ]
