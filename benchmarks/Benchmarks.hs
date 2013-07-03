@@ -101,7 +101,7 @@ main = do
               return "/usr/share/dict/words"
   ordKeys <- L.sort <$> (every 5 . B.words) <$> B.readFile fileName
              `Exc.catch` \(err::IOError) -> do
-               when (isDoesNotExistError err) $ do
+               when (isDoesNotExistError err) $
                  hPutStrLn stderr
                     ("(point the 'WORDS' environment variable at a file " ++
                      "to use it for benchmark data)")
@@ -145,10 +145,10 @@ main = do
         , bench "hashmap" $ whnf H.fromList kvs
         ]
       fromListWith kvs = [
-          bench "critbit" $ whnf (C.fromListWith (\a b -> a+b)) kvs
-        , bench "map" $ whnf (Map.fromListWith (\a b -> a+b)) kvs
-        , bench "hashmap" $ whnf (H.fromListWith (\a b -> a+b)) kvs
-        , bench "trie" $ whnf (TC.fromListWith (\a b -> a+b)) kvs
+          bench "critbit" $ whnf (C.fromListWith (+)) kvs
+        , bench "map" $ whnf (Map.fromListWith (+)) kvs
+        , bench "hashmap" $ whnf (H.fromListWith (+)) kvs
+        , bench "trie" $ whnf (TC.fromListWith (+)) kvs
         ]
       fromListWithKey kvs = [
           bench "critbit" $ whnf (C.fromListWithKey (\k a b -> a + b)) kvs
