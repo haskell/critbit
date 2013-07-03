@@ -366,11 +366,11 @@ main = do
           bench "critbit" $ whnf (C.mapWithKey mapFKey) b_critbit
         , bench "map" $ whnf (Map.mapWithKey mapFKey) b_map
         ]
-      , bgroup "mapKeys" $ let f k = B.pack (show k ++ "test") in [
+      , bgroup "mapKeys" $ let f = (`mappend` "test") in [
           bench "critbit" $ nf (C.mapKeys f) b_critbit
         , bench "map" $ nf (Map.mapKeys f) b_map
         ]
-	  , bgroup "mapKeysWith" $ let f k = B.pack (show k ++ "test") in [
+	    , bgroup "mapKeysWith" $ let f = (`mappend` "test") in [
           bench "critbit" $ nf (C.mapKeysWith (+) f) b_critbit
         , bench "map" $ nf (Map.mapKeysWith (+) f) b_map
         ]
