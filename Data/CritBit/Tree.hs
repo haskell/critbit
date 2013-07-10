@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns, RecordWildCards, ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- Module      :  Data.CritBit.Tree
@@ -152,10 +153,16 @@ import Control.Monad (guard)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
 import Data.Maybe (fromMaybe)
+import Data.Monoid (Monoid(..))
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.Array as A
 import qualified Data.Foldable as Foldable
 import qualified Data.List as List
+
+instance CritBitKey k => Monoid (CritBit k v) where
+    mempty  = empty
+    mappend = union
+    mconcat = unions
 
 infixl 9 !, \\
 
