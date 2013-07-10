@@ -368,16 +368,16 @@ lookupLE k r = lookupOrd (GT /=) k r
 
 -- | /O(k)/. Common part of lookupXX functions.
 lookupOrd :: (CritBitKey k) => (Ordering -> Bool) -> k -> CritBit k v -> Maybe (k, v)
-lookupOrd accepts k (CritBit root) = go root
+lookupOrd accepts !k (CritBit root) = go root
   where
     go Empty = Nothing
     go i@(Internal left right _ _)
       | direction k i == 0 = go left
       | otherwise          = go right
-    go (Leaf lk lv)        = rewalk root
+    go (Leaf lk _)         = rewalk root
       where
-        finish (Leaf _ _)
-          | accepts (byteCompare lk k) = Just (lk, lv)
+        finish (Leaf _ v)
+          | accepts (byteCompare lk k) = Just (lk, v)
           | otherwise                  = Nothing
         finish node
           | calcDirection nob c == 0 = ifLT node
@@ -397,7 +397,7 @@ lookupOrd accepts k (CritBit root) = go root
         test v f node
           | accepts v = f Nothing pair node
           | otherwise = Nothing
-{-# INLINABLE lookupOrd #-}
+{-# INLINE lookupOrd #-}
 
 byteCompare :: (CritBitKey k) => k -> k -> Ordering
 byteCompare a b = go 0
