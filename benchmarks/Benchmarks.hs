@@ -26,6 +26,7 @@ import qualified Data.CritBit.Map.Lazy as C
 import qualified Data.CritBit.Set as CSet
 import qualified Data.HashMap.Lazy as H
 import qualified Data.Map as Map
+import qualified Data.Map.Lazy as LMap
 import qualified Data.Set as Set
 import qualified Data.Text as T
 import qualified Data.Trie as Trie
@@ -358,7 +359,7 @@ main = do
           f = length . show
         in [
           bench "critbit" $ nf (C.fromSet f) (CSet.fromList keys)
-        , bench "map" $ nf (Map.fromSet f) (Set.fromList keys)
+        , bench "map" $ nf (LMap.fromSet f) (Set.fromList keys)
         ]
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
