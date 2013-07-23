@@ -301,10 +301,11 @@ updateWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k -> CritBit k v
 updateWithKey f k = snd . updateLookupWithKey f k
 {-# INLINABLE updateWithKey #-}
 
--- | /O(log n)/ Update a value at a specific key with the result of the
+-- | /O(log n)/. Update a value at a specific key with the result of the
 -- provided function. When the key is not a member of the map, the original
 -- map is returned.
--- let f k x = x + 1
+--
+-- > let f k x = x + 1
 -- > adjustWithKey f "a" (fromList [("b",3), ("a",5)]) == fromList [("a", 6), ("b",3)]
 -- > adjustWithKey f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]
 -- > adjustWithKey f "c" empty                         == empty
