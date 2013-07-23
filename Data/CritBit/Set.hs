@@ -147,7 +147,9 @@ fromList :: (CritBitKey a) => [a] -> Set a
 fromList = liftFromList T.fromList
 {-# INLINABLE fromList #-}
 
--- | /O(n)/. An alias of 'toList'. The elements of a set in ascending order.
+-- | /O(n)/. An alias of 'toList'.
+--
+-- Returns the elements of a set in ascending order.
 elems :: Set a -> [a]
 elems = toList
 
@@ -207,7 +209,7 @@ lookupGT :: (CritBitKey a) => a -> Set a -> Maybe a
 lookupGT = wrapVS (fmap fst) T.lookupGT
 {-# INLINABLE lookupGT #-}
 
--- | /O(k)/. Find lagest element smaller than or equal to the given one.
+-- | /O(k)/. Find largest element smaller than or equal to the given one.
 --
 -- > lookupGE "b"  (fromList ["a", "b"]) == Just "b"
 -- > lookupGE "aa" (fromList ["a", "b"]) == Just "b"

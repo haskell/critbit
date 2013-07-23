@@ -364,7 +364,7 @@ lookupLT :: (CritBitKey k) => k -> CritBit k v -> Maybe (k, v)
 lookupLT k r = lookupOrd (LT ==) k r
 {-# INLINABLE lookupLT #-}
 
--- | /O(k)/. Find lagest key smaller than or equal to the given one and
+-- | /O(k)/. Find largest key smaller than or equal to the given one and
 -- return the corresponding (key, value) pair.
 --
 -- > lookupGE "bb" (fromList [("aa",3), ("b",5)]) == Just("b",5)
@@ -564,6 +564,13 @@ unionR :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
 unionR a b = unionWithKey (\_ x _ -> x) b a
 {-# INLINABLE unionR #-}
 
+-- | /O(n+m)/.
+-- The expression (@'union' t1 t2@) takes the left-biased union of @t1@ and @t2@.
+--
+-- It prefers @t1@ when duplicate keys are encountered,
+-- i.e. (@'union' == 'unionWith' 'const'@).
+--
+-- > union (fromList [("a", 5), ("b", 3)]) (fromList [("a", 4), ("c", 7)]) == fromList [("a", 5), ("b", "3"), ("c", 7)]
 union :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
 union a b = unionL a b
 {-# INLINE union #-}
@@ -633,9 +640,21 @@ unionWithKey f (CritBit lt) (CritBit rt) = CritBit (top lt rt)
     {-# INLINE fork #-}
 {-# INLINEABLE unionWithKey #-}
 
+-- | The union of a list of maps:
+-- (@'unions' == 'List.foldl' 'union' 'empty'@).
+--
+-- > unions [(fromList [("a", 5), ("b", 3)]), (fromList [("a", 6), ("c", 7)]), (fromList [("a", 9), ("b", 5)])]
+-- >     == fromList [("a", 5), ("b", 4), (c, 7)]
+-- > unions [(fromList [("a", 9), ("b", 8)]), (fromList [("ab", 5), ("c",7)]), (fromList [("a", 5), ("b", 3)])]
+-- >     == fromList [("a", 9), ("ab", 5), ("b", 8), ("c", 7)]
 unions :: (CritBitKey k) => [CritBit k v] -> CritBit k v
 unions cs = List.foldl' union empty cs
 
+-- | The union of a list of maps, with a combining operation:
+-- (@'unionsWith' f == 'List.foldl' ('unionWith' f) 'empty'@).
+--
+-- > unionsWith (+) [(fromList [("a",5), ("b", 3)]), (fromList [("a", 3), ("c", 7)]), (fromList [("a", 5), ("b", 5)])]
+-- >     == fromList [("a", 12), ("b", 8), ("c")]
 unionsWith :: (CritBitKey k) => (v -> v -> v) -> [CritBit k v] -> CritBit k v
 unionsWith f cs = List.foldl' (unionWith f) empty cs
 
@@ -1296,6 +1315,7 @@ minView = fmap (first snd) . minViewWithKey
 
 -- | /O(log n)/. Retrieves the value associated with maximal key of the
 -- map, and the map stripped of that element, or 'Nothing' if passed an
+-- empty map.
 --
 -- > maxView (fromList [("a",5), ("b",3)]) == Just (3, fromList [("a",5)])
 -- > maxView empty == Nothing
@@ -1432,7 +1452,10 @@ mapAccumRWithKey f start (CritBit root) = second CritBit (go start root)
     go a Empty             = (a, Empty)
 {-# INLINABLE mapAccumRWithKey #-}
 
--- | /O(n)/. That is, behaves exactly like a regular 'traverse' except
+-- | /O(n)/.
+-- @'traverseWithKey' f s == 'fromList' <$> 'traverse' (\(k, v) -> (,) k <$> f k v) ('toList' m)@
+--
+-- That is, behaves exactly like a regular 'traverse' except
 -- that the traversing function also has access to the key associated
 -- with a value.
 --
