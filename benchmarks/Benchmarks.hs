@@ -49,7 +49,7 @@ instance NFData B.ByteString
 instance (NFData a) => NFData (Trie.Trie a) where
     rnf = rnf . Trie.toList
 
-forcePair:: (a,b) -> ()
+forcePair :: (a,b) -> ()
 forcePair (a,b) = a `seq` b `seq` ()
 
 addvs :: (Num v) => k -> v -> v -> v

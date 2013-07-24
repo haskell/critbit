@@ -367,7 +367,8 @@ lookupLE k r = lookupOrd (GT /=) k r
 {-# INLINABLE lookupLE #-}
 
 -- | /O(k)/. Common part of lookupXX functions.
-lookupOrd :: (CritBitKey k) => (Ordering -> Bool) -> k -> CritBit k v -> Maybe (k, v)
+lookupOrd :: (CritBitKey k) => (Ordering -> Bool) -> k -> CritBit k v
+          -> Maybe (k, v)
 lookupOrd accepts k (CritBit root) = go root
   where
     go Empty = Nothing
@@ -397,7 +398,7 @@ lookupOrd accepts k (CritBit root) = go root
         test v f node
           | accepts v = f Nothing pair node
           | otherwise = Nothing
-{-# INLINABLE lookupOrd #-}
+{-# INLINE lookupOrd #-}
 
 byteCompare :: (CritBitKey k) => k -> k -> Ordering
 byteCompare a b = go 0
@@ -862,10 +863,10 @@ insertRight f (CritBit root) ok v
       | ibyte == n && iotherBits > nob = append i
       | otherwise = i { iright = go iright }
     go i = append i
-    
+
     append Empty = error "CritBit.mapKeysMonotonic : Empty in tree."
     append i     = Internal i (Leaf k v) n nob
-    
+
     (n, nob, _) = followPrefixes k $ maxKey root
 {-# INLINE insertRight #-}
 
