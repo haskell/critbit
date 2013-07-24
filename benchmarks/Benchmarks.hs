@@ -196,7 +196,8 @@ main = do
                   rnf b_trie_13, rnf b_trie_23]
   defaultMain
     [ bgroup "bytestring" [
-        bgroup "fromList" [
+        bgroup "size" $ function whnf C.size Map.size H.size Trie.size
+      , bgroup "fromList" [
           bgroup "ordered" $ fromList b_ordKVs ++
                              [ bench "trie" $ whnf Trie.fromList b_ordKVs ]
         , bgroup "random" $ fromList b_randKVs ++
