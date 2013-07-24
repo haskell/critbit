@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns, RecordWildCards, ScopedTypeVariables #-}
 -- |
 -- Module      :  Data.CritBit.Tree
 -- Copyright   :  (c) Bryan O'Sullivan 2013
@@ -82,9 +82,9 @@ insertLookupGen :: CritBitKey k
                 -> k -> v -> CritBit k v -> a
 insertLookupGen ret f !k v (CritBit root) = go root
   where
-    go i@(Internal left right _ _)
-      | direction k i == 0 = go left
-      | otherwise          = go right
+    go i@(Internal {..})
+      | direction k i == 0 = go ileft
+      | otherwise          = go iright
     go (Leaf lk v')
       | keyPresent = wrap (Just v')
       | otherwise  = wrap Nothing
@@ -92,12 +92,12 @@ insertLookupGen ret f !k v (CritBit root) = go root
           keyPresent = k == lk
           wrap val = ret val . CritBit $ rewalk root
 
-          rewalk i@(Internal left right byte otherBits)
-            | byte > n                     = finish i
-            | byte == n && otherBits > nob = finish i
-            | direction k i == 0           = i { ileft = rewalk left }
-            | otherwise                    = i { iright = rewalk right }
-          rewalk i                         = finish i
+          rewalk i@(Internal {..})
+            | ibyte > n          = finish i
+            | ibyte == n && iotherBits > nob = finish i
+            | direction k i == 0 = i { ileft = rewalk ileft }
+            | otherwise          = i { iright = rewalk iright }
+          rewalk i = finish i
 
           finish node
             | keyPresent = Leaf k (f k v v')
@@ -118,9 +118,9 @@ lookupWith :: (CritBitKey k) =>
 -- algorithm with trivial variations.
 lookupWith notFound found k (CritBit root) = go root
   where
-    go i@(Internal left right _ _)
-       | direction k i == 0  = go left
-       | otherwise           = go right
+    go i@(Internal {..})
+       | direction k i == 0  = go ileft
+       | otherwise           = go iright
     go (Leaf lk v) | k == lk = found v
     go _                     = notFound
 {-# INLINE lookupWith #-}
@@ -143,7 +143,7 @@ updateLookupWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k
 -- using continuations, and benchmark the two versions.)
 updateLookupWithKey f k t@(CritBit root) = top root
   where
-    top i@(Internal left right _ _) = go i left right CritBit
+    top i@(Internal {..}) = go i ileft iright CritBit
     top (Leaf lk lv) | k == lk =
       maybeUpdate lk lv (\v -> CritBit $ Leaf lk v) (CritBit Empty)
     top _ = (Nothing, t)
