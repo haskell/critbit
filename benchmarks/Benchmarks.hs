@@ -338,6 +338,14 @@ main = do
           bench "critbit" $ whnf (C.lookupLE key) b_critbit
         , bench "map" $ whnf (Map.lookupLE key) b_map
         ]
+      , bgroup "fromSet" $
+        let
+          keys = map fst t_ordKVs
+          f = length . show
+        in [
+          bench "critbit" $ nf (C.fromSet f) (CSet.fromList keys)
+        , bench "map" $ nf (Map.fromSet f) (Set.fromList keys)
+        ]
 #endif
       , bgroup "member" $ keyed C.member Map.member H.member Trie.member
       , bgroup "foldlWithKey'" $ let f a _ b = a + b
@@ -351,14 +359,6 @@ main = do
       , bgroup "keysSet" [
           bench "critbit" $ nf C.keysSet b_critbit
         , bench "map" $ nf Map.keysSet b_map
-        ]
-      , bgroup "fromSet" $
-        let
-          keys = map fst t_ordKVs
-          f = length . show
-        in [
-          bench "critbit" $ nf (C.fromSet f) (CSet.fromList keys)
-        , bench "map" $ nf (Map.fromSet f) (Set.fromList keys)
         ]
       , bgroup "map"  $ let f = (+3)
                         in function nf (C.map f) (Map.map f) (H.map f) (fmap f)
