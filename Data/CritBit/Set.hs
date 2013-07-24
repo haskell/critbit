@@ -98,6 +98,11 @@ import qualified Data.List as List
 instance (Show a) => Show (Set a) where
     show s = "fromList " ++ show (toList s)
 
+instance CritBitKey k => Monoid (Set k) where
+    mempty  = empty
+    mappend = union
+    mconcat = unions 
+
 instance Foldable Set where
     foldMap f (Set (CritBit n)) = foldSet f n
 
@@ -124,7 +129,7 @@ null (Set a) = T.null a
 -- > empty      == fromList []
 -- > size empty == 0
 empty :: Set a
-empty = Set $ T.empty
+empty = Set T.empty
 {-# INLINABLE empty #-}
 
 -- | /O(1)/. A set with a single element.
@@ -237,7 +242,7 @@ isProperSubsetOf = wrapSS id T.isProperSubmapOf
 -- If the set already contains an element equal to the given value,
 -- it is replaced with the new value.
 insert :: (CritBitKey a) => a -> Set a -> Set a
-insert = wrapVS Set (flip T.insert ())
+insert = wrapVS Set (`T.insert` ())
 {-# INLINABLE insert #-}
 
 -- | /O(log n)/. Delete an element from a set.
@@ -327,8 +332,7 @@ map = wrapVS Set T.mapKeys
 -- >                     ==> mapMonotonic f s == map f s
 -- >     where ls = toList s
 mapMonotonic :: (CritBitKey a2) => (a1 -> a2) -> Set a1 -> Set a2
-mapMonotonic = error "Depends on T.mapKeysMonotonic"
---mapMonotonic = wrapVS Set T.mapKeysMonotonic
+mapMonotonic = wrapVS Set T.mapKeysMonotonic
 {-# INLINABLE mapMonotonic #-}
 
 -- | /O(n)/. Fold the elements in the set using the given left-associative

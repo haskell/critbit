@@ -204,7 +204,7 @@ t_maxView _ ks =
 
 updateFun :: Integral v => k -> v -> Maybe v
 updateFun _ v
-  | v `rem` 2 == 0 = Nothing
+  | even v    = Nothing
   | otherwise = Just (v + 1)
 
 t_insert_present :: (CritBitKey k, Ord k) => k -> [k] -> Bool
@@ -225,6 +225,11 @@ t_partition _ ks = partCrit == partMap
     partCrit = fixup CS.toList . CS.partition foo . CS.fromList $ ks
     partMap  = fixup Set.toList . Set.partition foo . Set.fromList $ ks
     foo = odd . byteCount
+
+t_mapMonotonic :: (CritBitKey k, Ord k, Monoid k, IsString k)
+               => k -> [k] -> Bool
+t_mapMonotonic = CS.mapMonotonic preps === Set.mapMonotonic preps
+  where preps = ("test" <>)
 
 propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Monoid k, Show k,
                   IsString k) => k -> [Test]
@@ -249,6 +254,7 @@ propertiesFor t = [
   , testProperty "t_elems" $ t_elems t
   , testProperty "t_map" $ t_map t
   , testProperty "t_mapKeys" $ t_map t
+  , testProperty "t_mapMonotonic" $ t_mapMonotonic t
   , testProperty "t_toAscList" $ t_toAscList t
 #if MIN_VERSION_containers(0,5,0)
   , testProperty "t_toDescList" $ t_toDescList t

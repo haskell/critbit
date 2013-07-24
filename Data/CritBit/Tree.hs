@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns, RecordWildCards, ScopedTypeVariables #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- Module      :  Data.CritBit.Tree
@@ -152,10 +153,16 @@ import Control.Monad (guard)
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
 import Data.Maybe (fromMaybe)
+import Data.Monoid (Monoid(..))
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.Array as A
 import qualified Data.Foldable as Foldable
 import qualified Data.List as List
+
+instance CritBitKey k => Monoid (CritBit k v) where
+    mempty  = empty
+    mappend = union
+    mconcat = unions
 
 infixl 9 !, \\
 
@@ -846,8 +853,8 @@ mapKeysWith c f m = foldrWithKey ins empty m
 -- This function has slightly better performance than 'mapKeys'.
 --
 -- > mapKeysMonotonic (\ k -> succ k) (fromList [("a",5), ("b",3)]) == fromList [("b",5), ("c",3)]
-mapKeysMonotonic :: (CritBitKey k1, CritBitKey k2)
-                 => (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
+mapKeysMonotonic :: CritBitKey k
+                 => (a -> k) -> CritBit a v -> CritBit k v
 mapKeysMonotonic f m = foldlWithKey (insertRight f) empty m
 {-# INLINABLE mapKeysMonotonic #-}
 
