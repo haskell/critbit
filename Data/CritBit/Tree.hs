@@ -166,7 +166,7 @@ instance CritBitKey k => Monoid (CritBit k v) where
 
 infixl 9 !, \\
 
--- | /O(log n)/. Find the value at a key.
+-- | /O(k)/. Find the value at a key.
 -- Calls 'error' when the element can not be found.
 --
 -- > fromList [("a",5), ("b",3)] ! "c"    Error: element not in the map
@@ -196,7 +196,7 @@ null _               = False
 empty :: CritBit k v
 empty = CritBit { cbRoot = Empty }
 
--- | /O(log n)/. Is the key a member of the map?
+-- | /O(k)/. Is the key a member of the map?
 --
 -- > member "a" (fromList [("a",5), ("b",3)]) == True
 -- > member "c" (fromList [("a",5), ("b",3)]) == False
@@ -206,7 +206,7 @@ member :: (CritBitKey k) => k -> CritBit k v -> Bool
 member k m = lookupWith False (const True) k m
 {-# INLINABLE member #-}
 
--- | /O(log n)/. Is the key not a member of the map?
+-- | /O(k)/. Is the key not a member of the map?
 --
 -- > notMember "a" (fromList [("a",5), ("b",3)]) == False
 -- > notMember "c" (fromList [("a",5), ("b",3)]) == True
@@ -216,7 +216,7 @@ notMember :: (CritBitKey k) => k -> CritBit k v -> Bool
 notMember k m = lookupWith True (const False) k m
 {-# INLINE notMember #-}
 
--- | /O(log n)/. Lookup the value at a key in the map.
+-- | /O(k)/. Lookup the value at a key in the map.
 --
 -- The function will return the corresponding value as @('Just' value)@,
 -- or 'Nothing' if the key isn't in the map.
@@ -251,7 +251,7 @@ lookup :: (CritBitKey k) => k -> CritBit k v -> Maybe v
 lookup k m = lookupWith Nothing Just k m
 {-# INLINABLE lookup #-}
 
--- | /O(log n)/. Delete a key and its value from the map. When the key
+-- | /O(k)/. Delete a key and its value from the map. When the key
 -- is not a member of the map, the original map is returned.
 --
 -- > delete "a" (fromList [("a",5), ("b",3)]) == singleton "b" 3
@@ -275,7 +275,7 @@ delete k t@(CritBit root) = go root CritBit
     go _ _ = t
 {-# INLINABLE delete #-}
 
--- | /O(log n)/. The expression (@'update' f k map@ updates the value @x@
+-- | /O(k)/. The expression (@'update' f k map@ updates the value @x@
 -- at @k@ (if it is in the map). If (@f x@) is 'Nothing', the element is
 -- deleted. If it is (@'Just' y@), the key @k@ is bound to the new value @y@.
 --
@@ -301,7 +301,7 @@ updateWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k -> CritBit k v
 updateWithKey f k = snd . updateLookupWithKey f k
 {-# INLINABLE updateWithKey #-}
 
--- | /O(log n)/. Update a value at a specific key with the result of the
+-- | /O(k)/. Update a value at a specific key with the result of the
 -- provided function. When the key is not a member of the map, the original
 -- map is returned.
 --
@@ -313,7 +313,7 @@ adjust :: (CritBitKey k) => (v -> v) -> k -> CritBit k v -> CritBit k v
 adjust f = updateWithKey (\_ v -> Just (f v))
 {-# INLINABLE adjust #-}
 
--- | /O(log n)/. Adjust a value at a specific key. When the key is not
+-- | /O(k)/. Adjust a value at a specific key. When the key is not
 -- a member of the map, the original map is returned.
 --
 -- > let f k x = x + fromEnum (k < "d")
@@ -325,7 +325,7 @@ adjustWithKey :: (CritBitKey k) => (k -> v -> v) -> k -> CritBit k v
 adjustWithKey f = updateWithKey (\k v -> Just (f k v))
 {-# INLINABLE adjustWithKey #-}
 
--- | /O(log n)/. Returns the value associated with the given key, or
+-- | /O(k)/. Returns the value associated with the given key, or
 -- the given default value if the key is not in the map.
 --
 -- > findWithDefault 1 "x" (fromList [("a",5), ("b",3)]) == 1
@@ -417,7 +417,7 @@ byteCompare a b = go 0
       where ba = getByte a i
 {-# INLINABLE byteCompare #-}
 
--- | /O(n*log n)/. Build a map from a list of key\/value pairs.  If
+-- | /O(K)/. Build a map from a list of key\/value pairs.  If
 -- the list contains more than one value for the same key, the last
 -- value for the key is retained.
 --
@@ -429,7 +429,7 @@ fromList = List.foldl' ins empty
     ins t (k,x) = insert k x t
 {-# INLINABLE fromList #-}
 
--- | /O(n*log n)/. Build a map from a list of key\/value pairs
+-- | /O(K)/. Build a map from a list of key\/value pairs
 -- with a combining function. See also 'fromAscListWith'.
 --
 -- > fromListWith (+) [("a",5), ("b",5), ("b",3), ("a",3), ("a",5)] ==
@@ -439,7 +439,7 @@ fromListWith :: (CritBitKey k) => (v -> v -> v) -> [(k,v)] -> CritBit k v
 fromListWith f xs = fromListWithKey (const f) xs
 {-# INLINABLE fromListWith #-}
 
--- | /O(n*log n)/. Build a map from a list of key\/value pairs
+-- | /O(K)/. Build a map from a list of key\/value pairs
 -- with a combining function. See also 'fromAscListWithKey'.
 --
 -- > let f key a1 a2 = byteCount key + a1 + a2
@@ -827,7 +827,7 @@ link _ _ _ = error "Data.CritBit.Tree.link: unpossible"
 map :: (CritBitKey k) => (v -> w) -> CritBit k v -> CritBit k w
 map = fmap
 
--- | /O(n*log n)/.
+-- | /O(K)/.
 -- @mapKeys f@ applies the function @f@ to the keys of the map.
 --
 -- If @f@ maps multiple keys to the same new key, the new key is
@@ -842,7 +842,7 @@ mapKeys :: (CritBitKey k2)
 mapKeys f m = mapKeysWith (\_ v -> v) f m
 {-# INLINABLE mapKeys #-}
 
--- | /O(n*log n)/.
+-- | /O(K)/.
 -- @'mapKeysWith' c f s@ is the map obtained by applying @f@ to each key of @s@.
 --
 -- The size of the result may be smaller if @f@ maps two or more distinct
@@ -1094,7 +1094,7 @@ mapEitherWithKey f (CritBit root) = (CritBit *** CritBit) $ go root
     go Empty      = (Empty, Empty)
 {-# INLINABLE mapEitherWithKey #-}
 
--- | /O(log n)/. The expression (@'split' k map@) is a pair
+-- | /O(k)/. The expression (@'split' k map@) is a pair
 -- @(map1,map2)@ where the keys in @map1@ are smaller than @k@ and the
 -- keys in @map2@ larger than @k@.  Any key equal to @k@ is found in
 -- neither @map1@ nor @map2@.
@@ -1124,7 +1124,7 @@ split k (CritBit root) = (\(ln,rn) -> (CritBit ln, CritBit rn)) $ go root
     go _ = (Empty,Empty)
 {-# INLINABLE split #-}
 
--- | /O(log n)/. The expression (@'splitLookup' k map@) splits a map just
+-- | /O(k)/. The expression (@'splitLookup' k map@) splits a map just
 -- like 'split' but also returns @'lookup' k map@.
 --
 -- > splitLookup "a" (fromList [("b",1), ("d",2)]) == (empty, Nothing, fromList [("b",1), ("d",2)])
@@ -1246,7 +1246,7 @@ submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
     {-# INLINE splitB #-}
 {-# INLINABLE submapTypeBy #-}
 
--- | /O(log n)/. The minimal key of the map. Calls 'error' if the map
+-- | /O(minimum K)/. The minimal key of the map. Calls 'error' if the map
 -- is empty.
 --
 -- > findMin (fromList [("b",3), ("a",5)]) == ("a",5)
@@ -1257,7 +1257,7 @@ findMin (CritBit root) = leftmost emptyMap (,) root
     emptyMap = error "CritBit.findMin: empty map has no minimal element"
 {-# INLINABLE findMin #-}
 
--- | /O(log n)/. The maximal key of the map. Calls 'error' if the map
+-- | /O(k)/. The maximal key of the map. Calls 'error' if the map
 -- is empty.
 --
 -- > findMax empty                       Error: empty map has no minimal element
@@ -1267,7 +1267,7 @@ findMax (CritBit root) = rightmost emptyMap (,) root
     emptyMap = error "CritBit.findMax: empty map has no maximal element"
 {-# INLINABLE findMax #-}
 
--- | /O(log n)/. Delete the minimal key. Returns an empty map if the
+-- | /O(k')/. Delete the minimal key. Returns an empty map if the
 -- map is empty.
 --
 -- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("b",3), ("c",7)]
@@ -1276,7 +1276,7 @@ deleteMin :: CritBit k v -> CritBit k v
 deleteMin m = updateMinWithKey (\_ _ -> Nothing) m
 {-# INLINABLE deleteMin #-}
 
--- | /O(log n)/. Delete the maximal key. Returns an empty map if the
+-- | /O(k)/. Delete the maximal key. Returns an empty map if the
 -- map is empty.
 --
 -- > deleteMin (fromList [("a",5), ("b",3), ("c",7)]) == fromList [("a",5), ("b","3")]
@@ -1285,7 +1285,7 @@ deleteMax :: CritBit k v -> CritBit k v
 deleteMax m = updateMaxWithKey (\_ _ -> Nothing) m
 {-# INLINABLE deleteMax #-}
 
--- | /O(log n)/. Delete and find the minimal element.
+-- | /O(k')/. Delete and find the minimal element.
 --
 -- > deleteFindMin (fromList [("a",5), ("b",3), ("c",10)]) == (("a",5), fromList[("b",3), ("c",10)])
 -- > deleteFindMin     Error: can not return the minimal element of an empty map
@@ -1294,7 +1294,7 @@ deleteFindMin = maybe (error "CritBit.deleteFindMin: cannot return the minimal \
                              \element of an empty map") id . minViewWithKey
 {-# INLINABLE deleteFindMin #-}
 
--- | /O(log n)/. Delete and find the maximal element.
+-- | /O(k)/. Delete and find the maximal element.
 --
 -- > deleteFindMax (fromList [("a",5), ("b",3), ("c",10)]) == (("c",10), fromList[("a",5), ("b",3)])
 -- > deleteFindMax     Error: can not return the maximal element of an empty map
@@ -1303,7 +1303,7 @@ deleteFindMax = maybe (error "CritBit.deleteFindMax: cannot return the minimal \
                              \element of an empty map") id . maxViewWithKey
 {-# INLINABLE deleteFindMax #-}
 
--- | /O(log n)/. Retrieves the value associated with minimal key of the
+-- | /O(k')/. Retrieves the value associated with minimal key of the
 -- map, and the map stripped of that element, or 'Nothing' if passed an
 -- empty map.
 --
@@ -1313,7 +1313,7 @@ minView :: CritBit k v -> Maybe (v, CritBit k v)
 minView = fmap (first snd) . minViewWithKey
 {-# INLINABLE minView #-}
 
--- | /O(log n)/. Retrieves the value associated with maximal key of the
+-- | /O(k)/. Retrieves the value associated with maximal key of the
 -- map, and the map stripped of that element, or 'Nothing' if passed an
 -- empty map.
 --
@@ -1323,7 +1323,7 @@ maxView :: CritBit k v -> Maybe (v, CritBit k v)
 maxView = fmap (first snd) . maxViewWithKey
 {-# INLINABLE maxView #-}
 
--- | /O(log n)/. Retrieves the minimal (key,value) pair of the map, and
+-- | /O(k')/. Retrieves the minimal (key,value) pair of the map, and
 -- the map stripped of that element, or 'Nothing' if passed an empty map.
 --
 -- > minViewWithKey (fromList [("a",5), ("b",3)]) == Just (("a",5), fromList [("b",3)])
@@ -1337,7 +1337,7 @@ minViewWithKey (CritBit root) = go root CritBit
     go _ _ = Nothing
 {-# INLINABLE minViewWithKey #-}
 
--- | /O(log n)/. Retrieves the maximal (key,value) pair of the map, and
+-- | /O(k)/. Retrieves the maximal (key,value) pair of the map, and
 -- the map stripped of that element, or 'Nothing' if passed an empty map.
 --
 -- > maxViewWithKey (fromList [("a",5), ("b",3)]) == Just (("b",3), fromList [("a",5)])
@@ -1355,7 +1355,7 @@ first :: (a -> b) -> (a,c) -> (b,c)
 first f (x,y) = (f x, y)
 {-# INLINE first #-}
 
--- | /O(log n)/. Update the value at the minimal key.
+-- | /O(k')/. Update the value at the minimal key.
 --
 -- > updateMin (\ a -> Just (a + 7)) (fromList [("a",5), ("b",3)]) == fromList [("a",12), ("b",3)]
 -- > updateMin (\ _ -> Nothing)      (fromList [("a",5), ("b",3)]) == fromList [("b",3)]
@@ -1363,7 +1363,7 @@ updateMin :: (v -> Maybe v) -> CritBit k v -> CritBit k v
 updateMin f m = updateMinWithKey (const f) m
 {-# INLINABLE updateMin #-}
 
--- | /O(log n)/. Update the value at the maximal key.
+-- | /O(k)/. Update the value at the maximal key.
 --
 -- > updateMax (\ a -> Just (a + 7)) (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",10)]
 -- > updateMax (\ _ -> Nothing)      (fromList [("a",5), ("b",3)]) == fromList [("a",5)]
@@ -1371,7 +1371,7 @@ updateMax :: (v -> Maybe v) -> CritBit k v -> CritBit k v
 updateMax f m = updateMaxWithKey (const f) m
 {-# INLINABLE updateMax #-}
 
--- | /O(log n)/. Update the value at the minimal key.
+-- | /O(k')/. Update the value at the minimal key.
 --
 -- > updateMinWithKey (\ k a -> Just (length k + a)) (fromList [("a",5), ("b",3)]) == fromList [("a",6), ("b",3)]
 -- > updateMinWithKey (\ _ _ -> Nothing)             (fromList [("a",5), ("b",3)]) == fromList [("b",3)]
@@ -1385,7 +1385,7 @@ updateMinWithKey maybeUpdate (CritBit root) = CritBit $ go root
     go _ = Empty
 {-# INLINABLE updateMinWithKey #-}
 
--- | /O(log n)/. Update the value at the maximal key.
+-- | /O(k)/. Update the value at the maximal key.
 --
 -- > updateMaxWithKey (\ k a -> Just (length k + a)) (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",4)]
 -- > updateMaxWithKey (\ _ _ -> Nothing)             (fromList [("a",5), ("b",3)]) == fromList [("a",5)]
@@ -1399,7 +1399,7 @@ updateMaxWithKey maybeUpdate (CritBit root) = CritBit $ go root
     go _ = Empty
 {-# INLINABLE updateMaxWithKey #-}
 
--- | /O(log n)/. Insert a new key and value in the map.  If the key is
+-- | /O(k)/. Insert a new key and value in the map.  If the key is
 -- already present in the map, the associated value is replaced with
 -- the supplied value. 'insert' is equivalent to @'insertWith'
 -- 'const'@.
@@ -1411,7 +1411,7 @@ insert :: (CritBitKey k) => k -> v -> CritBit k v -> CritBit k v
 insert = insertLookupGen (flip const) (\_ v _ -> v)
 {-# INLINABLE insert #-}
 
--- | /O(log n)/. Insert with a function, combining new value and old value.
+-- | /O(k)/. Insert with a function, combining new value and old value.
 -- @'insertWith' f key value cb@
 -- will insert the pair (key, value) into @cb@ if key does
 -- not exist in the map. If the key does exist, the function will
@@ -1507,7 +1507,7 @@ mapAccumWithKey f start (CritBit root) = second CritBit (go start root)
     go a Empty             = (a, Empty)
 {-# INLINABLE mapAccumWithKey #-}
 
--- | /O(log n)/. The expression (@'alter' f k map@) alters the value @x@ at @k@, or absence thereof.
+-- | /O(k)/. The expression (@'alter' f k map@) alters the value @x@ at @k@, or absence thereof.
 -- 'alter' can be used to insert, delete, or update a value in a 'CritBit'.
 -- In short : @'lookup' k ('alter' f k m) = f ('lookup' k m)@.
 --

@@ -139,7 +139,7 @@ singleton :: a -> Set a
 singleton a = Set $ T.singleton a ()
 {-# INLINE singleton #-}
 
--- | /O(n*log n)/. Build a set from a list of values.
+-- | /O(K)/. Build a set from a list of values.
 --
 -- > fromList [] == empty
 -- > fromList ["a", "b", "a"] == fromList ["a", "b"]
@@ -247,7 +247,7 @@ insert :: (CritBitKey a) => a -> Set a -> Set a
 insert = wrapVS Set (`T.insert` ())
 {-# INLINABLE insert #-}
 
--- | /O(log n)/. Delete an element from a set.
+-- | /O(k)/. Delete an element from a set.
 delete :: (CritBitKey a) => a -> Set a -> Set a
 delete = wrapVS Set T.delete
 {-# INLINABLE delete #-}
@@ -303,7 +303,7 @@ split :: (CritBitKey a) => a -> Set a -> (Set a, Set a)
 split = wrapVS (Set *** Set) T.split
 {-# INLINABLE split #-}
 
--- | /O(log n)/. Performs a 'split' but also returns whether the pivot
+-- | /O(k)/. Performs a 'split' but also returns whether the pivot
 -- element was found in the original set.
 --
 -- > splitMember "a" (fromList ["b", "d"]) == (empty, False, fromList ["b", "d"])
@@ -371,7 +371,7 @@ foldr' :: (a -> b -> b) -> b -> Set a -> b
 foldr' f = wrapVS id (T.foldrWithKey' (const . f))
 {-# INLINE foldr' #-}
 
--- | /O(k)/. The minimal element of a set.
+-- | /O(k')/. The minimal element of a set.
 findMin :: Set a -> a
 findMin = wrapS fst T.findMin
 {-# INLINE findMin #-}
@@ -381,37 +381,37 @@ findMax :: Set a -> a
 findMax = wrapS fst T.findMax
 {-# INLINE findMax #-}
 
--- | /O(log n)/. Delete the minimal element. Returns an empty set if the set is empty.
+-- | /O(k')/. Delete the minimal element. Returns an empty set if the set is empty.
 deleteMin :: Set a -> Set a
 deleteMin = wrapS Set T.deleteMin
 {-# INLINE deleteMin #-}
 
--- | /O(log n)/. Delete the maximal element. Returns an empty set if the set is empty.
+-- | /O(k)/. Delete the maximal element. Returns an empty set if the set is empty.
 deleteMax :: Set a -> Set a
 deleteMax = wrapS Set T.deleteMax
 {-# INLINE deleteMax #-}
 
--- | /O(log n)/. Delete and find the minimal element.
+-- | /O(k')/. Delete and find the minimal element.
 --
 -- > deleteFindMin set = (findMin set, deleteMin set)
 deleteFindMin :: Set a -> (a, Set a)
 deleteFindMin = wrapS (fst *** Set) T.deleteFindMin
 {-# INLINE deleteFindMin #-}
 
--- | /O(log n)/. Delete and find the maximal element.
+-- | /O(k)/. Delete and find the maximal element.
 --
 -- > deleteFindMax set = (findMax set, deleteMax set)
 deleteFindMax :: Set a -> (a, Set a)
 deleteFindMax = wrapS (fst *** Set) T.deleteFindMax
 {-# INLINE deleteFindMax #-}
 
--- | /O(log n)/. Retrieves the minimal key of the set, and the set
+-- | /O(k')/. Retrieves the minimal key of the set, and the set
 -- stripped of that element, or 'Nothing' if passed an empty set.
 minView :: Set a -> Maybe (a, Set a)
 minView = wrapS (fmap (fst *** Set)) T.minViewWithKey
 {-# INLINE minView #-}
 
--- | /O(log n)/. Retrieves the maximal key of the set, and the set
+-- | /O(k)/. Retrieves the maximal key of the set, and the set
 -- stripped of that element, or 'Nothing' if passed an empty set.
 maxView :: Set a -> Maybe (a, Set a)
 maxView = wrapS (fmap (fst *** Set)) T.maxViewWithKey

@@ -37,7 +37,7 @@ import Data.Bits ((.|.), (.&.), complement, shiftR, xor)
 import Data.CritBit.Types.Internal
 import Data.Word (Word16)
 
--- | /O(log n)/. Insert with a function, combining key, new value and old value.
+-- | /O(k)/. Insert with a function, combining key, new value and old value.
 -- @'insertWithKey' f key value cb@
 -- will insert the pair (key, value) into cb if key does not exist in the map.
 -- If the key does exist, the function will insert the pair
@@ -53,7 +53,7 @@ insertWithKey :: CritBitKey k => (k -> v -> v -> v) -> k -> v -> CritBit k v
 insertWithKey f k v m = insertLookupGen (flip const) f k v m
 {-# INLINABLE insertWithKey #-}
 
--- | /O(log n)/. Combines insert operation with old value retrieval.
+-- | /O(k)/. Combines insert operation with old value retrieval.
 -- The expression (@'insertLookupWithKey' f k x map@)
 -- is a pair where the first element is equal to (@'lookup' k map@)
 -- and the second element equal to (@'insertWithKey' f k x map@).
@@ -125,7 +125,7 @@ lookupWith notFound found k (CritBit root) = go root
     go _                     = notFound
 {-# INLINE lookupWith #-}
 
--- | /O(log n)/. Lookup and update; see also 'updateWithKey'.
+-- | /O(k)/. Lookup and update; see also 'updateWithKey'.
 -- This function returns the changed value if it is updated, or
 -- the original value if the entry is deleted.
 --
