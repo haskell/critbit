@@ -1,6 +1,6 @@
 {-# LANGUAGE BangPatterns, RecordWildCards, ScopedTypeVariables #-}
 -- |
--- Module      :  Data.CritBit.Tree
+-- Module      :  Data.CritBit.Core
 -- Copyright   :  (c) Bryan O'Sullivan 2013
 -- License     :  BSD-style
 -- Maintainer  :  bos@serpentine.com
