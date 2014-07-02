@@ -1,9 +1,8 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
 -- Module      :  Data.CritBit.Set
--- Copyright   :  (c) Bryan O'Sullivan 2013
+-- Copyright   :  (c) Bryan O'Sullivan 2013-2014
 -- License     :  BSD-style
 -- Maintainer  :  bos@serpentine.com
 -- Stability   :  experimental
@@ -101,7 +100,7 @@ instance (Show a) => Show (Set a) where
 instance CritBitKey k => Monoid (Set k) where
     mempty  = empty
     mappend = union
-    mconcat = unions 
+    mconcat = unions
 
 instance Foldable Set where
     foldMap f (Set (CritBit n)) = foldSet f n
@@ -381,12 +380,14 @@ findMax :: Set a -> a
 findMax = wrapS fst T.findMax
 {-# INLINE findMax #-}
 
--- | /O(k')/. Delete the minimal element. Returns an empty set if the set is empty.
+-- | /O(k')/. Delete the minimal element. Returns an empty set if the
+-- set is empty.
 deleteMin :: Set a -> Set a
 deleteMin = wrapS Set T.deleteMin
 {-# INLINE deleteMin #-}
 
--- | /O(k)/. Delete the maximal element. Returns an empty set if the set is empty.
+-- | /O(k)/. Delete the maximal element. Returns an empty set if the
+-- set is empty.
 deleteMax :: Set a -> Set a
 deleteMax = wrapS Set T.deleteMax
 {-# INLINE deleteMax #-}

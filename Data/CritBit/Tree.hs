@@ -3,7 +3,7 @@
 
 -- |
 -- Module      :  Data.CritBit.Tree
--- Copyright   :  (c) Bryan O'Sullivan 2013
+-- Copyright   :  (c) Bryan O'Sullivan 2013-2014
 -- License     :  BSD-style
 -- Maintainer  :  bos@serpentine.com
 -- Stability   :  experimental
@@ -151,6 +151,7 @@ import Control.Applicative (Applicative(..), (<$>), (<|>))
 import Control.Arrow (second, (***))
 import Data.CritBit.Core
 import Data.CritBit.Types.Internal
+import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
 import Data.Traversable (Traversable(traverse))
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
@@ -371,7 +372,8 @@ lookupLE k r = lookupOrd (GT /=) k r
 {-# INLINABLE lookupLE #-}
 
 -- | /O(k)/. Common part of lookupXX functions.
-lookupOrd :: (CritBitKey k) => (Ordering -> Bool) -> k -> CritBit k v -> Maybe (k, v)
+lookupOrd :: (CritBitKey k) =>
+             (Ordering -> Bool) -> k -> CritBit k v -> Maybe (k, v)
 lookupOrd accepts k m = findPosition (const id) finish toLeft toRight k m
   where
     finish _ Empty = Nothing
@@ -527,9 +529,9 @@ fromSet f (Set s) = mapWithKey (const . f) s
 keys :: CritBit k v -> [k]
 keys (CritBit root) = go root []
   where
-    go (Internal {..}) acc = go ileft $ go iright acc
-    go (Leaf k _) acc = k : acc
-    go Empty acc = acc
+    go (Internal{..}) acc = go ileft $ go iright acc
+    go (Leaf k _)     acc = k : acc
+    go Empty          acc = acc
 {-# INLINABLE keys #-}
 
 unionL :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
@@ -540,8 +542,8 @@ unionR :: (CritBitKey k) => CritBit k v -> CritBit k v -> CritBit k v
 unionR a b = unionWithKey (\_ x _ -> x) b a
 {-# INLINABLE unionR #-}
 
--- | /O(n+m)/.
--- The expression (@'union' t1 t2@) takes the left-biased union of @t1@ and @t2@.
+-- | /O(n+m)/.  The expression (@'union' t1 t2@) takes the left-biased
+-- union of @t1@ and @t2@.
 --
 -- It prefers @t1@ when duplicate keys are encountered,
 -- i.e. (@'union' == 'unionWith' 'const'@).
@@ -912,7 +914,8 @@ fromAscListWith f = fromAscListWithKey (const f)
 -- > fromAscListWithKey f [(3,"b"), (5,"a"), (5,"b"), (5,"b")] == fromList [(3, "b"), (5, "5:b5:ba")]
 -- > valid (fromAscListWithKey f [(3,"b"), (5,"a"), (5,"b"), (5,"b")]) == True
 -- > valid (fromAscListWithKey f [(5,"a"), (3,"b"), (5,"b"), (5,"b")]) == False
-fromAscListWithKey :: (CritBitKey k) => (k -> a -> a -> a) -> [(k,a)] -> CritBit k a
+fromAscListWithKey :: (CritBitKey k) =>
+                      (k -> a -> a -> a) -> [(k,a)] -> CritBit k a
 fromAscListWithKey _ [] = empty
 fromAscListWithKey _ [(k, v)] = singleton k v
 fromAscListWithKey f kvs = build 0 1 upper fromContext kvs RCNil
@@ -1244,8 +1247,9 @@ deleteMax m = updateMaxWithKey (\_ _ -> Nothing) m
 -- > deleteFindMin (fromList [("a",5), ("b",3), ("c",10)]) == (("a",5), fromList[("b",3), ("c",10)])
 -- > deleteFindMin     Error: can not return the minimal element of an empty map
 deleteFindMin :: CritBit k v -> ((k, v), CritBit k v)
-deleteFindMin = maybe (error "CritBit.deleteFindMin: cannot return the minimal \
-                             \element of an empty map") id . minViewWithKey
+deleteFindMin = fromMaybe (error msg) . minViewWithKey
+  where msg = "CritBit.deleteFindMin: cannot return the minimal \
+              \element of an empty map"
 {-# INLINABLE deleteFindMin #-}
 
 -- | /O(k)/. Delete and find the maximal element.
@@ -1253,8 +1257,9 @@ deleteFindMin = maybe (error "CritBit.deleteFindMin: cannot return the minimal \
 -- > deleteFindMax (fromList [("a",5), ("b",3), ("c",10)]) == (("c",10), fromList[("a",5), ("b",3)])
 -- > deleteFindMax     Error: can not return the maximal element of an empty map
 deleteFindMax :: CritBit k v -> ((k, v), CritBit k v)
-deleteFindMax = maybe (error "CritBit.deleteFindMax: cannot return the minimal \
-                             \element of an empty map") id . maxViewWithKey
+deleteFindMax = fromMaybe (error msg) . maxViewWithKey
+  where msg = "CritBit.deleteFindMax: cannot return the minimal \
+              \element of an empty map"
 {-# INLINABLE deleteFindMax #-}
 
 -- | /O(k')/. Retrieves the value associated with minimal key of the
@@ -1394,11 +1399,11 @@ mapAccumRWithKey :: (CritBitKey k) => (a -> k -> v -> (a, w)) -> a
                  -> CritBit k v -> (a, CritBit k w)
 mapAccumRWithKey f start (CritBit root) = second CritBit (go start root)
   where
-    go a i@(Internal {..}) = let (a0, r')  = go a iright
-                                 (a1, l')  = go a0 ileft
-                                in (a1, setBoth i l' r')
-    go a (Leaf k v)        = let (a0, w) = f a k v in (a0, Leaf k w)
-    go a Empty             = (a, Empty)
+    go a i@(Internal{..}) = let (a0, r')  = go a iright
+                                (a1, l')  = go a0 ileft
+                            in (a1, setBoth i l' r')
+    go a (Leaf k v)       = let (a0, w) = f a k v in (a0, Leaf k w)
+    go a Empty            = (a, Empty)
 {-# INLINABLE mapAccumRWithKey #-}
 
 -- | /O(n)/.
@@ -1418,8 +1423,8 @@ traverseWithKey :: (CritBitKey k, Applicative t)
 traverseWithKey f (CritBit root) = fmap CritBit (go root)
   where
     go i@(Internal l r _ _) = setBoth i <$> go l <*> go r
-    go (Leaf k v)           = (Leaf k) <$> f k v
-    go Empty             = pure Empty
+    go (Leaf k v)           = Leaf k <$> f k v
+    go Empty                = pure Empty
 {-# INLINABLE traverseWithKey #-}
 
 -- | /O(n)/. The function 'mapAccum' threads an accumulating
@@ -1447,17 +1452,18 @@ mapAccumWithKey :: (CritBitKey k)
                 -> (a, CritBit k w)
 mapAccumWithKey f start (CritBit root) = second CritBit (go start root)
   where
-    go a i@(Internal {..}) = let (a0, l')  = go a ileft
-                                 (a1, r')  = go a0 iright
-                                in (a1, setBoth i l' r')
+    go a i@(Internal{..}) = let (a0, l')  = go a ileft
+                                (a1, r')  = go a0 iright
+                            in (a1, setBoth i l' r')
 
-    go a (Leaf k v)        = let (a0, w) = f a k v in (a0, Leaf k w)
-    go a Empty             = (a, Empty)
+    go a (Leaf k v)       = let (a0, w) = f a k v in (a0, Leaf k w)
+    go a Empty            = (a, Empty)
 {-# INLINABLE mapAccumWithKey #-}
 
--- | /O(k)/. The expression (@'alter' f k map@) alters the value @x@ at @k@, or absence thereof.
--- 'alter' can be used to insert, delete, or update a value in a 'CritBit'.
--- In short : @'lookup' k ('alter' f k m) = f ('lookup' k m)@.
+-- | /O(k)/. The expression (@'alter' f k map@) alters the value @x@
+-- at @k@, or absence thereof.  'alter' can be used to insert, delete,
+-- or update a value in a 'CritBit'.  In short : @'lookup' k ('alter'
+-- f k m) = f ('lookup' k m)@.
 --
 -- > let f _ = Nothing
 -- > alter f "c" (fromList [("a",5), ("b",3)]) == fromList [("a",5), ("b",3)]

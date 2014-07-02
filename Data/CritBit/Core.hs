@@ -109,7 +109,7 @@ findPosition ret finish toLeft toRight k (CritBit root) = go root
       | otherwise    = go iright
     go (Leaf lk lv)
       | diffOrd diff == EQ = ret (Just lv) $ rewalk root
-      | otherwise          = ret (Nothing) $ rewalk root
+      | otherwise          = ret Nothing   $ rewalk root
       where
         rewalk i@(Internal left right _ _)
           | diff `above` i = finish diff i
@@ -211,7 +211,7 @@ updateLookupWithKey f k t@(CritBit root) = go root (CritBit Empty) CritBit
 -- 'Internal' node.
 onLeft :: (CritBitKey k) => k -> Node k v -> Bool
 onLeft k (Internal _ _ byte bits) =
-  (1 + (bits .|. (getByte k byte))) `shiftR` 9 == 0
+  (1 + (bits .|. getByte k byte)) `shiftR` 9 == 0
 onLeft _ _ = error "Data.CritBit.Core.onLeft: Non-Internal node"
 {-# INLINE onLeft #-}
 
@@ -251,7 +251,7 @@ followPrefixesFrom !position !k !l = (n, maskLowerBits (b `xor` c), c)
     b = getByte k n
     c = getByte l n
 
-    maskLowerBits v = (n3 .&. (complement (n3 `shiftR` 1))) `xor` 0x1FF
+    maskLowerBits v = (n3 .&. complement (n3 `shiftR` 1)) `xor` 0x1FF
       where
         n3 = n2 .|. (n2 `shiftR` 8)
         n2 = n1 .|. (n1 `shiftR` 4)
