@@ -154,6 +154,7 @@ import Data.CritBit.Core
 import Data.CritBit.Types.Internal
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
+import Data.Traversable (Traversable(traverse))
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.Array as A
 import qualified Data.Foldable as Foldable
@@ -163,6 +164,9 @@ instance CritBitKey k => Monoid (CritBit k v) where
     mempty  = empty
     mappend = union
     mconcat = unions
+
+instance CritBitKey k => Traversable (CritBit k) where
+    traverse f m = traverseWithKey (\_ v -> f v) m
 
 infixl 9 !, \\
 
