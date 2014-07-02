@@ -1,286 +1,106 @@
-{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, OverloadedStrings, TypeFamilies #-}
+﻿{-# LANGUAGE CPP, MultiParamTypeClasses, FlexibleInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Properties.Set
     where
 
-import Control.Arrow ((***))
-import Data.ByteString (ByteString)
-import Data.CritBit.Map.Lazy (CritBitKey, byteCount)
-import Data.Foldable (foldMap)
-import Data.List (unfoldr, sort, nub)
-import Data.Monoid (Sum(..), Monoid, (<>))
-import Data.String (IsString)
-import Data.Text (Text)
 import Properties.Common
+import Data.CritBit.Map.Lazy (CritBitKey, byteCount)
+import qualified Data.CritBit.Set as C
+import qualified Data.Set as S
+
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck (Arbitrary(..))
-import qualified Data.ByteString.Char8 as B
-import qualified Data.CritBit.Set as CS
-import qualified Data.Set as Set
+import Data.String (IsString)
+import Data.List (unfoldr, sort, nub)
+
 import qualified Data.Text as T
+import qualified Data.ByteString.Char8 as B
 
-t_null :: (CritBitKey k) => k -> [k] -> Bool
-t_null _ ks = CS.null (CS.fromList ks) == null ks
+kp :: (CritBitKey k) => k -> Bool
+kp = even . byteCount
 
-t_member_present :: (CritBitKey k) => k -> CS.Set k -> Bool
-t_member_present k = CS.member k . CS.insert k
+kii :: (CritBitKey k, Show k, IsString k) => k -> Int -> Int
+kii k v = byteCount k * 13 + v
 
-t_member_missing :: (CritBitKey k) => k -> CS.Set k -> Bool
-t_member_missing k = not . CS.member k . CS.delete k
+propertiesFor :: Props k
+propertiesFor t = concat [[]
+  -- * Operators
+  , prop "t_diff" $ (C.\\) =**= (S.\\)
 
+  -- * Query
+  , prop "t_null" $ C.null =*= S.null
+  , prop "t_size" $ C.size =*= S.size
+  , prop "t_member" $ C.member =?*= S.member
+  , prop "t_notMember" $ C.notMember =?*= S.notMember
 #if MIN_VERSION_containers(0,5,0)
-t_lookupGT :: (Ord k, CritBitKey k) => k -> k -> [k] -> Bool
-t_lookupGT _ k ks =
-    CS.lookupGT k (CS.fromList ks) == Set.lookupGT k (Set.fromList ks)
-
-t_lookupGE :: (Ord k, CritBitKey k) => k -> k -> [k] -> Bool
-t_lookupGE _ k ks =
-    CS.lookupGE k (CS.fromList ks) == Set.lookupGE k (Set.fromList ks)
-
-t_lookupLT :: (Ord k, CritBitKey k) => k -> k -> [k] -> Bool
-t_lookupLT _ k ks =
-    CS.lookupLT k (CS.fromList ks) == Set.lookupLT k (Set.fromList ks)
-
-t_lookupLE :: (Ord k, CritBitKey k) => k -> k -> [k] -> Bool
-t_lookupLE _ k ks =
-    CS.lookupLE k (CS.fromList ks) == Set.lookupLE k (Set.fromList ks)
+  , prop "t_lookupLT" $ C.lookupLT =?*= S.lookupLT
+  , prop "t_lookupGT" $ C.lookupGT =?*= S.lookupGT
+  , prop "t_lookupLE" $ C.lookupLE =?*= S.lookupLE
+  , prop "t_lookupGE" $ C.lookupGE =?*= S.lookupGE
 #endif
+  , prop "t_isSubsetOf" $ C.isSubsetOf =**= S.isSubsetOf
+  , prop "t_isProperSubsetOf" $ C.isProperSubsetOf =**= S.isProperSubsetOf
 
--- Test that the behaviour of a CritBit function is the same as that
--- of its counterpart Map function, under some mapping of their
--- results.
-isoWith :: (CritBitKey k, Ord k, Eq a) =>
-           (c -> a) -> (m -> a)
-        -> (CS.Set k -> c) -> (Set.Set k -> m)
-        -> k -> [k] -> Bool
-isoWith f g critbitf mapf _ ks =
-    (f . critbitf . CS.fromList) ks == (g . mapf . Set.fromList) ks
+  -- * Construction
+--  , prop "t_empty" $ C.empty =^= S.empty
+  , prop "t_singleton" $ notEmpty $ (C.singleton =*== S.singleton) head
+  , prop "t_insert" $ C.insert =?*= S.insert
+  , prop "t_delete" $ C.delete =?*= S.delete
 
--- Test that the behaviour of a CritBit function is the same as that
--- of its counterpart Map function.
-(===) :: (CritBitKey k, Ord k) =>
-         (CS.Set k -> CS.Set k) -> (Set.Set k -> Set.Set k)
-      -> k -> [k] -> Bool
-(===) = isoWith CS.toList Set.toList
+  -- * Combine
+  , prop "t_union" $ C.union =**= S.union
+  , prop "t_unions" $ (C.unions . map C.fromList =*==
+                         S.unions . map S.fromList) fromSmall
+  , prop "t_difference" $ C.difference =**= S.difference
+  , prop "t_intersection" $ C.intersection =**= S.intersection
 
-t_fromList_toList :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_fromList_toList = id === id
+  -- * Filter
+  , prop "t_filter" $ C.filter kp =*= S.filter kp
+  , prop "t_partition" $ C.partition kp =*= S.partition kp
+  , prop "t_split" $ C.split =?*= S.split
+  , prop "t_splitMember" $ C.splitMember =?*= S.splitMember
 
-t_fromList_size :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_fromList_size = isoWith CS.size Set.size id id
+  -- * Map
+  , prop "t_map" $ C.map kf =*= S.map kf
+  , prop "t_mapMonotonic" $ C.mapMonotonic prepends =*= S.mapMonotonic prepends
 
-t_delete_present :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_delete_present k ks =
-    CS.toList (CS.delete k c) == Set.toList (Set.delete k m)
-  where
-    c = CS.insert k $ CS.fromList ks
-    m = Set.insert k $ Set.fromList ks
+  -- * Folds
+  , prop "t_foldr" $ C.foldr kii 0 =*= S.foldr kii 0
+  , prop "t_foldl" $ C.foldl (flip kii) 0 =*= S.foldl (flip kii) 0
+  -- ** Strict folds
+  , prop "t_foldr'" $ C.foldr' kii 0 =*= S.foldr' kii 0
+  , prop "t_foldl'" $ C.foldl' (flip kii) 0 =*= S.foldl' (flip kii) 0
 
-t_unions :: (CritBitKey k, Ord k) => k -> Small [[k]] -> Bool
-t_unions _ (Small ks) =
-    Set.toList (Set.unions (map Set.fromList ks)) ==
-    CS.toList (CS.unions (map CS.fromList ks))
+  -- * Min\/Max
+  , prop "t_findMin" $ notEmpty $ C.findMin =*= S.findMin
+  , prop "t_findMax" $ notEmpty $ C.findMax =*= S.findMax
+  , prop "t_deleteMin" $ notEmpty $ C.deleteMin =*= S.deleteMin
+  , prop "t_deleteMax" $ notEmpty $ C.deleteMax =*= S.deleteMax
+  , prop "t_deleteFindMin" $ notEmpty $ C.deleteFindMin =*= S.deleteFindMin
+  , prop "t_deleteFindMax" $ notEmpty $ C.deleteFindMax =*= S.deleteFindMax
+  , prop "t_maxView" $ notEmpty $ unfoldr C.maxView =*= unfoldr S.maxView
+  , prop "t_minView" $ notEmpty $ unfoldr C.minView =*= unfoldr S.minView
 
-t_difference :: (CritBitKey k, Ord k) => k -> [k] -> [k] -> Bool
-t_difference k ks = (CS.difference (CS.fromList ks) ===
-    Set.difference (Set.fromList ks)) k
+  -- * Conversion
+  -- ** List
+  , prop "t_elems" $ C.elems =*= S.elems
+  , prop "t_toList" $ C.toList =*= S.toList
+  , prop "t_fromList" $ (C.fromList =*== S.fromList) id
 
-t_intersection :: (CritBitKey k, Ord k) => k -> [k] -> [k] -> Bool
-t_intersection k ks = (CS.intersection (CS.fromList ks) ===
-    Set.intersection (Set.fromList ks)) k
-
-t_foldl :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_foldl = isoWith id id (CS.foldl f 0) (Set.foldl f 0)
-  where f a b = a + byteCount b
-
-t_foldl' :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_foldl' = isoWith id id (CS.foldl' f 0) (Set.foldl' f 0)
-  where f a b = a + byteCount b
-
-t_elems :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_elems = isoWith id id CS.elems Set.elems
-
-t_map :: (CritBitKey k, Ord k, Monoid k, IsString k) => k -> [k] -> Bool
-t_map = CS.map (<>"a") === Set.map (<>"a")
-
-t_toAscList :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_toAscList = isoWith CS.toAscList Set.toAscList id id
-
+  -- ** Ordered list
+  , prop "t_toAscList" $ C.toAscList =*= S.toAscList
 #if MIN_VERSION_containers(0,5,0)
-t_toDescList :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_toDescList = isoWith CS.toDescList Set.toDescList id id
+  , prop "t_toDescList" $ C.toDescList =*= S.toDescList
 #endif
-
--- Check that 'toList's are equal, with input preprocessing
-(====) :: Eq a =>
-          (c -> CS.Set a) -> (c -> Set.Set a) -> (t -> c) -> t -> Bool
-(====) f g p ks = CS.toList (f ks') == Set.toList (g ks')
-  where
-    ks' = p ks
-
-t_fromAscList :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_fromAscList _ = (CS.fromAscList ==== Set.fromAscList) sort
-
-t_fromDistinctAscList :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_fromDistinctAscList k =
-    ((CS.insert k .   CS.fromDistinctAscList) ====
-    (Set.insert k . Set.fromDistinctAscList))
-    (nub . sort)
-
-t_filter :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_filter = CS.filter p === Set.filter p
-  where p = (> (maxBound - minBound) `div` 2) . byteCount
-
-t_split_general :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_split_general k = isoWith (CS.toList *** CS.toList) (Set.toList *** Set.toList)
-                            (CS.split k) (Set.split k) k
-
-t_split_present :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_split_present k ks = t_split_general k (k:ks)
-
-t_split_missing :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_split_missing k ks = t_split_general k (filter (/=k) ks)
-
-unpack3 :: (m -> a) -> (m, b, m) -> (a, b, a)
-unpack3 f (a, k, b) = (f a, k, f b)
-
-t_submap_general :: (CritBitKey k, Ord k) =>
-                    (CS.Set k -> CS.Set k -> Bool)
-                 -> (Set.Set k -> Set.Set k -> Bool)
-                 -> [k] -> [k] -> Bool
-t_submap_general cf mf ks1 ks2 =
-  cf (CS.fromList ks1) (CS.fromList ks2) ==
-  mf (Set.fromList ks1) (Set.fromList ks2)
-
-t_isSubset_ambiguous :: (CritBitKey k, Ord k) => k -> [k] -> [k] -> Bool
-t_isSubset_ambiguous _ ks1 ks2 =
-  t_submap_general CS.isSubsetOf Set.isSubsetOf ks1 ks2
-
-
-t_isProperSubsetOf_ambiguous :: (CritBitKey k, Ord k) =>
-                              k -> [k] -> [k] -> Bool
-t_isProperSubsetOf_ambiguous _ ks1 ks2 =
-  t_submap_general CS.isProperSubsetOf Set.isProperSubsetOf ks1 ks2
-
-t_findMin :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_findMin k w@ks =
-  null ks || isoWith id id CS.findMin Set.findMin k w
-
-t_findMax :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_findMax k w@ks =
-  null ks || isoWith id id CS.findMax Set.findMax k w
-
-t_deleteMin :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_deleteMin = CS.deleteMin === Set.deleteMin
-
-t_deleteMax :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_deleteMax = CS.deleteMax === Set.deleteMax
-
-deleteFindAll :: (m -> Bool) -> (m -> (a, m)) -> m -> [a]
-deleteFindAll isEmpty deleteFind m0 = unfoldr maybeDeleteFind m0
-  where maybeDeleteFind m
-          | isEmpty m = Nothing
-          | otherwise = Just . deleteFind $ m
-
-t_deleteFindMin :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_deleteFindMin _ ks =
-    deleteFindAll CS.null CS.deleteFindMin (CS.fromList ks) ==
-    deleteFindAll Set.null Set.deleteFindMin (Set.fromList ks)
-
-t_deleteFindMax :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_deleteFindMax _ ks =
-    deleteFindAll CS.null CS.deleteFindMax (CS.fromList ks) ==
-    deleteFindAll Set.null Set.deleteFindMax (Set.fromList ks)
-
-t_minView :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_minView _ ks =
-  unfoldr CS.minView (CS.fromList ks) ==
-  unfoldr Set.minView (Set.fromList ks)
-
-t_maxView :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_maxView _ ks =
-  unfoldr CS.maxView (CS.fromList ks) ==
-  unfoldr Set.maxView (Set.fromList ks)
-
-updateFun :: Integral v => k -> v -> Maybe v
-updateFun _ v
-  | even v    = Nothing
-  | otherwise = Just (v + 1)
-
-t_insert_present :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_insert_present k =
-    ((CS.insert k . CS.insert k) === (Set.insert k . Set.insert k)) k
-
-t_insert_missing :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_insert_missing k ks = (CS.insert k === Set.insert k) k (filter (/=k) ks)
-
-t_foldMap :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_foldMap = isoWith (foldMap f) (foldMap f) id id
-  where f = Sum . byteCount
-
-t_partition :: (CritBitKey k, Ord k) => k -> [k] -> Bool
-t_partition _ ks = partCrit == partMap
-  where
-    fixup f (a,b) = (f a, f b)
-    partCrit = fixup CS.toList . CS.partition foo . CS.fromList $ ks
-    partMap  = fixup Set.toList . Set.partition foo . Set.fromList $ ks
-    foo = odd . byteCount
-
-t_mapMonotonic :: (CritBitKey k, Ord k, Monoid k, IsString k)
-               => k -> [k] -> Bool
-t_mapMonotonic = CS.mapMonotonic preps === Set.mapMonotonic preps
-  where preps = ("test" <>)
-
-propertiesFor :: (Arbitrary k, CritBitKey k, Ord k, Monoid k, Show k,
-                  IsString k) => k -> [Test]
-propertiesFor t = [
-    testProperty "t_fromList_toList" $ t_fromList_toList t
-  , testProperty "t_fromList_size" $ t_fromList_size t
-  , testProperty "t_null" $ t_null t
-  , testProperty "t_member_present" $ t_member_present t
-  , testProperty "t_member_missing" $ t_member_missing t
-#if MIN_VERSION_containers(0,5,0)
-  , testProperty "t_lookupGT" $ t_lookupGT t
-  , testProperty "t_lookupGE" $ t_lookupGE t
-  , testProperty "t_lookupLT" $ t_lookupLT t
-  , testProperty "t_lookupLE" $ t_lookupLE t
-#endif
-  , testProperty "t_delete_present" $ t_delete_present t
-  , testProperty "t_unions" $ t_unions t
-  , testProperty "t_difference" $ t_difference t
-  , testProperty "t_intersection" $ t_intersection t
-  , testProperty "t_foldl" $ t_foldl t
-  , testProperty "t_foldl'" $ t_foldl' t
-  , testProperty "t_elems" $ t_elems t
-  , testProperty "t_map" $ t_map t
-  , testProperty "t_mapKeys" $ t_map t
-  , testProperty "t_mapMonotonic" $ t_mapMonotonic t
-  , testProperty "t_toAscList" $ t_toAscList t
-#if MIN_VERSION_containers(0,5,0)
-  , testProperty "t_toDescList" $ t_toDescList t
-#endif
-  , testProperty "t_fromAscList" $ t_fromAscList t
-  , testProperty "t_fromDistinctAscList" $ t_fromDistinctAscList t
-  , testProperty "t_filter" $ t_filter t
-  , testProperty "t_split_present" $ t_split_present t
-  , testProperty "t_split_missing" $ t_split_missing t
-  , testProperty "t_splitLookup_present" $ t_split_present t
-  , testProperty "t_splitLookup_missing" $ t_split_missing t
-  , testProperty "t_isProperSubsetOf_ambiguous" $
-      t_isProperSubsetOf_ambiguous t
-  , testProperty "t_findMin" $ t_findMin t
-  , testProperty "t_findMax" $ t_findMax t
-  , testProperty "t_deleteMin" $ t_deleteMin t
-  , testProperty "t_deleteMax" $ t_deleteMax t
-  , testProperty "t_deleteFindMin" $ t_deleteFindMin t
-  , testProperty "t_deleteFindMax" $ t_deleteFindMax t
-  , testProperty "t_minView" $ t_minView t
-  , testProperty "t_maxView" $ t_maxView t
-  , testProperty "t_insert_present" $ t_insert_present t
-  , testProperty "t_insert_missing" $ t_insert_missing t
-  , testProperty "t_foldMap" $ t_foldMap t
-  , testProperty "t_partition" $ t_partition t
+  , prop "t_fromAscList" $ (C.fromAscList =*== S.fromAscList) sort
+  , prop "t_fromDistinctAscList" $
+     (C.fromDistinctAscList =*== S.fromDistinctAscList) (nub . sort)
   ]
+  where
+    prop name q = [testProperty name $ q $ sameAs t]
+
+    sameAs :: (CritBitKey k, Ord k) => k -> SameAs (C.Set k) (S.Set k) [k]
+    sameAs _ = SameAs C.fromList C.toList S.fromList S.toList
 
 properties :: [Test]
 properties = [
@@ -288,10 +108,16 @@ properties = [
   , testGroup "bytestring" $ propertiesFor B.empty
   ]
 
+instance (Eq k) => Eq' (C.Set k) (S.Set k) where
+   c =^= m = C.toList c =^= S.toList m
+
+instance (Eq' a1 b1, Eq k) => Eq' (a1, C.Set k) (b1, S.Set k) where
+  (a1, a2) =^= (b1, b2) = a1 =^= b1 && a2 =^= b2
+
 -- Handy functions for fiddling with from ghci.
 
-blist :: [ByteString] -> CS.Set ByteString
-blist = CS.fromList
+blist :: [B.ByteString] -> C.Set B.ByteString
+blist = C.fromList
 
-tlist :: [Text] -> CS.Set Text
-tlist = CS.fromList
+tlist :: [T.Text] -> S.Set T.Text
+tlist = S.fromList

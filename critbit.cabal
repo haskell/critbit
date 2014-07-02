@@ -64,6 +64,7 @@ test-suite tests
     other-modules:
       Properties.Common
       Properties.Map
+      Properties.Set
 
   ghc-options:
     -Wall -threaded -rtsopts -with-rtsopts=-N
