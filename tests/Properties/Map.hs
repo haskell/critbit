@@ -4,22 +4,23 @@
 module Properties.Map
     where
 
+import qualified Data.ByteString.Char8 as B
 import Data.CritBit.Map.Lazy (CritBitKey, CritBit, byteCount)
+import qualified Data.CritBit.Map.Lazy as C
+import qualified Data.CritBit.Set as CSet
 import Data.Foldable (foldMap)
 import Data.Function (on)
 import Data.List (unfoldr, sort, nubBy)
 import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Monoid (Sum(..))
+import qualified Data.Set as Set
+import qualified Data.Text as T
 import Data.Word (Word8)
 import Properties.Common
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import qualified Data.ByteString.Char8 as B
-import qualified Data.CritBit.Map.Lazy as C
-import qualified Data.CritBit.Set as CSet
-import qualified Data.Map as Map
-import qualified Data.Set as Set
-import qualified Data.Text as T
+import Test.QuickCheck.Property ((.&&.))
 
 --only needed for a test requiring containers >= 0.5
 #if MIN_VERSION_containers(0,5,0)
@@ -322,11 +323,11 @@ properties = [
   , testGroup "bytestring" $ propertiesFor B.empty
   ]
 
-instance (Eq k, Eq v) => Eq' (CritBit k v) (Map k v) where
+instance (Eq k, Show k, Eq v, Show v) => Eq' (CritBit k v) (Map k v) where
    c =^= m = C.toList c =^= Map.toList m
 
-instance (Eq' a1 b1, Eq k, Eq v) => Eq' (a1, CritBit k v) (b1, Map k v) where
-  (a1, a2) =^= (b1, b2) = a1 =^= b1 && a2 =^= b2
+instance (Eq' a1 b1, Eq k, Show k, Eq v, Show v) => Eq' (a1, CritBit k v) (b1, Map k v) where
+  (a1, a2) =^= (b1, b2) = a1 =^= b1 .&&. a2 =^= b2
 
 -- Handy functions for fiddling with from ghci.
 

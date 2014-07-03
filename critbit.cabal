@@ -74,7 +74,7 @@ test-suite tests
     bytestring,
     containers,
     critbit,
-    QuickCheck >= 2.4,
+    QuickCheck >= 2.7,
     test-framework >= 0.4,
     test-framework-quickcheck2 >= 0.2,
     text,

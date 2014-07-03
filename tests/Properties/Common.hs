@@ -20,16 +20,16 @@ module Properties.Common
     , kf
   ) where
 
-import Data.CritBit.Map.Lazy (CritBitKey, byteCount)
-import Data.String (IsString, fromString)
-import Data.Monoid (Monoid, mappend)
 import Control.Applicative ((<$>))
+import qualified Data.ByteString.Char8 as B
+import Data.CritBit.Map.Lazy (CritBitKey, byteCount)
+import Data.Monoid (Monoid, mappend)
+import Data.String (IsString, fromString)
+import qualified Data.Text as T
 import Test.Framework (Test)
 import Test.QuickCheck (Arbitrary(..), Args(..), quickCheckWith, stdArgs)
 import Test.QuickCheck.Gen (resize, sized)
-import Test.QuickCheck.Property (Testable)
-import qualified Data.ByteString.Char8 as B
-import qualified Data.Text as T
+import Test.QuickCheck.Property (Property, Testable, (===), (.&&.), (.||.))
 
 instance Arbitrary B.ByteString where
     arbitrary = B.pack <$> arbitrary
@@ -53,21 +53,21 @@ type Props k = (Arbitrary k, CritBitKey k, Ord k, IsString k, Monoid k, Show k) 
 infix 4 =^=, =?=, =??=
 
 -- | Compares heterogeneous values
-class Eq' f g where
-  (=^=) :: f -> g -> Bool
+class (Show f, Show g) => Eq' f g where
+  (=^=) :: f -> g -> Property
 
-instance (Eq t) => Eq' t t where
-  (=^=) = (==)
+instance (Show t, Eq t) => Eq' t t where
+  (=^=) = (===)
 
 instance (Eq' a1 b1, Eq' a2 b2, Eq' a3 b3) => Eq' (a1, a2, a3) (b1, b2, b3)
-  where (a1, a2, a3) =^= (b1, b2, b3) = a1 =^= b1 && a2 =^= b2 && a3 =^= b3
+  where (a1, a2, a3) =^= (b1, b2, b3) = a1 =^= b1 .&&. a2 =^= b2 .&&. a3 =^= b3
 
 -- | Compares functions taking one scalar
-(=?=) :: Eq' a b => (t -> a) -> (t -> b) -> k -> t -> Bool
+(=?=) :: Eq' a b => (t -> a) -> (t -> b) -> k -> t -> Property
 f =?= g = const $ \t -> f t =^= g t
 
 -- | Compares functions taking two scalars
-(=??=) :: Eq' a b => (t -> s -> a) -> (t -> s -> b) -> k -> t -> s -> Bool
+(=??=) :: Eq' a b => (t -> s -> a) -> (t -> s -> b) -> k -> t -> s -> Property
 f =??= g = const $ \t s -> f t s =^= g t s
 
 infix 4 =*=, =?*=, =*==
@@ -82,33 +82,34 @@ data SameAs f g r = SameAs {
 
 -- | Compares two functions taking one container
 (=*=) :: (Eq' a b) => (f -> a) -> (g -> b)
-      -> SameAs f g r -> r -> Bool
+      -> SameAs f g r -> r -> Property
 (f =*= g) sa i = f (toF sa i) =^= g (toG sa i)
 
 -- | Compares two functions taking one scalar and one container
 (=?*=) :: (Eq' a b) => (t -> f -> a) -> (t -> g -> b)
-       -> SameAs f g r -> r -> t -> Bool
+       -> SameAs f g r -> r -> t -> Property
 (f =?*= g) sa i t = (f t =*= g t) sa i
 
 -- | Compares functions taking two scalars and one container
 (=??*=) :: (Eq' a b) => (t -> s -> f -> a) -> (t -> s -> g -> b)
-        -> SameAs f g r -> r -> t -> s -> Bool
+        -> SameAs f g r -> r -> t -> s -> Property
 (f =??*= g) sa i t s = (f t s =*= g t s) sa i
 
 -- | Compares two functions taking two containers
 (=**=) :: (Eq' a b) => (f -> f -> a) -> (g -> g -> b)
-       -> SameAs f g r -> r -> r -> Bool
+       -> SameAs f g r -> r -> r -> Property
 (f =**= g) sa i = (f (toF sa i) =*= g (toG sa i)) sa
 
 -- | Compares two functions taking one container with preprocessing
 (=*==) :: (Eq' f g) => (z -> f) -> (z -> g) -> (p -> z)
-       -> SameAs f g r -> p -> Bool
+       -> SameAs f g r -> p -> Property
 (f =*== g) p _ i = f i' =^= g i'
   where i' = p i
 
 -- | Input litst is non-empty
-notEmpty :: (SameAs c1 c2 [i] -> [i] -> Bool) -> SameAs c1 c2 [i] -> [i] -> Bool
-notEmpty f t items = null items || f t items
+notEmpty :: (SameAs c1 c2 [i] -> [i] -> Property)
+         -> SameAs c1 c2 [i] -> [i] -> Property
+notEmpty f t items = null items .||. f t items
 
 prepends :: (IsString k, Monoid k) => k -> k
 prepends = mappend "test"

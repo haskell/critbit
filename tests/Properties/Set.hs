@@ -3,18 +3,17 @@
 module Properties.Set
     where
 
-import Properties.Common
+import qualified Data.ByteString.Char8 as B
 import Data.CritBit.Map.Lazy (CritBitKey, byteCount)
 import qualified Data.CritBit.Set as C
+import Data.List (unfoldr, sort, nub)
 import qualified Data.Set as S
-
+import Data.String (IsString)
+import qualified Data.Text as T
+import Properties.Common
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Data.String (IsString)
-import Data.List (unfoldr, sort, nub)
-
-import qualified Data.Text as T
-import qualified Data.ByteString.Char8 as B
+import Test.QuickCheck.Property ((.&&.))
 
 kp :: (CritBitKey k) => k -> Bool
 kp = even . byteCount
@@ -108,11 +107,11 @@ properties = [
   , testGroup "bytestring" $ propertiesFor B.empty
   ]
 
-instance (Eq k) => Eq' (C.Set k) (S.Set k) where
+instance (Show k, Eq k) => Eq' (C.Set k) (S.Set k) where
    c =^= m = C.toList c =^= S.toList m
 
-instance (Eq' a1 b1, Eq k) => Eq' (a1, C.Set k) (b1, S.Set k) where
-  (a1, a2) =^= (b1, b2) = a1 =^= b1 && a2 =^= b2
+instance (Eq' a1 b1, Eq k, Show k) => Eq' (a1, C.Set k) (b1, S.Set k) where
+  (a1, a2) =^= (b1, b2) = a1 =^= b1 .&&. a2 =^= b2
 
 -- Handy functions for fiddling with from ghci.
 
