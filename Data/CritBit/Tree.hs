@@ -3,7 +3,7 @@
 
 -- |
 -- Module      :  Data.CritBit.Tree
--- Copyright   :  (c) Bryan O'Sullivan 2013-2014
+-- Copyright   :  (c) Bryan O'Sullivan and others 2013-2014
 -- License     :  BSD-style
 -- Maintainer  :  bos@serpentine.com
 -- Stability   :  experimental
