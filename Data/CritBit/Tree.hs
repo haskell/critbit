@@ -891,7 +891,7 @@ toDescList m = foldlWithKey f [] m
 -- > fromAscList [(3,"b"), (5,"a"), (5,"b")] == fromList [(3, "b"), (5, "b")]
 -- > valid (fromAscList [(3,"b"), (5,"a"), (5,"b")]) == True
 -- > valid (fromAscList [(5,"a"), (3,"b"), (5,"b")]) == False
-fromAscList :: (CritBitKey k) => [(k, a)] -> CritBit k a
+fromAscList :: (CritBitKey k) => [(k, v)] -> CritBit k v
 fromAscList = fromAscListWithKey (\_ x _ -> x)
 {-# INLINABLE fromAscList #-}
 
@@ -902,7 +902,7 @@ fromAscList = fromAscListWithKey (\_ x _ -> x)
 -- > fromAscListWith (++) [(3,"b"), (5,"a"), (5,"b")] == fromList [(3, "b"), (5, "ba")]
 -- > valid (fromAscListWith (++) [(3,"b"), (5,"a"), (5,"b")]) == True
 -- > valid (fromAscListWith (++) [(5,"a"), (3,"b"), (5,"b")]) == False
-fromAscListWith :: (CritBitKey k) => (a -> a -> a) -> [(k,a)] -> CritBit k a
+fromAscListWith :: (CritBitKey k) => (v -> v -> v) -> [(k,v)] -> CritBit k v
 fromAscListWith f = fromAscListWithKey (const f)
 {-# INLINABLE fromAscListWith #-}
 
@@ -915,7 +915,7 @@ fromAscListWith f = fromAscListWithKey (const f)
 -- > valid (fromAscListWithKey f [(3,"b"), (5,"a"), (5,"b"), (5,"b")]) == True
 -- > valid (fromAscListWithKey f [(5,"a"), (3,"b"), (5,"b"), (5,"b")]) == False
 fromAscListWithKey :: (CritBitKey k) =>
-                      (k -> a -> a -> a) -> [(k,a)] -> CritBit k a
+                      (k -> v -> v -> v) -> [(k,v)] -> CritBit k v
 fromAscListWithKey _ [] = empty
 fromAscListWithKey _ [(k, v)] = singleton k v
 fromAscListWithKey f kvs = build 0 1 upper fromContext kvs RCNil
@@ -976,7 +976,7 @@ fromAscListWithKey f kvs = build 0 1 upper fromContext kvs RCNil
 -- > fromDistinctAscList [(3,"b"), (5,"a")] == fromList [(3, "b"), (5, "a")]
 -- > valid (fromDistinctAscList [(3,"b"), (5,"a")])          == True
 -- > valid (fromDistinctAscList [(3,"b"), (5,"a"), (5,"b")]) == False
-fromDistinctAscList :: (CritBitKey k) => [(k,a)] -> CritBit k a
+fromDistinctAscList :: (CritBitKey k) => [(k,v)] -> CritBit k v
 fromDistinctAscList = fromAscListWithKey undefined
 {-# INLINABLE fromDistinctAscList #-}
 
@@ -1008,7 +1008,7 @@ filterWithKey p (CritBit root) = CritBit $ go root
 --
 -- > let f x = if x == 5 then Just 10 else Nothing
 -- > mapMaybe f (fromList [("a",5), ("b",3)]) == singleton "a" 10
-mapMaybe :: (a -> Maybe b) -> CritBit k a -> CritBit k b
+mapMaybe :: (v -> Maybe w) -> CritBit k v -> CritBit k w
 mapMaybe = mapMaybeWithKey . const
 
 -- | /O(n)/. Map keys\/values and collect the 'Just' results.
@@ -1031,7 +1031,7 @@ mapMaybeWithKey f (CritBit root) = CritBit $ go root
 -- >
 -- > mapEither (\ a -> Right a) (fromList [("a",5), ("b",3), ("x",1), ("z",7)])
 -- >     == (empty, fromList [("a",5), ("b",3), ("x",1), ("z",7)])
-mapEither :: (a -> Either b c) -> CritBit k a -> (CritBit k b, CritBit k c)
+mapEither :: (v -> Either w x) -> CritBit k v -> (CritBit k w, CritBit k x)
 mapEither = mapEitherWithKey . const
 
 -- | /O(n)/. Map keys\/values and separate the 'Left' and 'Right' results.
@@ -1042,8 +1042,8 @@ mapEither = mapEitherWithKey . const
 -- >
 -- > mapEitherWithKey (\_ a -> Right a) (fromList [("a",5), ("b",3), ("x",1), ("z",7)])
 -- >     == (empty, fromList [("x",1), ("b",3), ("a",5), ("z",7)])
-mapEitherWithKey :: (k -> v -> Either v1 v2)
-                 -> CritBit k v -> (CritBit k v1, CritBit k v2)
+mapEitherWithKey :: (k -> v -> Either w x) ->
+                    CritBit k v -> (CritBit k w, CritBit k x)
 mapEitherWithKey f (CritBit root) = (CritBit *** CritBit) $ go root
   where
     go i@(Internal l r _ _) = (setBoth' i ll rl, setBoth' i lr rr)
@@ -1093,8 +1093,8 @@ split k m = CritBit *** CritBit $
 -- > splitLookup "c" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Nothing, singleton "d" 2)
 -- > splitLookup "d" (fromList [("b",1), ("d",2)]) == (singleton "b" 1, Just 2, empty)
 -- > splitLookup "e" (fromList [("b",1), ("d",2)]) == (fromList [("b",1), ("d",2)], Nothing, empty)
-splitLookup :: (CritBitKey k) => k -> CritBit k v
-               -> (CritBit k v, Maybe v, CritBit k v)
+splitLookup :: (CritBitKey k) =>
+               k -> CritBit k v -> (CritBit k v, Maybe v, CritBit k v)
 splitLookup k m = (\(lt, eq, gt) -> (CritBit lt, eq, CritBit gt)) $
                   findPosition (const id) finish goLeft goRight k m
   where
@@ -1134,8 +1134,8 @@ isSubmapOf = isSubmapOfBy (==)
 -- > isSubmapOfBy (==) (fromList [("a",2)]) (fromList [("a",1),("b",2)])
 -- > isSubmapOfBy (<)  (fromList [("a",1)]) (fromList [("a",1),("b",2)])
 -- > isSubmapOfBy (==) (fromList [("a",1),("b",2)]) (fromList [("a",1)])
-isSubmapOfBy :: (CritBitKey k) => (a -> b -> Bool) -> CritBit k a
-             -> CritBit k b -> Bool
+isSubmapOfBy :: (CritBitKey k) =>
+                (v -> w -> Bool) -> CritBit k v -> CritBit k w -> Bool
 isSubmapOfBy f a b = submapTypeBy f a b /= No
 {-# INLINABLE isSubmapOfBy #-}
 
@@ -1161,13 +1161,13 @@ isProperSubmapOf = isProperSubmapOfBy (==)
 -- > isProperSubmapOfBy (==) (fromList ["a",1),("b",2)])  (fromList [("a",1)])
 -- > isProperSubmapOfBy (<)  (fromList [("a",1)])         (fromList [("a",1),("b",2)])
 isProperSubmapOfBy :: (CritBitKey k) =>
-                      (a -> b -> Bool) -> CritBit k a -> CritBit k b -> Bool
+                      (v -> w -> Bool) -> CritBit k v -> CritBit k w -> Bool
 isProperSubmapOfBy f a b = submapTypeBy f a b == Yes
 {-# INLINABLE isProperSubmapOfBy #-}
 
 data SubmapType = No | Yes | Equal deriving (Eq, Ord)
 submapTypeBy :: (CritBitKey k) =>
-                (a -> b -> Bool) -> CritBit k a -> CritBit k b -> SubmapType
+                (v -> w -> Bool) -> CritBit k v -> CritBit k w -> SubmapType
 submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
   where
     -- Assumes that empty nodes exist only on the top level
