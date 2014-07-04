@@ -267,9 +267,9 @@ delete k t@(CritBit root) = go root empty CritBit
       | k `onLeft` i = go left (cont right) $ ((cont $!) . setLeft  i)
       | otherwise    = go right (cont left) $ ((cont $!) . setRight i)
     go (Leaf lk _) other _
-      | k == lk   = other
-      | otherwise = t
-    go Empty _ _ = t
+      | k == lk      = other
+      | otherwise    = t
+    go Empty _ _     = t
 {-# INLINABLE delete #-}
 
 -- | /O(k)/. The expression (@'update' f k map@ updates the value @x@
@@ -424,7 +424,8 @@ fromListWith f xs = fromListWithKey (const f) xs
 -- > fromListWithKey f [("a",5), ("b",5), ("b",3), ("a",3), ("a",5)] ==
 -- >                        fromList [("a",16), ("b",10)]
 -- > fromListWithKey f [] == empty
-fromListWithKey :: (CritBitKey k) => (k -> v -> v -> v) -> [(k,v)] -> CritBit k v
+fromListWithKey :: (CritBitKey k) =>
+                   (k -> v -> v -> v) -> [(k,v)] -> CritBit k v
 fromListWithKey f xs
   = List.foldl' ins empty xs
   where
@@ -580,7 +581,7 @@ unionWithKey f (CritBit lt) (CritBit rt) = CritBit (top lt rt)
     -- Each node is followed by the minimum key in that node.
     -- This trick assures that overall time spend by minKey in O(n+m)
     go a@(Leaf ak av) _ b@(Leaf bk bv) _
-        | ak == bk = Leaf ak (f ak av bv)
+        | ak == bk  = Leaf ak (f ak av bv)
         | otherwise = fork a ak b bk
     go a@(Leaf{}) ak b@(Internal{}) bk =
       leafBranch a b bk (splitB a ak b bk) (fork a ak b bk)
@@ -809,9 +810,7 @@ map = fmap
 -- > let f = fromString . (++ "1") . show
 -- > mapKeys f (fromList [("a", 5), ("b", 3)])            == fromList ([("a1", 5), ("b1", 3)])
 -- > mapKeys (\ _ -> "a") (fromList [("a", 5), ("b", 3)]) == singleton "a" 3
-mapKeys :: (CritBitKey k2)
-        => (k1 -> k2)
-        -> CritBit k1 v -> CritBit k2 v
+mapKeys :: (CritBitKey k2) => (k1 -> k2) -> CritBit k1 v -> CritBit k2 v
 mapKeys f m = mapKeysWith (\_ v -> v) f m
 {-# INLINABLE mapKeys #-}
 
@@ -1172,8 +1171,8 @@ submapTypeBy f (CritBit root1) (CritBit root2) = top root1 root2
   where
     -- Assumes that empty nodes exist only on the top level
     top Empty Empty = Equal
-    top Empty _ = Yes
-    top _ Empty = No
+    top Empty _     = Yes
+    top _ Empty     = No
     top a b = go a (minKey a) b (minKey b)
     {-# INLINE top #-}
 

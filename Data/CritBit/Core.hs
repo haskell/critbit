@@ -91,9 +91,10 @@ insertLookupGen :: CritBitKey k
                 -> k -> v -> CritBit k v -> a
 insertLookupGen ret f !k v m = findPosition ret' finish setLeft setRight k m
   where
-    finish _ Empty = Leaf k v
-    finish diff (Leaf _ v') | diffOrd diff == EQ = Leaf k $ f k v v'
-    finish diff node = internal diff node (Leaf k v)
+    finish _ Empty           = Leaf k v
+    finish diff (Leaf _ v')
+      | diffOrd diff == EQ   = Leaf k $ f k v v'
+    finish diff node         = internal diff node (Leaf k v)
 
     ret' a b = ret a (CritBit b)
 {-# INLINE insertLookupGen #-}
@@ -174,8 +175,9 @@ lookupWith notFound found k (CritBit root) = go root
     go i@(Internal {..})
        | k `onLeft` i = go ileft
        | otherwise    = go iright
-    go (Leaf lk v) | k == lk = found v
-    go _                     = notFound
+    go (Leaf lk v)
+       | k == lk      = found v
+    go _              = notFound
 {-# INLINE lookupWith #-}
 
 -- | /O(k)/. Lookup and update; see also 'updateWithKey'.
@@ -198,11 +200,11 @@ updateLookupWithKey f k t@(CritBit root) = go root (CritBit Empty) CritBit
   where
     go i@(Internal left right _ _) _ cont = dispatch i left right cont
     go (Leaf lk lv) other cont
-      | k == lk = case f lk lv of
-                    Just lv' -> (Just lv', cont $! Leaf lk lv')
-                    Nothing  -> (Just lv, other)
+      | k == lk   = case f lk lv of
+                      Just lv' -> (Just lv', cont $! Leaf lk lv')
+                      Nothing  -> (Just lv, other)
       | otherwise = (Nothing, t)
-    go Empty _ _ = (Nothing, t)
+    go Empty _ _  = (Nothing, t)
     {-# INLINE go #-}
 
     dispatch i left right cont
