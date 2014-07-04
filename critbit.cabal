@@ -1,5 +1,5 @@
 name:           critbit
-version:        0.1.0.0
+version:        0.2.0.0
 homepage:       https://github.com/bos/critbit
 bug-reports:    https://github.com/bos/critbit/issues
 synopsis:       Crit-bit maps and sets
