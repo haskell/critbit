@@ -594,7 +594,7 @@ unionWithKey f (CritBit lt) (CritBit rt) = CritBit (top lt rt)
              GT -> splitB a ak b bk
              EQ -> setBoth' a (go al ak bl bk) (go ar (minKey ar) br (minKey br))
       where
-        (dbyte, dbits, _) = followPrefixes ak bk
+        Diff dbyte dbits _ = followPrefixes ak bk
     -- Assumes that empty nodes exist only on the top level
     go _ _ _ _ = error "Data.CritBit.Tree.unionWithKey.go: Empty"
 
@@ -942,7 +942,7 @@ fromAscListWithKey f kvs = build 0 1 upper fromContext kvs RCNil
     upper = length kvs - 1
     array = fst . (A.listArray (0, upper) kvs A.!)
 
-    fromContext = add (0, 0, 0::BitMask)
+    fromContext = add (Diff 0 0 0)
         (const $ \(RCCons node _ _ _) -> CritBit node)
 
     build z left right cont xs cx
@@ -955,7 +955,7 @@ fromAscListWithKey f kvs = build 0 1 upper fromContext kvs RCNil
         diffI = followPrefixesFrom     z (fst (head xs)) (array right)
     {-# INLINE build #-}
 
-    add (byte, bits, _) cont (x:xs) cx
+    add (Diff byte bits _) cont (x:xs) cx
         | bits == 0x1ff = let (k, v1) = x; (_, v2) = head xs
                           in cont ((k, f k v2 v1) : tail xs) cx
         | otherwise     = cont xs $ pop (uncurry Leaf x) cx

@@ -26,6 +26,7 @@ module Data.CritBit.Core
     , leftmost
     , rightmost
     -- * Internal functions
+    , Diff(..)
     , diffOrd
     , followPrefixes
     , followPrefixesFrom
@@ -117,15 +118,17 @@ findPosition ret finish toLeft toRight k (CritBit root) = go root
           | otherwise      = toRight i (rewalk right)
         rewalk i           = finish diff i
 
-        diff@(!_, !_, !_) = followPrefixes k lk
+        diff               = followPrefixes k lk
     go Empty = ret Nothing $ finish undefined Empty
 {-# INLINE findPosition #-}
 
-type Diff = (Int, BitMask, BitMask)
+data Diff = Diff {-# UNPACK #-} !Int
+                 {-# UNPACK #-} !BitMask
+                 {-# UNPACK #-} !BitMask
 
 -- | Smart consturctor for Internal nodes
 internal :: Diff -> Node k v -> Node k v -> Node k v
-internal diff@(!byte, !bits, !_) child1 child2 = case diffOrd diff of
+internal diff@(Diff byte bits _) child1 child2 = case diffOrd diff of
   LT -> Internal child1 child2 byte bits
   GT -> Internal child2 child1 byte bits
   EQ -> error "Data.CritBit.Cord.internal: Equal."
@@ -154,7 +157,7 @@ setRight' _ _ = error "Data.CritBit.Core.alter.setRight': Non-internal node"
 {-# INLINE setRight' #-}
 
 above :: Diff -> Node k v -> Bool
-above (dbyte, dbits, _) (Internal _ _ byte bits) =
+above (Diff dbyte dbits _) (Internal _ _ byte bits) =
     dbyte < byte || dbyte == byte && dbits < bits
 above _ _ = error "Data.CritBit.Core.above: Non-Internal node"
 {-# INLINE above #-}
@@ -217,7 +220,7 @@ onLeft _ _ = error "Data.CritBit.Core.onLeft: Non-Internal node"
 
 -- | Given a diff of two keys determines result of comparison of them.
 diffOrd :: Diff -> Ordering
-diffOrd (_, !bits, !c)
+diffOrd (Diff _ bits c)
   | bits == 0x1ff                      = EQ
   | (1 + (bits .|. c)) `shiftR` 9 == 0 = LT
   | otherwise                          = GT
@@ -245,7 +248,7 @@ followPrefixesFrom :: (CritBitKey k) =>
                    -> k             -- ^ First key.
                    -> k             -- ^ Second key.
                    -> Diff
-followPrefixesFrom !position !k !l = (n, maskLowerBits (b `xor` c), c)
+followPrefixesFrom !position !k !l = Diff n (maskLowerBits (b `xor` c)) c
   where
     n = followPrefixesByteFrom position k l
     b = getByte k n
