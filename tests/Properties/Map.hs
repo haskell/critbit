@@ -16,7 +16,9 @@ import qualified Data.Map as Map
 import Data.Monoid (Sum(..))
 import qualified Data.Set as Set
 import qualified Data.Text as T
-import Data.Word (Word8)
+import qualified Data.Vector.Generic as G
+import qualified Data.Vector.Unboxed as U
+import Data.Word
 import Properties.Common
 import Test.Framework (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
@@ -32,7 +34,7 @@ type V = Word8
 -- * Common modifier functions
 
 kvvf :: (CritBitKey k) => k -> V -> V -> V
-kvvf k v1 v2 = toEnum (byteCount k) * 3 + v1 * 2 - v2
+kvvf k v1 v2 = fromIntegral (byteCount k) * 3 + v1 * 2 - v2
 
 kvvfm :: (CritBitKey k) => k -> V -> V -> Maybe V
 kvvfm k v1 v2 = if even v1 then Just (kvvf k v1 v2) else Nothing
@@ -321,6 +323,16 @@ properties :: [Test]
 properties = [
     testGroup "text" $ propertiesFor T.empty
   , testGroup "bytestring" $ propertiesFor B.empty
+  , testGroup "vector" [
+      testGroup "unboxed" [
+        testGroup "Word8" $ propertiesFor (G.empty :: U.Vector Word8)
+      , testGroup "Word16" $ propertiesFor (G.empty :: U.Vector Word16)
+      , testGroup "Word32" $ propertiesFor (G.empty :: U.Vector Word32)
+      , testGroup "Word64" $ propertiesFor (G.empty :: U.Vector Word64)
+      , testGroup "Word" $ propertiesFor (G.empty :: U.Vector Word)
+      , testGroup "Char" $ propertiesFor (G.empty :: U.Vector Char)
+      ]
+  ]
   ]
 
 instance (Eq k, Show k, Eq v, Show v) => Eq' (CritBit k v) (Map k v) where

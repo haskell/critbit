@@ -42,11 +42,11 @@ library
     Data.CritBit.Tree
 
   build-depends:
+    array,
     base >= 4 && < 5,
     bytestring >= 0.9,
     deepseq,
     text >= 0.11.2.3,
-    array,
     vector
 
   ghc-options: -Wall -funbox-strict-fields -O2 -fwarn-tabs
@@ -70,15 +70,16 @@ test-suite tests
     -Wall -threaded -rtsopts -with-rtsopts=-N
 
   build-depends:
+    QuickCheck >= 2.7,
     base >= 4 && < 5,
     bytestring,
     containers,
     critbit,
-    QuickCheck >= 2.7,
     test-framework >= 0.4,
     test-framework-quickcheck2 >= 0.2,
     text,
-    transformers >=0.3
+    transformers >= 0.3,
+    vector
 
 benchmark benchmarks
   default-language: Haskell2010
@@ -99,9 +100,9 @@ benchmark benchmarks
     mtl,
     mwc-random,
     text,
+    transformers >= 0.3,
     unordered-containers,
-    vector,
-    transformers >=0.3
+    vector
 
 source-repository head
   type:     git

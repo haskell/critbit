@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP, FlexibleInstances, GeneralizedNewtypeDeriving #-}
 -- |
 -- Module      :  Data.CritBit.Types.Internal
 -- Copyright   :  (c) Bryan O'Sullivan and others 2013-2014
@@ -6,6 +6,11 @@
 -- Maintainer  :  bos@serpentine.com
 -- Stability   :  experimental
 -- Portability :  GHC
+
+#if defined(__GLASGOW_HASKELL__) && !defined(__HADDOCK__)
+#include "MachDeps.h"
+#endif
+
 module Data.CritBit.Types.Internal
     (
       CritBitKey(..)
@@ -21,16 +26,19 @@ module Data.CritBit.Types.Internal
     ) where
 
 import Control.DeepSeq (NFData(..))
-import Data.Bits ((.|.), (.&.), shiftL, shiftR)
+import Data.Bits (Bits, (.|.), (.&.), shiftL, shiftR)
 import Data.ByteString (ByteString)
 import Data.Foldable hiding (toList)
 import Data.Monoid (Monoid(..))
 import Data.Text ()
 import Data.Text.Internal (Text(..))
-import Data.Word (Word16)
+import Data.Word (Word, Word8, Word16, Word32, Word64)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Unsafe as B
 import qualified Data.Text.Array as T
+import qualified Data.Vector.Generic as G
+import qualified Data.Vector.Unboxed as U
+import qualified Data.Vector as V
 
 type BitMask = Word16
 
@@ -187,6 +195,83 @@ instance CritBitKey Text where
             in byteInWord .|. 256
         | otherwise       = 0
     {-# INLINE getByte #-}
+
+#if WORD_SIZE_IN_BITS == 64
+# define WORD_SHIFT 3
+#else
+# define WORD_SHIFT 2
+#endif
+
+instance CritBitKey (U.Vector Word8) where
+    byteCount = G.length
+    getByte   = getByteV 0
+
+instance CritBitKey (U.Vector Word16) where
+    byteCount = (`shiftL` 1) . G.length
+    getByte   = getByteV 1
+
+instance CritBitKey (U.Vector Word32) where
+    byteCount = (`shiftL` 2) . G.length
+    getByte   = getByteV 2
+
+instance CritBitKey (U.Vector Word64) where
+    byteCount = (`shiftL` 3) . G.length
+    getByte   = getByteV 3
+
+instance CritBitKey (U.Vector Word) where
+    byteCount = (`shiftL` WORD_SHIFT) . G.length
+    getByte   = getByteV WORD_SHIFT
+
+instance CritBitKey (U.Vector Char) where
+    byteCount = (`shiftL` 2) . G.length
+    getByte   = getByteV_ fromEnum 2
+
+instance CritBitKey (V.Vector Word8) where
+    byteCount = G.length
+    getByte   = getByteV 0
+
+instance CritBitKey (V.Vector Word16) where
+    byteCount = (`shiftL` 1) . G.length
+    getByte   = getByteV 1
+
+instance CritBitKey (V.Vector Word32) where
+    byteCount = (`shiftL` 2) . G.length
+    getByte   = getByteV 2
+
+instance CritBitKey (V.Vector Word64) where
+    byteCount = (`shiftL` 3) . G.length
+    getByte   = getByteV 3
+
+instance CritBitKey (V.Vector Word) where
+    byteCount = (`shiftL` WORD_SHIFT) . G.length
+    getByte   = getByteV WORD_SHIFT
+
+instance CritBitKey (V.Vector Char) where
+    byteCount = (`shiftL` 2) . G.length
+    getByte   = getByteV_ fromEnum 2
+
+getByteV :: (Bits a, Integral a, G.Vector v a) => Int -> v a -> Int -> Word16
+getByteV = getByteV_ id
+{-# INLINE getByteV #-}
+
+getByteV_ :: (Bits a, Integral a, G.Vector v b) =>
+             (b -> a) -> Int -> v b -> Int -> Word16
+getByteV_ convert shiftSize = \v n ->
+  if n < G.length v `shiftL` shiftSize
+  then reindex shiftSize n $ \wordOffset shiftRight ->
+       let word       = convert (G.unsafeIndex v wordOffset)
+           byteInWord = (word `shiftR` shiftRight) .&. 255
+       in fromIntegral byteInWord .|. 256
+  else 0
+{-# INLINE getByteV_ #-}
+
+reindex :: Int -> Int -> (Int -> Int -> r) -> r
+reindex shiftSize n f = f wordOffset shiftRight
+  where
+    wordOffset = n `shiftR` shiftSize
+    shiftRight = (size - (n .&. size)) `shiftL` 3
+      where size = (1 `shiftL` shiftSize) - 1
+{-# INLINE reindex #-}
 
 -- | /O(n)/. Convert the map to a list of key\/value pairs. The list
 -- returned will be sorted in lexicographically ascending order.

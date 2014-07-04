@@ -26,10 +26,34 @@ import Data.CritBit.Map.Lazy (CritBitKey, byteCount)
 import Data.Monoid (Monoid, mappend)
 import Data.String (IsString, fromString)
 import qualified Data.Text as T
+import qualified Data.Vector.Generic as G
+import qualified Data.Vector.Unboxed as U
+import Data.Word
 import Test.Framework (Test)
 import Test.QuickCheck (Arbitrary(..), Args(..), quickCheckWith, stdArgs)
-import Test.QuickCheck.Gen (resize, sized)
+import Test.QuickCheck.Gen (Gen, resize, sized)
 import Test.QuickCheck.Property (Property, Testable, (===), (.&&.), (.||.))
+
+instance IsString (U.Vector Word8) where
+    fromString = fromStringV
+
+instance IsString (U.Vector Word16) where
+    fromString = fromStringV
+
+instance IsString (U.Vector Word32) where
+    fromString = fromStringV
+
+instance IsString (U.Vector Word64) where
+    fromString = fromStringV
+
+instance IsString (U.Vector Word) where
+    fromString = fromStringV
+
+instance IsString (U.Vector Char) where
+    fromString = G.fromList
+
+fromStringV :: (G.Vector v a, Integral a) => String -> v a
+fromStringV = G.fromList . map (fromIntegral . fromEnum)
 
 instance Arbitrary B.ByteString where
     arbitrary = B.pack <$> arbitrary
@@ -38,6 +62,36 @@ instance Arbitrary B.ByteString where
 instance Arbitrary T.Text where
     arbitrary = T.pack <$> arbitrary
     shrink    = map T.pack . shrink . T.unpack
+
+instance Arbitrary (U.Vector Word8) where
+    arbitrary = arbitraryV
+    shrink    = shrinkV
+
+instance Arbitrary (U.Vector Word16) where
+    arbitrary = arbitraryV
+    shrink    = shrinkV
+
+instance Arbitrary (U.Vector Word32) where
+    arbitrary = arbitraryV
+    shrink    = shrinkV
+
+instance Arbitrary (U.Vector Word64) where
+    arbitrary = arbitraryV
+    shrink    = shrinkV
+
+instance Arbitrary (U.Vector Word) where
+    arbitrary = arbitraryV
+    shrink    = shrinkV
+
+instance Arbitrary (U.Vector Char) where
+    arbitrary = arbitraryV
+    shrink    = shrinkV
+
+arbitraryV :: (G.Vector v a, Arbitrary a) => Gen (v a)
+arbitraryV = G.fromList <$> arbitrary
+
+shrinkV :: (G.Vector v a, Arbitrary a) => v a -> [v a]
+shrinkV = map G.fromList . shrink . G.toList
 
 newtype Small a = Small { fromSmall :: a }
     deriving (Eq, Ord, Show)
