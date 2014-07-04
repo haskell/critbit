@@ -17,17 +17,17 @@ This package exists in part with education in mind:
 * I have intentionally structured the source to be easy to follow and
   extend.
 
-* I've *deliberately* left the package incomplete. Ever thought to
-  yourself, "I'd write a bit of Haskell if only I had a project to
-  work on"?  Well, here's your chance!  I will set aside time to
-  review your code and answer what questions I can.
+* Originally, I *deliberately* left the package incomplete.  (It has
+  since been substantially fleshed out.)  Ever thought to yourself,
+  "I'd write a bit of Haskell if only I had a project to work on"?
+  Well, here's your chance!  I will set aside time to review your code
+  and answer what questions I can.
 
 Education aside, crit-bit trees offer some interesting features
 compared to other key/value container types in Haskell.
 
-* For many operations, they are much faster than `Data.Map` from the
-  `containers` package. For instance, [`lookup` is about 3x
-  faster](http://htmlpreview.github.io/?https://github.com/bos/critbit/blob/master/doc/criterion-sample-lookup.html).
+* For some operations, they are much faster than `Data.Map` from the
+  `containers` package, while for others, they are slower.
 
 * Compared to `Data.HashMap`, you get about the same lookup
   performance, but also some features that a hash-based structure
@@ -82,13 +82,6 @@ Set up your local database of known open source Haskell packages.
 
     cabal update
 
-Install the latest version of the `cabal` command, without which you
-won't be able to build or run benchmarks. You'll also want a sandbox
-environment. I like `cabal-dev`, and there are plenty of others.
-
-    cabal install cabal-install
-    cabal install cabal-dev
-
 Both the new `cabal` command and `cabal-dev` will install to
 `$HOME/.cabal/bin`, so put that directory at the front of your shell's
 search path before you continue.
@@ -99,39 +92,41 @@ Get the `critbit` source.
 
 Set up a sandbox.
 
-The first time through, you need to download and install a ton of
+The first time through, you may need to download and install a ton of
 dependencies, so hang in there.
 
     cd critbit
-    cabal-dev install \
-        --enable-tests \
-        --enable-benchmarks \
-        --only-dependencies \
-        -j
+    cabal sandbox init
+    cabal install \
+	--enable-tests \
+	--enable-benchmarks \
+    	--only-dependencies \
+	-j
 
-The `cabal-dev` command is just a sandboxing wrapper around the
-`cabal` command.  The `-j` flag above tells `cabal` to use all of your
-CPUs, so even the initial build shouldn't take more than a few
-minutes.
+The `-j` flag above tells `cabal` to use all of your CPUs, so even the
+initial build shouldn't take more than a few minutes.
 
-    cabal-dev configure \
-        --enable-tests \
-        --enable-benchmarks
-    cabal-dev build
+To actually build:
+
+    cabal build
 
 
 Running the test suite
 ----
 
-Once you've built the code, you can run the entire test suite in a few
-seconds.
+Once you've built the code, you can run the entire test suite fairly
+quickly.  This takes about 30 seconds on my oldish 8-core Mac laptop:
 
     dist/build/tests/tests +RTS -N
 
 (The `+RTS -N` above tells GHC's runtime system to use all available
 cores.)
 
-If you want to explore, the `tests` program accepts a `--help`
+If you're feeling impatient, run a subset of the test suite:
+
+    dist/build/tests/tests -t properties/map/bytestring +RTS -N
+
+And if you want to explore, the `tests` program accepts a `--help`
 option. Try it out.
 
 
@@ -222,16 +217,3 @@ your pull request and deal with your commits afterwards.
 
 (If you can't follow the guidelines, there's a good chance I'll ask
 you to fix your commits and resubmit them.)
-
-
-Setting expectations
-====
-
-I have no idea whether this experiment will attract zero contributors
-or a hundred. If the former, that's too bad, and I'll flesh the
-library out at my own pace. If the latter, I'll do my best to keep up,
-and we'll be more systematic if necessary (it would be a shame to see
-several redundant pull requests implementing the same functions, is
-what I'm thinking).
-
-But the main point of this is: have fun!
