@@ -8,7 +8,6 @@ import Data.CritBit.Map.Lazy (CritBitKey, byteCount)
 import qualified Data.CritBit.Set as C
 import Data.List (unfoldr, sort, nub)
 import qualified Data.Set as S
-import Data.String (IsString)
 import qualified Data.Text as T
 import Properties.Common
 import Test.Framework (Test, testGroup)
@@ -18,7 +17,7 @@ import Test.QuickCheck.Property ((.&&.))
 kp :: (CritBitKey k) => k -> Bool
 kp = even . byteCount
 
-kii :: (CritBitKey k, Show k, IsString k) => k -> Int -> Int
+kii :: (CritBitKey k, Show k) => k -> Int -> Int
 kii k v = byteCount k * 13 + v
 
 propertiesFor :: Props k
