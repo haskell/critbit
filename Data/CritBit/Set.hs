@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -90,12 +91,20 @@ import Data.CritBit.Types.Internal (CritBit(..), Set(..), CritBitKey, Node(..))
 import Data.Foldable (Foldable, foldMap)
 import Data.Maybe (isJust)
 import Data.Monoid (Monoid(..))
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup(..))
+#endif
 import Prelude hiding (null, filter, map, foldl, foldr)
 import qualified Data.CritBit.Tree as T
 import qualified Data.List as List
 
 instance (Show a) => Show (Set a) where
     show s = "fromList " ++ show (toList s)
+
+#if MIN_VERSION_base(4,9,0)
+instance CritBitKey k => Semigroup (Set k) where
+    (<>) = union
+#endif
 
 instance CritBitKey k => Monoid (Set k) where
     mempty  = empty

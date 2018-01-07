@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, RecordWildCards, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, BangPatterns, RecordWildCards, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -153,21 +153,31 @@ import Data.CritBit.Core
 import Data.CritBit.Types.Internal
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup(..))
+#endif
 import Data.Traversable (Traversable(traverse))
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.Array as A
 import qualified Data.Foldable as Foldable
 import qualified Data.List as List
 
+#if MIN_VERSION_base(4,9,0)
+instance CritBitKey k => Semigroup (CritBit k v) where
+    (<>) = union
+#endif
+
 instance CritBitKey k => Monoid (CritBit k v) where
     mempty  = empty
+#if !(MIN_VERSION_base(4,11,0))
     mappend = union
+#endif
     mconcat = unions
 
 instance CritBitKey k => Traversable (CritBit k) where
     traverse f m = traverseWithKey (\_ v -> f v) m
 
-infixl 9 !, \\
+infixl 9 !, \\ -- Comment needed here to avoid CPP bug
 
 -- | /O(k)/. Find the value at a key.
 -- Calls 'error' when the element can not be found.
@@ -1247,8 +1257,7 @@ deleteMax m = updateMaxWithKey (\_ _ -> Nothing) m
 -- > deleteFindMin     Error: can not return the minimal element of an empty map
 deleteFindMin :: CritBit k v -> ((k, v), CritBit k v)
 deleteFindMin = fromMaybe (error msg) . minViewWithKey
-  where msg = "CritBit.deleteFindMin: cannot return the minimal \
-              \element of an empty map"
+  where msg = "CritBit.deleteFindMin: cannot return the minimal element of an empty map"
 {-# INLINABLE deleteFindMin #-}
 
 -- | /O(k)/. Delete and find the maximal element.
@@ -1257,8 +1266,7 @@ deleteFindMin = fromMaybe (error msg) . minViewWithKey
 -- > deleteFindMax     Error: can not return the maximal element of an empty map
 deleteFindMax :: CritBit k v -> ((k, v), CritBit k v)
 deleteFindMax = fromMaybe (error msg) . maxViewWithKey
-  where msg = "CritBit.deleteFindMax: cannot return the minimal \
-              \element of an empty map"
+  where msg = "CritBit.deleteFindMax: cannot return the minimal element of an empty map"
 {-# INLINABLE deleteFindMax #-}
 
 -- | /O(k')/. Retrieves the value associated with minimal key of the
