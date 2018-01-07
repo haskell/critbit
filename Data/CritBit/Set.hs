@@ -108,7 +108,9 @@ instance CritBitKey k => Semigroup (Set k) where
 
 instance CritBitKey k => Monoid (Set k) where
     mempty  = empty
+#if !(MIN_VERSION_base(4,11,0))
     mappend = union
+#endif
     mconcat = unions
 
 instance Foldable Set where
