@@ -7,7 +7,7 @@ import Control.DeepSeq (NFData(..))
 import Control.Monad (when)
 import Control.Monad.Trans (liftIO)
 import Criterion.Main (bench, bgroup, defaultMain, nf, whnf)
-import Criterion.Types (Pure)
+import Criterion.Types (Benchmarkable)
 import Data.Foldable (foldMap)
 import Data.Functor.Identity (Identity(..))
 import Data.Hashable (Hashable(..), hashByteArray)
@@ -180,7 +180,7 @@ main = do
         , bench "hashmap" $ whnf (hashmap b_hashmap_13) b_hashmap_23
         , bench "trie" $ whnf (trie b_trie_13) b_trie_23
         ]
-      function (eval :: forall a b. NFData b => (a -> b) -> a -> Pure)
+      function (eval :: forall a b. NFData b => (a -> b) -> a -> Benchmarkable)
                critbit map hashmap trie = [
          bench "critbit" $ eval critbit b_critbit
        , bench "map" $ eval map b_map
