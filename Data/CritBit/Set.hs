@@ -97,9 +97,11 @@ import qualified Data.List as List
 instance (Show a) => Show (Set a) where
     show s = "fromList " ++ show (toList s)
 
+instance CritBitKey k => Semigroup (Set k) where
+    (<>) = union
+
 instance CritBitKey k => Monoid (Set k) where
     mempty  = empty
-    mappend = union
     mconcat = unions
 
 instance Foldable Set where

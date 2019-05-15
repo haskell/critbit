@@ -159,9 +159,11 @@ import qualified Data.Array as A
 import qualified Data.Foldable as Foldable
 import qualified Data.List as List
 
+instance CritBitKey k => Semigroup (CritBit k v) where
+    (<>) = union
+
 instance CritBitKey k => Monoid (CritBit k v) where
     mempty  = empty
-    mappend = union
     mconcat = unions
 
 instance CritBitKey k => Traversable (CritBit k) where
