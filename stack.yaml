@@ -1,0 +1,7 @@
+resolver: lts-13.21
+
+packages:
+- .
+
+extra-deps:
+- bytestring-trie-0.2.5.0
