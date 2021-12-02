@@ -153,15 +153,19 @@ import Data.CritBit.Core
 import Data.CritBit.Types.Internal
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 import Data.Traversable (Traversable(traverse))
 import Prelude hiding (foldl, foldr, lookup, null, map, filter)
 import qualified Data.Array as A
 import qualified Data.Foldable as Foldable
 import qualified Data.List as List
 
+instance CritBitKey k => Semigroup (CritBit k v) where
+    (<>) = union
+
 instance CritBitKey k => Monoid (CritBit k v) where
     mempty  = empty
-    mappend = union
+    mappend = (<>)
     mconcat = unions
 
 instance CritBitKey k => Traversable (CritBit k) where

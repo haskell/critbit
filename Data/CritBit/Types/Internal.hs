@@ -185,15 +185,25 @@ instance CritBitKey ByteString where
     {-# INLINE getByte #-}
 
 instance CritBitKey Text where
+#if MIN_VERSION_text(2,0,0)
+    byteCount (Text _ _ len) = len
+#else
     byteCount (Text _ _ len) = len `shiftL` 1
+#endif
     {-# INLINE byteCount #-}
 
+#if MIN_VERSION_text(2,0,0)
+    getByte (Text arr off len) n
+        | n < len = fromIntegral (T.unsafeIndex arr (off + n)) .|. 256
+        | otherwise = 0
+#else
     getByte (Text arr off len) n
         | n < len `shiftL` 1 =
             let word       = T.unsafeIndex arr (off + (n `shiftR` 1))
                 byteInWord = (word `shiftR` ((n .&. 1) `shiftL` 3)) .&. 0xff
             in byteInWord .|. 256
         | otherwise       = 0
+#endif
     {-# INLINE getByte #-}
 
 #if WORD_SIZE_IN_BITS == 64

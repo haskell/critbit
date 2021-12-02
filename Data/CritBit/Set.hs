@@ -90,6 +90,7 @@ import Data.CritBit.Types.Internal (CritBit(..), Set(..), CritBitKey, Node(..))
 import Data.Foldable (Foldable, foldMap)
 import Data.Maybe (isJust)
 import Data.Monoid (Monoid(..))
+import Data.Semigroup (Semigroup(..))
 import Prelude hiding (null, filter, map, foldl, foldr)
 import qualified Data.CritBit.Tree as T
 import qualified Data.List as List
@@ -97,9 +98,12 @@ import qualified Data.List as List
 instance (Show a) => Show (Set a) where
     show s = "fromList " ++ show (toList s)
 
+instance CritBitKey k => Semigroup (Set k) where
+    (<>) = union
+
 instance CritBitKey k => Monoid (Set k) where
     mempty  = empty
-    mappend = union
+    mappend = (<>)
     mconcat = unions
 
 instance Foldable Set where

@@ -48,6 +48,8 @@ library
     deepseq,
     text >= 0.11.2.3,
     vector
+  if !impl(ghc>=8.0)
+    build-depends: semigroups
 
   ghc-options: -Wall -funbox-strict-fields -O2 -fwarn-tabs
   if flag(developer)
