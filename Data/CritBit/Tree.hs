@@ -645,7 +645,7 @@ difference a b = differenceWithKey (\_ _ _ -> Nothing) a b
 
 -- | /O(n+m)/. Difference with a combining function.
 -- | When two equal keys are encountered, the combining function is applied
--- | to the values of theese keys. If it returns 'Nothing', the element is
+-- | to the values of these keys. If it returns 'Nothing', the element is
 -- | discarded (proper set difference). If it returns (@'Just' y@),
 -- | the element is updated with a new value @y@.
 --
