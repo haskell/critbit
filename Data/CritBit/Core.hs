@@ -127,7 +127,7 @@ data Diff = Diff {-# UNPACK #-} !Int
                  {-# UNPACK #-} !BitMask
                  {-# UNPACK #-} !BitMask
 
--- | Smart consturctor for Internal nodes
+-- | Smart constructor for Internal nodes
 internal :: Diff -> Node k v -> Node k v -> Node k v
 internal diff@(Diff byte bits _) child1 child2 = case diffOrd diff of
   LT -> Internal child1 child2 byte bits
@@ -191,7 +191,7 @@ lookupWith notFound found k (CritBit root) = go root
 updateLookupWithKey :: (CritBitKey k) => (k -> v -> Maybe v) -> k
                        -> CritBit k v -> (Maybe v, CritBit k v)
 -- Once again with the continuations! It's somewhat faster to do
--- things this way than to expicitly unwind our recursion once we've
+-- things this way than to explicitly unwind our recursion once we've
 -- found the leaf to delete. It's also a ton less code.
 --
 -- (If you want a good little exercise, rewrite this function without
