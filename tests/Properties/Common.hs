@@ -126,7 +126,7 @@ f =??= g = const $ \t s -> f t s =^= g t s
 
 infix 4 =*=, =?*=, =*==
 
--- | Types 'f' and 'g' have same behavior and common represenation 'r'.
+-- | Types 'f' and 'g' have same behavior and common representation 'r'.
 data SameAs f g r = SameAs {
     toF   :: r -> f
   , fromF :: f -> r
@@ -160,7 +160,7 @@ data SameAs f g r = SameAs {
 (f =*== g) p _ i = f i' =^= g i'
   where i' = p i
 
--- | Input litst is non-empty
+-- | Input list is non-empty
 notEmpty :: (SameAs c1 c2 [i] -> [i] -> Property)
          -> SameAs c1 c2 [i] -> [i] -> Property
 notEmpty f t items = null items .||. f t items
